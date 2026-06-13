@@ -11,7 +11,7 @@ export const migrations = [
   {
     up: migration_20241214_124128.up,
     down: migration_20241214_124128.down,
-    name: '20241214_124128'
+    name: '20241214_124128',
   },
   {
     up: migration_20260222_003500_payload_3_77_compat.up,

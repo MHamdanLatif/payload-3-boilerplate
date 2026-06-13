@@ -10,17 +10,37 @@ import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/
 import { searchFields } from '@/search/fieldOverrides'
 import { beforeSyncWithSearch } from '@/search/beforeSync'
 
-import { Page, Post } from '@/payload-types'
+import { FeaturedProject, Page, Post, PropertyListing } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 
-const generateTitle: GenerateTitle<Post | Page> = ({ doc }) => {
-  return doc?.title ? `${doc.title} | Payload Website Template` : 'Payload Website Template'
+type SeoDoc = Post | Page | FeaturedProject | PropertyListing
+
+function isFeaturedProject(doc: SeoDoc | undefined): doc is FeaturedProject {
+  return !!doc && (doc as FeaturedProject).builderName !== undefined
 }
 
-const generateURL: GenerateURL<Post | Page> = ({ doc }) => {
-  const url = getServerSideURL()
+function isPropertyListing(doc: SeoDoc | undefined): doc is PropertyListing {
+  return (
+    !!doc &&
+    (doc as PropertyListing).status !== undefined &&
+    [
+      'Ready for Possession',
+      'Resale',
+      'Urgent Sale',
+    ].includes((doc as PropertyListing).status as string)
+  )
+}
 
-  return doc?.slug ? `${url}/${doc.slug}` : url
+const generateTitle: GenerateTitle<SeoDoc> = ({ doc }) => {
+  return doc?.title ? `${doc.title} | Lateef Properties` : 'Lateef Properties'
+}
+
+const generateURL: GenerateURL<SeoDoc> = ({ doc }) => {
+  const url = getServerSideURL()
+  if (!doc?.slug) return url
+  if (isFeaturedProject(doc)) return `${url}/projects/${doc.slug}`
+  if (isPropertyListing(doc)) return `${url}/listings/${doc.slug}`
+  return `${url}/${doc.slug}`
 }
 
 export const plugins: Plugin[] = [
@@ -50,6 +70,8 @@ export const plugins: Plugin[] = [
     collections: ['categories'],
   }),
   seoPlugin({
+    collections: ['pages', 'posts', 'featured-projects', 'property-listings', 'blogs'],
+    uploadsCollection: 'media',
     generateTitle,
     generateURL,
   }),

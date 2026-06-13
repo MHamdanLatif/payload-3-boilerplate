@@ -1,0 +1,97 @@
+/* Brand overrides for react-phone-number-input. Imported once by ProjectLeadForm. */
+
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--brand-deep) / 0.15);
+  background: hsl(var(--ivory));
+  color: hsl(var(--brand-deep));
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.PhoneInput:focus-within {
+  border-color: hsl(var(--gold));
+  box-shadow: 0 0 0 2px hsl(var(--gold) / 0.3);
+}
+
+.PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid hsl(var(--brand-deep) / 0.1);
+}
+
+.PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: 1.1rem;
+  border-radius: 0.125rem;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px hsl(var(--brand-deep) / 0.1);
+}
+
+.PhoneInputCountryIcon--border {
+  box-shadow: 0 0 0 1px hsl(var(--brand-deep) / 0.1);
+}
+
+.PhoneInputCountrySelectArrow {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-style: solid;
+  border-color: hsl(var(--brand-deep) / 0.5);
+  border-top-width: 0;
+  border-bottom-width: 1.5px;
+  border-left-width: 0;
+  border-right-width: 1.5px;
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0.7;
+}
+
+.PhoneInputCountrySelect {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0;
+}
+
+.PhoneInputInput::placeholder {
+  color: hsl(var(--brand-deep) / 0.35);
+}
+
+/* When used on a dark gradient surface (final CTA) — caller adds .PhoneInput--on-dark */
+.PhoneInput.PhoneInput--on-dark {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.PhoneInput.PhoneInput--on-dark:focus-within {
+  border-color: hsl(var(--gold));
+  box-shadow: 0 0 0 2px hsl(var(--gold) / 0.3);
+}
+.PhoneInput.PhoneInput--on-dark .PhoneInputCountry {
+  border-right-color: rgba(255, 255, 255, 0.15);
+}
+.PhoneInput.PhoneInput--on-dark .PhoneInputInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+.PhoneInput.PhoneInput--on-dark .PhoneInputCountrySelectArrow {
+  border-color: rgba(255, 255, 255, 0.6);
+}

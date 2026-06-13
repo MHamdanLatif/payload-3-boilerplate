@@ -6,10 +6,66 @@
  * and re-run `payload generate:types` to regenerate this file.
  */
 
+/**
+ * Supported timezones in IANA format.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "supportedTimezones".
+ */
+export type SupportedTimezones =
+  | 'Pacific/Midway'
+  | 'Pacific/Niue'
+  | 'Pacific/Honolulu'
+  | 'Pacific/Rarotonga'
+  | 'America/Anchorage'
+  | 'Pacific/Gambier'
+  | 'America/Los_Angeles'
+  | 'America/Tijuana'
+  | 'America/Denver'
+  | 'America/Phoenix'
+  | 'America/Chicago'
+  | 'America/Guatemala'
+  | 'America/New_York'
+  | 'America/Bogota'
+  | 'America/Caracas'
+  | 'America/Santiago'
+  | 'America/Buenos_Aires'
+  | 'America/Sao_Paulo'
+  | 'Atlantic/South_Georgia'
+  | 'Atlantic/Azores'
+  | 'Atlantic/Cape_Verde'
+  | 'Europe/London'
+  | 'Europe/Berlin'
+  | 'Africa/Lagos'
+  | 'Europe/Athens'
+  | 'Africa/Cairo'
+  | 'Europe/Moscow'
+  | 'Asia/Riyadh'
+  | 'Asia/Dubai'
+  | 'Asia/Baku'
+  | 'Asia/Karachi'
+  | 'Asia/Tashkent'
+  | 'Asia/Calcutta'
+  | 'Asia/Dhaka'
+  | 'Asia/Almaty'
+  | 'Asia/Jakarta'
+  | 'Asia/Bangkok'
+  | 'Asia/Shanghai'
+  | 'Asia/Singapore'
+  | 'Asia/Tokyo'
+  | 'Asia/Seoul'
+  | 'Australia/Brisbane'
+  | 'Australia/Sydney'
+  | 'Pacific/Guam'
+  | 'Pacific/Noumea'
+  | 'Pacific/Auckland'
+  | 'Pacific/Fiji';
+
 export interface Config {
   auth: {
     users: UserAuthOperations;
   };
+  blocks: {};
   collections: {
     pages: Page;
     posts: Post;
@@ -17,10 +73,16 @@ export interface Config {
     categories: Category;
     users: User;
     comments: Comment;
+    'featured-projects': FeaturedProject;
+    'property-listings': PropertyListing;
+    blogs: Blog;
+    'blog-topics': BlogTopic;
+    'payment-plan-leads': PaymentPlanLead;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
     search: Search;
+    'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -33,10 +95,16 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
+    'featured-projects': FeaturedProjectsSelect<false> | FeaturedProjectsSelect<true>;
+    'property-listings': PropertyListingsSelect<false> | PropertyListingsSelect<true>;
+    blogs: BlogsSelect<false> | BlogsSelect<true>;
+    'blog-topics': BlogTopicsSelect<false> | BlogTopicsSelect<true>;
+    'payment-plan-leads': PaymentPlanLeadsSelect<false> | PaymentPlanLeadsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     search: SearchSelect<false> | SearchSelect<true>;
+    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -44,6 +112,7 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
+  fallbackLocale: null;
   globals: {
     header: Header;
     footer: Footer;
@@ -53,9 +122,10 @@ export interface Config {
     footer: FooterSelect<false> | FooterSelect<true>;
   };
   locale: null;
-  user: User & {
-    collection: 'users';
+  widgets: {
+    collections: CollectionsWidget;
   };
+  user: User;
   jobs: {
     tasks: unknown;
     workflows: unknown;
@@ -92,7 +162,7 @@ export interface Page {
       root: {
         type: string;
         children: {
-          type: string;
+          type: any;
           version: number;
           [k: string]: unknown;
         }[];
@@ -114,6 +184,9 @@ export interface Page {
             } | null;
             url?: string | null;
             label: string;
+            /**
+             * Choose how the link should be rendered.
+             */
             appearance?: ('default' | 'outline') | null;
           };
           id?: string | null;
@@ -124,8 +197,11 @@ export interface Page {
   layout: (CallToActionBlock | ContentBlock | MediaBlock | ArchiveBlock | FormBlock)[];
   meta?: {
     title?: string | null;
-    image?: (number | null) | Media;
     description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
   };
   publishedAt?: string | null;
   slug?: string | null;
@@ -145,7 +221,7 @@ export interface Media {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -227,7 +303,7 @@ export interface CallToActionBlock {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -249,6 +325,9 @@ export interface CallToActionBlock {
           } | null;
           url?: string | null;
           label: string;
+          /**
+           * Choose how the link should be rendered.
+           */
           appearance?: ('default' | 'outline') | null;
         };
         id?: string | null;
@@ -270,7 +349,7 @@ export interface ContentBlock {
           root: {
             type: string;
             children: {
-              type: string;
+              type: any;
               version: number;
               [k: string]: unknown;
             }[];
@@ -291,6 +370,9 @@ export interface ContentBlock {
           } | null;
           url?: string | null;
           label: string;
+          /**
+           * Choose how the link should be rendered.
+           */
           appearance?: ('default' | 'outline') | null;
         };
         id?: string | null;
@@ -319,7 +401,7 @@ export interface ArchiveBlock {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -374,7 +456,7 @@ export interface Post {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -389,8 +471,11 @@ export interface Post {
   categories?: (number | Category)[] | null;
   meta?: {
     title?: string | null;
-    image?: (number | null) | Media;
     description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
   };
   publishedAt?: string | null;
   authors?: (number | User)[] | null;
@@ -422,7 +507,15 @@ export interface User {
   hash?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
   password?: string | null;
+  collection: 'users';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -435,7 +528,7 @@ export interface FormBlock {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -492,7 +585,7 @@ export interface Form {
               root: {
                 type: string;
                 children: {
-                  type: string;
+                  type: any;
                   version: number;
                   [k: string]: unknown;
                 }[];
@@ -522,6 +615,7 @@ export interface Form {
             label?: string | null;
             width?: number | null;
             defaultValue?: string | null;
+            placeholder?: string | null;
             options?:
               | {
                   label: string;
@@ -566,12 +660,15 @@ export interface Form {
       )[]
     | null;
   submitButtonLabel?: string | null;
+  /**
+   * Choose whether to display an on-page message or redirect to a different page after they submit the form.
+   */
   confirmationType?: ('message' | 'redirect') | null;
   confirmationMessage?: {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];
@@ -585,6 +682,9 @@ export interface Form {
   redirect?: {
     url: string;
   };
+  /**
+   * Send custom emails when the form submits. Use comma separated lists to send the same email to multiple recipients. To reference a value from this form, wrap that field's name with double curly brackets, i.e. {{firstName}}. You can use a wildcard {{*}} to output all data and {{*:table}} to format it as an HTML table in the email.
+   */
   emails?:
     | {
         emailTo?: string | null;
@@ -593,11 +693,14 @@ export interface Form {
         replyTo?: string | null;
         emailFrom?: string | null;
         subject: string;
+        /**
+         * Enter the message that should be sent in this email.
+         */
         message?: {
           root: {
             type: string;
             children: {
-              type: string;
+              type: any;
               version: number;
               [k: string]: unknown;
             }[];
@@ -615,6 +718,8 @@ export interface Form {
   createdAt: string;
 }
 /**
+ * Comments submitted by visitors on blog posts
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "comments".
  */
@@ -626,8 +731,549 @@ export interface Comment {
     email: string;
   };
   post: number | Post;
+  /**
+   * Comments must be approved before they appear publicly
+   */
   isApproved?: boolean | null;
   publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Ongoing developments — pre-launch or under-construction projects. Each published project auto-generates a /projects/<slug> landing page and surfaces on the home Featured section.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "featured-projects".
+ */
+export interface FeaturedProject {
+  id: number;
+  title: string;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  /**
+   * e.g. Saima Group.
+   */
+  builderName: string;
+  /**
+   * Used by the /properties filter to match against listings.
+   */
+  propertyType: 'Flat' | 'Plot' | 'Office' | 'Shop' | 'Commercial';
+  /**
+   * Richer category for project landing pages.
+   */
+  projectType?: ('Mixed-use' | 'Residential Tower' | 'Plot Community') | null;
+  /**
+   * Lowest entry price for the project, in PKR. Used by the budget-range filter and the home Featured cards.
+   */
+  startingPrice?: number | null;
+  location:
+    | 'Gulshan-e-Iqbal'
+    | 'Gulistan-e-Jauhar'
+    | 'Scheme 33'
+    | 'DHA'
+    | 'Clifton'
+    | 'M.A. Jinnah Road'
+    | 'Jinnah Avenue'
+    | 'Malir'
+    | 'Saddar'
+    | 'Korangi'
+    | 'Model Colony'
+    | 'Sukkur'
+    | 'Other';
+  status: 'Pre-launch' | 'Under Construction';
+  /**
+   * One-sentence pitch (under 160 chars ideal). Used as the SEO meta description when no Meta Description is set in the SEO tab.
+   */
+  summary?: string | null;
+  /**
+   * Day-time elevation/render images. The first one is used as the hero background on the landing page and as the card image on the home Featured section.
+   */
+  elevationImages: {
+    image: number | Media;
+    caption?: string | null;
+    id?: string | null;
+  }[];
+  /**
+   * Night-time render. Drives the "Night Elevation" feature card on the landing page.
+   */
+  nightElevation?: (number | null) | Media;
+  /**
+   * PDF brochure for the "Download Brochure" CTA. Optional but strongly recommended.
+   */
+  brochure?: (number | null) | Media;
+  /**
+   * Paste only the `src` URL from a Google Maps "Embed a map" iframe. Powers the Location section AND we auto-extract lat/lng from it for SEO structured data — no manual coordinates needed.
+   */
+  googleMapsEmbedUrl?: string | null;
+  /**
+   * Optional street-level address used for Schema.org structured data. e.g. "Block 16, Gulshan-e-Iqbal, near Hassan Square". Not displayed on the page.
+   */
+  addressLine?: string | null;
+  /**
+   * Optional. Rendered as a collapsible FAQ section on the landing page AND emitted as Schema.org FAQPage JSON-LD to enable Google’s drop-down rich results.
+   */
+  faqs?:
+    | {
+        question: string;
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  amenities?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Optional. If empty, the Gallery section is hidden on the landing page.
+   */
+  photoGallery?:
+    | {
+        image: number | Media;
+        caption?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * NOT displayed on the landing page. Powers the /properties Unit Type filter. Add one row per available unit configuration.
+   */
+  unitTypes?:
+    | {
+        /**
+         * Human-friendly label for this unit row — e.g. "Marquee Type A", "Junior Suite", "East-facing 3BR". Shown in the payment-plan unit selector and the PDF so buyers can refer to specific units.
+         */
+        name?: string | null;
+        type:
+          | '1 Bed Lounge'
+          | '2 Bed Lounge'
+          | '2 Bed Drawing'
+          | '2 Bed DD / 3 Bed Lounge'
+          | '3 Bed Lounge'
+          | '3 Bed Drawing'
+          | '4 Bed Drawing'
+          | '4+ Rooms';
+        /**
+         * Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).
+         */
+        rooms: number;
+        price: number;
+        areaSqFt?: number | null;
+        /**
+         * Optional. Pre-arranged loan component applicable to this unit (immutable by client). When the buyer toggles "Include Expected Loan?" in the calculator, this amount is subtracted from the unit price before computing the plan.
+         */
+        loanAmount?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Renders in the Overview section of the landing page.
+   */
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Guardrails for the buyer-facing payment plan calculator on this project. Uncheck `enabled` to hide the calculator section entirely.
+   */
+  paymentPlan: {
+    /**
+     * When unchecked, the calculator section does not render.
+     */
+    enabled?: boolean | null;
+    /**
+     * Override total price used by the calculator. Falls back to: (a) buyer-selected unit type price, (b) Starting Price, (c) smallest unit price.
+     */
+    priceOverride?: number | null;
+    /**
+     * Total construction period in months. Grey-structure phase = first half; finishing = second half; possession follows.
+     */
+    totalDurationMonths: number;
+    downPaymentMinPct: number;
+    downPaymentMaxPct: number;
+    /**
+     * Payment due at handover. Business rule: capped at 5%.
+     */
+    possessionPct: number;
+    /**
+     * Master payment-head catalogue for this project. 19 defaults pre-seed on first save. Toggle heads on/off; click "Add Row" to add a Custom Head and assign it to one of the four backend classifications (Initial Payment, Grey Structure, Finishing, Possession). Time-Based heads correspond to the Monthly / Quarterly / Half-Yearly installment cadences.
+     */
+    paymentHeads?:
+      | {
+          name: string;
+          category: 'Initial Payment' | 'Time-Based' | 'Grey Structure' | 'Finishing' | 'Possession';
+          enabled?: boolean | null;
+          /**
+           * Auto-set. Defaults are isCustom=false; admin-added heads = true.
+           */
+          isCustom?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Legacy. Unused by the v2 engine.
+     */
+    greyStructureSharePct?: number | null;
+    /**
+     * Legacy. Unused by the v2 engine.
+     */
+    installmentFrequency?: ('Monthly' | 'Quarterly') | null;
+    /**
+     * Optional brand mark shown top-right on the generated PDF. If blank, the PDF prints the project name in serif type instead.
+     */
+    projectLogo?: (number | null) | Media;
+    /**
+     * Optional. Appended to the sitewide default disclaimer in the PDF footer.
+     */
+    planDisclaimer?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Individual ready-to-move units — a specific flat, plot, office, shop, or commercial space (ready, resale, or urgent sale).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "property-listings".
+ */
+export interface PropertyListing {
+  id: number;
+  /**
+   * Write SEO-friendly titles like "2-Bed Apartment in Gulshan-e-Iqbal Block 16" — what a buyer would type into Google.
+   */
+  title: string;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  propertyType: 'Flat' | 'Plot' | 'Office' | 'Shop' | 'Commercial';
+  price: number;
+  location:
+    | 'Gulshan-e-Iqbal'
+    | 'Gulistan-e-Jauhar'
+    | 'Scheme 33'
+    | 'DHA'
+    | 'Clifton'
+    | 'M.A. Jinnah Road'
+    | 'Jinnah Avenue'
+    | 'Malir'
+    | 'Saddar'
+    | 'Korangi'
+    | 'Model Colony'
+    | 'Sukkur'
+    | 'Other';
+  /**
+   * Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).
+   */
+  rooms?: number | null;
+  bathrooms?: number | null;
+  areaSqFt?: number | null;
+  status: 'Ready for Possession' | 'Resale' | 'Urgent Sale';
+  /**
+   * Optional link to a featured development. If set, the card uses the project name; if blank, falls back to "Society Name" below.
+   */
+  parentProject?: (number | null) | FeaturedProject;
+  /**
+   * Used when the listing is not part of a featured project (e.g. Bahria Town, Defence Phase 6). Ignored if Parent Project is set.
+   */
+  societyName?: string | null;
+  /**
+   * One-sentence pitch under 160 chars. Used as the SEO meta description when no Meta Description is set in the SEO tab.
+   */
+  summary?: string | null;
+  /**
+   * Cover photo. Used on the home card AND as the landing-page hero background.
+   */
+  mainImage: number | Media;
+  /**
+   * Optional. Rendered as a gallery section on the landing page.
+   */
+  additionalImages?:
+    | {
+        image: number | Media;
+        caption?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Paste a YouTube or Vimeo video URL (the full watch URL — we extract the ID). Optional.
+   */
+  walkthroughVideoUrl?: string | null;
+  amenities?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Paste only the `src` URL from a Google Maps "Embed a map" iframe. We also auto-extract lat/lng from this URL for SEO structured data — no manual coordinates needed.
+   */
+  googleMapsEmbedUrl?: string | null;
+  /**
+   * Optional street-level address used for Schema.org structured data. e.g. "Block 16, Gulshan-e-Iqbal, near Hassan Square". Not displayed on the page.
+   */
+  addressLine?: string | null;
+  /**
+   * Optional. Rendered as a collapsible FAQ section on the landing page AND emitted as Schema.org FAQPage JSON-LD to enable Google’s drop-down rich results.
+   */
+  faqs?:
+    | {
+        question: string;
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Renders in the Overview section of the landing page.
+   */
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Karachi real-estate articles. Write the article in your Claude Max chat, generate the cover image in Gemini Pro, paste both in below. The CMS auto-derives excerpt/meta/read-time, auto-scans for project + location mentions to populate internal links, and wraps them as Lexical link nodes on publish.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blogs".
+ */
+export interface Blog {
+  id: number;
+  title: string;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  /**
+   * Drafts are not visible publicly. Scheduled posts publish automatically when publishedAt is in the past.
+   */
+  status: 'draft' | 'scheduled' | 'published';
+  /**
+   * Public visibility timestamp. Auto-filled by the generator.
+   */
+  publishedAt?: string | null;
+  /**
+   * Estimated read minutes. Computed from content length.
+   */
+  readTime?: number | null;
+  /**
+   * Index-card teaser. Max 280 chars.
+   */
+  excerpt?: string | null;
+  /**
+   * SEO title (≤ 60-70 chars for Google SERPs). Overrides the default `${title} | Lateef Properties` pattern.
+   */
+  metaTitle?: string | null;
+  /**
+   * SEO meta description (≤ 160 chars ideal).
+   */
+  metaDescription?: string | null;
+  /**
+   * Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.
+   */
+  keywords?:
+    | {
+        keyword: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Hero image for /blog index card and the post page.
+   */
+  featuredImage?: (number | null) | Media;
+  /**
+   * Paste markdown from your Claude conversation — `## headings`, `-` bullets, `**bold**`, `[text](url)` are auto-converted on paste. Aim for 1000–1500 words with H2 every 200–300 words.
+   */
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Auto-populated from project/location names detected in the article body. Review before publishing. On every save where status=published, the publish hook wraps the first exact match of each anchorText inside the article content with a link to the resolved target URL. Already-injected entries are skipped on subsequent saves.
+   */
+  seoInternalLinks?:
+    | {
+        /**
+         * The exact phrase in the article body to wrap as a link.
+         */
+        anchorText: string;
+        linkType: 'project' | 'location' | 'index';
+        targetProject?: (number | null) | FeaturedProject;
+        /**
+         * Slug only, e.g. "scheme-33". Resolves to /locations/<slug>.
+         */
+        targetLocationSlug?: string | null;
+        /**
+         * Set by the publish hook once the link has been injected into the content.
+         */
+        injected?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  generatedBy?: {
+    topic?: (number | null) | BlogTopic;
+    model?: string | null;
+    generatedAt?: string | null;
+    placementWarnings?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Content backlog for upcoming blog posts. Add working titles + target keywords + brief notes. When you write and publish the article in /admin → Blogs, check "Written" and link via "Published As" so the backlog stays in sync.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blog-topics".
+ */
+export interface BlogTopic {
+  id: number;
+  suggestedTitle: string;
+  /**
+   * Whatever helps you remember the angle — pain point, audience, key data point, sources to cite.
+   */
+  coreFocus: string;
+  /**
+   * Phrases the article should naturally weave in. 4–6 ideal.
+   */
+  targetKeywords?:
+    | {
+        keyword: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Lower = sooner. Sort the backlog by priority to find the next idea to write.
+   */
+  priority?: number | null;
+  /**
+   * Check this when you publish the corresponding Blog.
+   */
+  isGenerated?: boolean | null;
+  /**
+   * Link to the published Blog post (if one exists).
+   */
+  generatedBlog?: (number | null) | Blog;
+  generationAttempts?: number | null;
+  lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Audit trail of payment-plan PDFs downloaded by leads. One row per download. Use to prioritise follow-up — these are high-intent buyers who built a custom plan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-plan-leads".
+ */
+export interface PaymentPlanLead {
+  id: number;
+  /**
+   * Auto-computed: "{name} · {price} · {downPct}% down".
+   */
+  displayLabel?: string | null;
+  name: string;
+  phone: string;
+  /**
+   * Which project the lead built a plan for. Nullable so the audit row survives if the project is later deleted.
+   */
+  project?: (number | null) | FeaturedProject;
+  /**
+   * Project title at download time. Preserved even if the project is renamed or deleted later.
+   */
+  projectTitleSnapshot?: string | null;
+  /**
+   * Unit the buyer modelled, e.g. "3 Bed Lounge". Optional.
+   */
+  selectedUnitType?: string | null;
+  totalPrice: number;
+  downPaymentPct: number;
+  downPaymentAmount: number;
+  possessionPct: number;
+  greyStructureSharePct: number;
+  installmentFrequency: 'Monthly' | 'Quarterly';
+  totalDurationMonths: number;
+  /**
+   * True if the buyer toggled "Include Expected Loan?" on this plan.
+   */
+  loanIncluded?: boolean | null;
+  /**
+   * PKR loan component subtracted from price before plan math. Only meaningful when loanIncluded=true.
+   */
+  loanAmount?: number | null;
+  /**
+   * Compute engine version used at download time.
+   */
+  engineVersion?: string | null;
+  /**
+   * Full PlanResult snapshot (rows + totals + active heads + frequencies) at download time. Use this to re-render the exact PDF the lead got.
+   */
+  planSummary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Browser user agent at download time. For debugging.
+   */
+  userAgent?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -637,6 +1283,9 @@ export interface Comment {
  */
 export interface Redirect {
   id: number;
+  /**
+   * You will need to rebuild the website when changing this field.
+   */
   from: string;
   to?: {
     type?: ('reference' | 'custom') | null;
@@ -672,6 +1321,8 @@ export interface FormSubmission {
   createdAt: string;
 }
 /**
+ * This is a collection of automatically created search results. These results are used by the global site search and will be updated automatically as documents in the CMS are created or updated.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "search".
  */
@@ -698,6 +1349,23 @@ export interface Search {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv".
+ */
+export interface PayloadKv {
+  id: number;
+  key: string;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -729,6 +1397,26 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'comments';
         value: number | Comment;
+      } | null)
+    | ({
+        relationTo: 'featured-projects';
+        value: number | FeaturedProject;
+      } | null)
+    | ({
+        relationTo: 'property-listings';
+        value: number | PropertyListing;
+      } | null)
+    | ({
+        relationTo: 'blogs';
+        value: number | Blog;
+      } | null)
+    | ({
+        relationTo: 'blog-topics';
+        value: number | BlogTopic;
+      } | null)
+    | ({
+        relationTo: 'payment-plan-leads';
+        value: number | PaymentPlanLead;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -819,87 +1507,18 @@ export interface PagesSelect<T extends boolean = true> {
   layout?:
     | T
     | {
-        cta?:
-          | T
-          | {
-              richText?: T;
-              links?:
-                | T
-                | {
-                    link?:
-                      | T
-                      | {
-                          type?: T;
-                          newTab?: T;
-                          reference?: T;
-                          url?: T;
-                          label?: T;
-                          appearance?: T;
-                        };
-                    id?: T;
-                  };
-              id?: T;
-              blockName?: T;
-            };
-        content?:
-          | T
-          | {
-              columns?:
-                | T
-                | {
-                    size?: T;
-                    richText?: T;
-                    enableLink?: T;
-                    link?:
-                      | T
-                      | {
-                          type?: T;
-                          newTab?: T;
-                          reference?: T;
-                          url?: T;
-                          label?: T;
-                          appearance?: T;
-                        };
-                    id?: T;
-                  };
-              id?: T;
-              blockName?: T;
-            };
-        mediaBlock?:
-          | T
-          | {
-              media?: T;
-              id?: T;
-              blockName?: T;
-            };
-        archive?:
-          | T
-          | {
-              introContent?: T;
-              populateBy?: T;
-              relationTo?: T;
-              categories?: T;
-              limit?: T;
-              selectedDocs?: T;
-              id?: T;
-              blockName?: T;
-            };
-        formBlock?:
-          | T
-          | {
-              form?: T;
-              enableIntro?: T;
-              introContent?: T;
-              id?: T;
-              blockName?: T;
-            };
+        cta?: T | CallToActionBlockSelect<T>;
+        content?: T | ContentBlockSelect<T>;
+        mediaBlock?: T | MediaBlockSelect<T>;
+        archive?: T | ArchiveBlockSelect<T>;
+        formBlock?: T | FormBlockSelect<T>;
       };
   meta?:
     | T
     | {
         title?: T;
-        image?: T;
         description?: T;
+        image?: T;
       };
   publishedAt?: T;
   slug?: T;
@@ -907,6 +1526,90 @@ export interface PagesSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToActionBlock_select".
+ */
+export interface CallToActionBlockSelect<T extends boolean = true> {
+  richText?: T;
+  links?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+              appearance?: T;
+            };
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ContentBlock_select".
+ */
+export interface ContentBlockSelect<T extends boolean = true> {
+  columns?:
+    | T
+    | {
+        size?: T;
+        richText?: T;
+        enableLink?: T;
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+              appearance?: T;
+            };
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "MediaBlock_select".
+ */
+export interface MediaBlockSelect<T extends boolean = true> {
+  media?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ArchiveBlock_select".
+ */
+export interface ArchiveBlockSelect<T extends boolean = true> {
+  introContent?: T;
+  populateBy?: T;
+  relationTo?: T;
+  categories?: T;
+  limit?: T;
+  selectedDocs?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "FormBlock_select".
+ */
+export interface FormBlockSelect<T extends boolean = true> {
+  form?: T;
+  enableIntro?: T;
+  introContent?: T;
+  id?: T;
+  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -921,8 +1624,8 @@ export interface PostsSelect<T extends boolean = true> {
     | T
     | {
         title?: T;
-        image?: T;
         description?: T;
+        image?: T;
       };
   publishedAt?: T;
   authors?: T;
@@ -1054,6 +1757,13 @@ export interface UsersSelect<T extends boolean = true> {
   hash?: T;
   loginAttempts?: T;
   lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1070,6 +1780,247 @@ export interface CommentsSelect<T extends boolean = true> {
   post?: T;
   isApproved?: T;
   publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "featured-projects_select".
+ */
+export interface FeaturedProjectsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  slugLock?: T;
+  builderName?: T;
+  propertyType?: T;
+  projectType?: T;
+  startingPrice?: T;
+  location?: T;
+  status?: T;
+  summary?: T;
+  elevationImages?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  nightElevation?: T;
+  brochure?: T;
+  googleMapsEmbedUrl?: T;
+  addressLine?: T;
+  faqs?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
+  amenities?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
+  photoGallery?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  unitTypes?:
+    | T
+    | {
+        name?: T;
+        type?: T;
+        rooms?: T;
+        price?: T;
+        areaSqFt?: T;
+        loanAmount?: T;
+        id?: T;
+      };
+  description?: T;
+  paymentPlan?:
+    | T
+    | {
+        enabled?: T;
+        priceOverride?: T;
+        totalDurationMonths?: T;
+        downPaymentMinPct?: T;
+        downPaymentMaxPct?: T;
+        possessionPct?: T;
+        paymentHeads?:
+          | T
+          | {
+              name?: T;
+              category?: T;
+              enabled?: T;
+              isCustom?: T;
+              id?: T;
+            };
+        greyStructureSharePct?: T;
+        installmentFrequency?: T;
+        projectLogo?: T;
+        planDisclaimer?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "property-listings_select".
+ */
+export interface PropertyListingsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  slugLock?: T;
+  propertyType?: T;
+  price?: T;
+  location?: T;
+  rooms?: T;
+  bathrooms?: T;
+  areaSqFt?: T;
+  status?: T;
+  parentProject?: T;
+  societyName?: T;
+  summary?: T;
+  mainImage?: T;
+  additionalImages?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  walkthroughVideoUrl?: T;
+  amenities?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
+  googleMapsEmbedUrl?: T;
+  addressLine?: T;
+  faqs?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
+  description?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blogs_select".
+ */
+export interface BlogsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  slugLock?: T;
+  status?: T;
+  publishedAt?: T;
+  readTime?: T;
+  excerpt?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  keywords?:
+    | T
+    | {
+        keyword?: T;
+        id?: T;
+      };
+  featuredImage?: T;
+  content?: T;
+  seoInternalLinks?:
+    | T
+    | {
+        anchorText?: T;
+        linkType?: T;
+        targetProject?: T;
+        targetLocationSlug?: T;
+        injected?: T;
+        id?: T;
+      };
+  generatedBy?:
+    | T
+    | {
+        topic?: T;
+        model?: T;
+        generatedAt?: T;
+        placementWarnings?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blog-topics_select".
+ */
+export interface BlogTopicsSelect<T extends boolean = true> {
+  suggestedTitle?: T;
+  coreFocus?: T;
+  targetKeywords?:
+    | T
+    | {
+        keyword?: T;
+        id?: T;
+      };
+  priority?: T;
+  isGenerated?: T;
+  generatedBlog?: T;
+  generationAttempts?: T;
+  lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-plan-leads_select".
+ */
+export interface PaymentPlanLeadsSelect<T extends boolean = true> {
+  displayLabel?: T;
+  name?: T;
+  phone?: T;
+  project?: T;
+  projectTitleSnapshot?: T;
+  selectedUnitType?: T;
+  totalPrice?: T;
+  downPaymentPct?: T;
+  downPaymentAmount?: T;
+  possessionPct?: T;
+  greyStructureSharePct?: T;
+  installmentFrequency?: T;
+  totalDurationMonths?: T;
+  loanIncluded?: T;
+  loanAmount?: T;
+  engineVersion?: T;
+  planSummary?: T;
+  userAgent?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1154,6 +2105,7 @@ export interface FormsSelect<T extends boolean = true> {
               label?: T;
               width?: T;
               defaultValue?: T;
+              placeholder?: T;
               options?:
                 | T
                 | {
@@ -1262,6 +2214,14 @@ export interface SearchSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv_select".
+ */
+export interface PayloadKvSelect<T extends boolean = true> {
+  key?: T;
+  data?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1391,6 +2351,16 @@ export interface FooterSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "collections_widget".
+ */
+export interface CollectionsWidget {
+  data?: {
+    [k: string]: unknown;
+  };
+  width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "BannerBlock".
  */
 export interface BannerBlock {
@@ -1399,7 +2369,7 @@ export interface BannerBlock {
     root: {
       type: string;
       children: {
-        type: string;
+        type: any;
         version: number;
         [k: string]: unknown;
       }[];

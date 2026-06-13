@@ -14,73 +14,71 @@
   }
 
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 36 33% 97%;
+    --foreground: 231 30% 27%;
 
-    --card: 240 5% 96%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 231 30% 27%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 231 30% 27%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 231 30% 27%;
+    --primary-foreground: 36 33% 97%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 231 30% 27%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 225 9% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 40 72% 59%;
+    --accent-foreground: 231 30% 27%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 240 6% 90%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 40 72% 59%;
 
-    --radius: 0.2rem;
+    --radius: 0.875rem;
 
-    --success: 196 52% 74%;
-    --warning: 34 89% 85%;
-    --error: 10 100% 86%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 72% 51%;
+
+    /* Brand palette (purple-blue) — from old site #2f3558 → #545fa5 */
+    --brand: 231 32% 38%;
+    --brand-deep: 231 30% 27%;
+    --brand-mid: 229 38% 39%;
+    --brand-light: 231 32% 49%;
+
+    /* Warm gold (old site #e3b04b / hover #cf9a3e) */
+    --gold: 40 72% 59%;
+    --gold-soft: 40 80% 75%;
+    --gold-hover: 38 60% 53%;
+
+    /* Mint teal accent (old site #b7cfc6) — used only as section underline */
+    --teal: 166 19% 77%;
+
+    --ivory: 36 33% 97%;
+    --cream: 36 30% 94%;
   }
 
   [data-theme='dark'] {
-    --background: 0 0% 0%;
-    --foreground: 210 40% 98%;
-
-    --card: 0 0% 4%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 0, 0%, 15%, 0.5;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-
-    --success: 196 100% 14%;
-    --warning: 34 51% 25%;
-    --error: 10 39% 43%;
+    --background: 231 30% 27%;
+    --foreground: 36 33% 97%;
+    --card: 231 32% 38%;
+    --card-foreground: 36 33% 97%;
+    --primary: 36 33% 97%;
+    --primary-foreground: 231 30% 27%;
+    --accent: 40 72% 59%;
+    --accent-foreground: 231 30% 27%;
+    --border: 231 30% 38%;
+    --input: 231 30% 38%;
+    --muted: 231 30% 38%;
+    --muted-foreground: 220 14% 71%;
   }
 }
 
@@ -88,16 +86,62 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  ::selection {
+    background: hsl(var(--gold) / 0.35);
+    color: hsl(var(--brand-deep));
   }
 }
 
-html {
-  opacity: 0;
-}
-
-html[data-theme='dark'],
-html[data-theme='light'] {
-  opacity: initial;
+@layer utilities {
+  .font-serif-display {
+    font-family: var(--font-playfair), 'Playfair Display', Georgia, serif;
+    font-feature-settings: 'liga', 'dlig';
+    letter-spacing: -0.02em;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/></svg>");
+  }
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.6), transparent);
+  }
+  .gold-rule-solid {
+    height: 1px;
+    background: hsl(var(--gold));
+  }
+  .eyebrow {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-size: 0.6875rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  /* Brand gradient used by hero + footer accent */
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-mid)) 50%, hsl(var(--brand-light)) 100%);
+  }
 }
