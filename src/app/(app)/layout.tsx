@@ -51,10 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       lang="en"
       suppressHydrationWarning
     >
-      <head>
-        <link href="/favicon.ico" rel="icon" sizes="32x32" />
-        <link href="/favicon.svg" rel="icon" type="image/svg+xml" />
-      </head>
+      <head>{/* Favicon auto-injected by Next.js from src/app/icon.png + apple-icon.png */}</head>
       <body className="bg-background text-foreground">
         <MetaPixel />
         <MetaPixelRouteTracker />
