@@ -863,6 +863,33 @@ export interface FeaturedProject {
          * Optional. Pre-arranged loan component applicable to this unit (immutable by client). When the buyer toggles "Include Expected Loan?" in the calculator, this amount is subtracted from the unit price before computing the plan.
          */
         loanAmount?: number | null;
+        /**
+         * Optional. Pre-fill the buyer-facing calculator with the actual builder plan for this unit. When set, the calculator opens with these values and the buyer can adjust them. Leave blank to use generic defaults.
+         */
+        defaultPlan?: {
+          /**
+           * e.g. 20 for a 20% down payment. Leave blank to use the project default.
+           */
+          downPaymentPct?: number | null;
+          /**
+           * e.g. 5 for 5% at handover. Leave blank to use the project default.
+           */
+          possessionPct?: number | null;
+          /**
+           * One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as LOCKED on first load so the table matches the builder plan exactly; the buyer can unlock to recompute.
+           */
+          installments?:
+            | {
+                frequency: 'Monthly' | 'Quarterly' | 'HalfYearly';
+                amount: number;
+                /**
+                 * When checked, the calculator opens with this value locked (fixed). Buyer can unlock to let the engine recompute.
+                 */
+                locked?: boolean | null;
+                id?: string | null;
+              }[]
+            | null;
+        };
         id?: string | null;
       }[]
     | null;
@@ -1838,6 +1865,20 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
         price?: T;
         areaSqFt?: T;
         loanAmount?: T;
+        defaultPlan?:
+          | T
+          | {
+              downPaymentPct?: T;
+              possessionPct?: T;
+              installments?:
+                | T
+                | {
+                    frequency?: T;
+                    amount?: T;
+                    locked?: T;
+                    id?: T;
+                  };
+            };
         id?: T;
       };
   description?: T;

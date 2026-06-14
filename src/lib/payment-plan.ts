@@ -146,9 +146,18 @@ export function computePlan(input: ComputeInput): PlanResult {
   // 4. Construction balance
   const B = round2(T - DP - P)
 
-  // 5. 50/50 split
-  const installmentPool = round2(B * 0.5)
-  const milestonePool = round2(B - installmentPool)
+  // 5. Split between time-based installments and milestones.
+  // The 50/50 rule applies only when admin has milestone heads enabled to
+  // receive funds. For ready-for-possession / no-milestone projects, 100%
+  // of the construction budget flows to installments — otherwise the
+  // milestone money has nowhere to go and ends up inflating possession
+  // beyond its 5% cap via the drift-absorption step at the end.
+  const hasMilestoneHeads = input.heads.some(
+    (h) =>
+      h.enabled && (h.category === 'Grey Structure' || h.category === 'Finishing'),
+  )
+  const installmentPool = hasMilestoneHeads ? round2(B * 0.5) : B
+  const milestonePool = hasMilestoneHeads ? round2(B - installmentPool) : 0
 
   // 6. Time-based installments
   const periodCount: Record<InstallmentFrequencyKind, number> = {
@@ -347,10 +356,50 @@ export function computePlan(input: ComputeInput): PlanResult {
     })
   }
 
-  // Possession row — absorbs rounding drift to land exactly at T.
-  const drift = round2(T - cumulative - P)
-  const possessionAmount = round2(P + drift)
-  cumulative = T
+  // Possession row.
+  // Drift is the rounding gap between the engine's allocations and the
+  // exact total. We absorb it into the LAST installment row (or last
+  // milestone if no installments exist) instead of inflating possession —
+  // possession must stay ≤ the user-chosen percentage of T, never more.
+  const possessionAmount = P
+  const drift = round2(T - cumulative - possessionAmount)
+  if (Math.abs(drift) > 0.005) {
+    // Find the last installment row; fall back to last milestone row.
+    const installmentIdx = (() => {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].kind.startsWith('installment-')) return i
+      }
+      return -1
+    })()
+    const fallbackIdx = (() => {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].kind === 'milestone') return i
+      }
+      return -1
+    })()
+    const absorbIdx = installmentIdx >= 0 ? installmentIdx : fallbackIdx
+    if (absorbIdx >= 0) {
+      rows[absorbIdx].amount = round2(rows[absorbIdx].amount + drift)
+      // Recompute cumulative from that row forward
+      let running = absorbIdx === 0 ? 0 : rows[absorbIdx - 1].cumulativeAmount
+      for (let i = absorbIdx; i < rows.length; i++) {
+        running = round2(running + rows[i].amount)
+        rows[i].cumulativeAmount = running
+      }
+      cumulative = running
+    } else {
+      // No installments AND no milestones — only DP + possession exists.
+      // Edge case: DP must equal T - P. If it doesn't, add drift to DP.
+      const dpIdx = rows.findIndex((r) => r.kind === 'down-payment')
+      if (dpIdx >= 0) {
+        rows[dpIdx].amount = round2(rows[dpIdx].amount + drift)
+        rows[dpIdx].cumulativeAmount = round2(rows[dpIdx].cumulativeAmount + drift)
+        cumulative = round2(cumulative + drift)
+      }
+    }
+  }
+
+  cumulative = round2(cumulative + possessionAmount)
   rows.push({
     kind: 'possession',
     label: 'At possession',

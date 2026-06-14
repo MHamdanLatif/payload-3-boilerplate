@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, FileDown, Lock, Unlock } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import { formatPkr, smallestUnit } from '@/lib/featured-projects'
@@ -152,6 +152,58 @@ export function PaymentPlanCalculator({
       installments.filter((f) => adminAvailableFrequencies.includes(f.kind)),
     [installments, adminAvailableFrequencies],
   )
+
+  // ── Apply unit's defaultPlan whenever the selected unit changes ─────────
+  // This is the "builder's actual plan" feature — admins fill out the per-unit
+  // defaultPlan in /admin → Featured Projects → Unit Types → Builder Default
+  // Payment Plan, and the calculator opens with those exact values on first
+  // load + whenever the buyer switches units. Buyer can adjust after.
+  useEffect(() => {
+    const dp = selectedUnit?.defaultPlan
+    if (dp) {
+      if (typeof dp.downPaymentPct === 'number') {
+        setDownPaymentPct(
+          Math.min(maxDown, Math.max(minDown, dp.downPaymentPct)),
+        )
+      }
+      if (typeof dp.possessionPct === 'number') {
+        setPossessionPct(
+          possessionAdminEnabled
+            ? Math.min(possessionCap, Math.max(0, dp.possessionPct))
+            : 0,
+        )
+      }
+      const defaultRows = Array.isArray(dp.installments) ? dp.installments : []
+      if (defaultRows.length > 0) {
+        const lookup = new Map<
+          InstallmentFrequencyKind,
+          { amount: number; locked: boolean }
+        >()
+        for (const r of defaultRows) {
+          if (!r) continue
+          const freq = r.frequency as InstallmentFrequencyKind
+          if (!freq || typeof r.amount !== 'number') continue
+          lookup.set(freq, { amount: r.amount, locked: r.locked !== false })
+        }
+        setInstallments(
+          (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map(
+            (kind) => {
+              const match = lookup.get(kind)
+              if (match)
+                return {
+                  kind,
+                  active: true,
+                  locked: match.locked,
+                  valuePerPeriod: match.amount,
+                }
+              return { kind, active: false, locked: false, valuePerPeriod: 0 }
+            },
+          ),
+        )
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUnit])
 
   function setInstallment<K extends keyof InstallmentInput>(
     kind: InstallmentFrequencyKind,
@@ -513,14 +565,21 @@ export function PaymentPlanCalculator({
               </div>
               )}
 
-              {/* Milestone heads */}
+              {/* Milestone heads — only renders if admin enabled any milestone heads */}
+              {(adminGreyCount + adminFinishingCount) > 0 && (
               <div className="mb-2">
                 <div className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-brand-deep/55">
                   Active Milestones
                 </div>
                 <p className="mt-2 text-[0.7rem] text-brand-deep/55">
-                  Toggle any milestone off; the schedule rebalances. Minimum 2 early-stage + 2
-                  late-stage milestones required.
+                  Toggle any milestone off; the schedule rebalances.
+                  {adminGreyCount >= 2 && adminFinishingCount >= 2
+                    ? ' Minimum 2 early-stage + 2 late-stage milestones required.'
+                    : adminGreyCount >= 2
+                      ? ' Minimum 2 early-stage milestones required.'
+                      : adminFinishingCount >= 2
+                        ? ' Minimum 2 late-stage milestones required.'
+                        : ''}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {adminEnabledHeads
@@ -567,6 +626,7 @@ export function PaymentPlanCalculator({
                     })}
                 </div>
               </div>
+              )}
             </div>
           </div>
 
@@ -643,14 +703,18 @@ export function PaymentPlanCalculator({
                   ok={possessionPct <= 5}
                   text={`Possession ≤ 5% (now ${possessionPct}%)`}
                 />
-                <RuleBadge
-                  ok={plan.resolved.activeGreyHeadNames.length >= 2}
-                  text={`${plan.resolved.activeGreyHeadNames.length} early-stage active`}
-                />
-                <RuleBadge
-                  ok={plan.resolved.activeFinishingHeadNames.length >= 2}
-                  text={`${plan.resolved.activeFinishingHeadNames.length} late-stage active`}
-                />
+                {adminGreyCount > 0 && (
+                  <RuleBadge
+                    ok={plan.resolved.activeGreyHeadNames.length >= 2}
+                    text={`${plan.resolved.activeGreyHeadNames.length} early-stage active`}
+                  />
+                )}
+                {adminFinishingCount > 0 && (
+                  <RuleBadge
+                    ok={plan.resolved.activeFinishingHeadNames.length >= 2}
+                    text={`${plan.resolved.activeFinishingHeadNames.length} late-stage active`}
+                  />
+                )}
               </ul>
 
               <button

@@ -285,6 +285,74 @@ export const FeaturedProjects: CollectionConfig = {
               'Optional. Pre-arranged loan component applicable to this unit (immutable by client). When the buyer toggles "Include Expected Loan?" in the calculator, this amount is subtracted from the unit price before computing the plan.',
           },
         },
+        {
+          name: 'defaultPlan',
+          type: 'group',
+          label: 'Builder Default Payment Plan',
+          admin: {
+            description:
+              'Optional. Pre-fill the buyer-facing calculator with the actual builder plan for this unit. When set, the calculator opens with these values and the buyer can adjust them. Leave blank to use generic defaults.',
+          },
+          fields: [
+            {
+              name: 'downPaymentPct',
+              type: 'number',
+              label: 'Down Payment (%)',
+              min: 10,
+              max: 100,
+              admin: {
+                description: 'e.g. 20 for a 20% down payment. Leave blank to use the project default.',
+              },
+            },
+            {
+              name: 'possessionPct',
+              type: 'number',
+              label: 'Possession (%)',
+              min: 0,
+              max: 5,
+              admin: {
+                description: 'e.g. 5 for 5% at handover. Leave blank to use the project default.',
+              },
+            },
+            {
+              name: 'installments',
+              type: 'array',
+              label: 'Default Installments',
+              labels: { singular: 'Installment', plural: 'Installments' },
+              admin: {
+                description:
+                  'One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as LOCKED on first load so the table matches the builder plan exactly; the buyer can unlock to recompute.',
+              },
+              fields: [
+                {
+                  name: 'frequency',
+                  type: 'select',
+                  required: true,
+                  options: [
+                    { label: 'Monthly', value: 'Monthly' },
+                    { label: 'Quarterly', value: 'Quarterly' },
+                    { label: 'Half-Yearly', value: 'HalfYearly' },
+                  ],
+                },
+                {
+                  name: 'amount',
+                  type: 'number',
+                  required: true,
+                  label: 'Amount per period (PKR)',
+                },
+                {
+                  name: 'locked',
+                  type: 'checkbox',
+                  defaultValue: true,
+                  admin: {
+                    description:
+                      'When checked, the calculator opens with this value locked (fixed). Buyer can unlock to let the engine recompute.',
+                  },
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
