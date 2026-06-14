@@ -319,6 +319,12 @@ export const FeaturedProjects: CollectionConfig = {
               type: 'array',
               label: 'Default Installments',
               labels: { singular: 'Installment', plural: 'Installments' },
+              // Override the auto-generated table name. The default
+              // `featured_projects_unit_types_default_plan_installments` produces
+              // an enum identifier (`enum_<table>_frequency`) that exceeds
+              // Postgres's 63-char limit. `fp_unit_default_inst` keeps the table
+              // namespaced + short.
+              dbName: 'fp_unit_default_inst',
               admin: {
                 description:
                   'One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as LOCKED on first load so the table matches the builder plan exactly; the buyer can unlock to recompute.',
