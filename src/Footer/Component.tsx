@@ -94,10 +94,10 @@ export function Footer() {
             </a>
             <a
               href={`mailto:${EMAIL}`}
-              className="group flex items-center gap-2 text-sm text-ivory/70 transition-colors hover:text-gold"
+              className="group flex min-w-0 items-start gap-2 text-sm text-ivory/70 transition-colors hover:text-gold"
             >
-              <Mail className="h-3.5 w-3.5 text-gold/70" />
-              {EMAIL}
+              <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold/70" />
+              <span className="break-all">{EMAIL}</span>
             </a>
             <a
               href={MAPS_URL}

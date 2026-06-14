@@ -71,7 +71,7 @@ export function Hero() {
             variants={fadeUp}
             className="mt-6 max-w-xl text-lg leading-relaxed text-white/95 md:text-xl"
           >
-            Karachi apartments, plots and commercial property — pre-launch, ready-to-move and off-market.
+            Karachi apartments, plots and commercial property.
           </motion.p>
 
           {/* Authority line */}

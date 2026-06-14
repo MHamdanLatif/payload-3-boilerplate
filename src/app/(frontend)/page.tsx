@@ -14,6 +14,10 @@ import { getServerSideURL } from '@/utilities/getURL'
 
 const base = getServerSideURL().replace(/\/$/, '')
 
+// ISR: rebuild every 60s so newly-added FeaturedProjects + PropertyListings
+// surface on the home page without waiting for the next deploy.
+export const revalidate = 60
+
 export default function HomePage() {
   const schemas = [
     organizationSchema(),
