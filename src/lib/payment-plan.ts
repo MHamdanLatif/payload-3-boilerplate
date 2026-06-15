@@ -61,6 +61,23 @@ export type InstallmentInput = {
   valuePerPeriod: number
 }
 
+/**
+ * `dpMode` controls which side of the equation is the absorber:
+ *   - 'fixed' (default) — DP slider drives. Installments fit the budget.
+ *      Locked installments take their stated values; unlocked share the
+ *      remainder. If math doesn't balance (e.g. all installments are
+ *      locked at values that fall short of the budget AND no milestones
+ *      exist to absorb), a warning is emitted.
+ *   - 'auto'             — DP is computed: DP = T − installments − possession.
+ *      The buyer locks installment values; the engine derives a DP and
+ *      validates it against the project's allowed down-payment range,
+ *      emitting a warning if the derived value falls outside.
+ *      Mode 'auto' is intended for projects WITHOUT milestone heads
+ *      (ready-to-move / no-construction-phase plans). Milestone-phased
+ *      projects fall back to 'fixed' even if the buyer toggles 'auto'.
+ */
+export type DownPaymentMode = 'fixed' | 'auto'
+
 export type ComputeInput = {
   unitPrice: number
   loanIncluded: boolean
@@ -71,6 +88,14 @@ export type ComputeInput = {
   installments: InstallmentInput[]
   /** Active flag per head. Engine only includes enabled heads. UI enforces min-2 grey + min-2 finishing. */
   heads: PaymentHead[]
+  /** Optional. Defaults to 'fixed' (current behaviour). See `DownPaymentMode`. */
+  dpMode?: DownPaymentMode
+  /**
+   * Admin's allowed down-payment range. Used to validate the derived DP
+   * value in 'auto' mode. Defaults to [10, 100] when omitted.
+   */
+  downPaymentMinPct?: number
+  downPaymentMaxPct?: number
 }
 
 export type PlanRowKind =
@@ -135,16 +160,43 @@ export function computePlan(input: ComputeInput): PlanResult {
   const loanAmount = input.loanIncluded ? Math.max(0, input.loanAmount) : 0
   const T = Math.max(0, unitPrice - loanAmount)
 
-  // 2. DP
-  const dpPct = clamp(input.downPaymentPct, 10, 100)
-  const DP = round2((T * dpPct) / 100)
-
-  // 3. Possession
+  // 3. Possession (computed before DP because possession is slider-controlled
+  // in both modes; DP differs between modes)
   const possessionPct = clamp(input.possessionPct, 0, 5)
   const P = round2((T * possessionPct) / 100)
 
-  // 4. Construction balance
-  const B = round2(T - DP - P)
+  // Are there milestone heads admin-enabled? Affects pool allocation +
+  // forces 'fixed' DP mode (auto-DP is only meaningful for non-milestone plans).
+  const hasMilestoneHeads = input.heads.some(
+    (h) =>
+      h.enabled && (h.category === 'Grey Structure' || h.category === 'Finishing'),
+  )
+
+  // 2. DP — depends on dpMode.
+  // 'fixed' (default): DP = T × slider%. Installments fit the remaining budget.
+  // 'auto':            DP = T − installments − P. Slider becomes a derived display.
+  //                    Auto-DP downgrades to 'fixed' if milestones exist (the
+  //                    equation has too many unknowns otherwise).
+  const requestedMode: DownPaymentMode = input.dpMode ?? 'fixed'
+  let effectiveMode: DownPaymentMode = requestedMode
+  if (requestedMode === 'auto' && hasMilestoneHeads) {
+    effectiveMode = 'fixed'
+    warnings.push(
+      'Auto Down Payment mode is not available for milestone-phased projects — using your slider value.',
+    )
+  }
+
+  const dpMinPct = input.downPaymentMinPct ?? 10
+  const dpMaxPct = input.downPaymentMaxPct ?? 100
+  const dpPct = clamp(input.downPaymentPct, 10, 100)
+
+  // In 'fixed' mode we know DP up-front. In 'auto' mode we delay it until
+  // after installments have been valued, then derive it as the residual.
+  let DP = effectiveMode === 'fixed' ? round2((T * dpPct) / 100) : 0
+
+  // 4. Construction balance — in 'auto' mode this represents (T − P) initially
+  // and gets corrected once DP is derived.
+  let B = round2(T - DP - P)
 
   // 5. Split between time-based installments and milestones.
   // The 50/50 rule applies only when admin has milestone heads enabled to
@@ -152,12 +204,8 @@ export function computePlan(input: ComputeInput): PlanResult {
   // of the construction budget flows to installments — otherwise the
   // milestone money has nowhere to go and ends up inflating possession
   // beyond its 5% cap via the drift-absorption step at the end.
-  const hasMilestoneHeads = input.heads.some(
-    (h) =>
-      h.enabled && (h.category === 'Grey Structure' || h.category === 'Finishing'),
-  )
-  const installmentPool = hasMilestoneHeads ? round2(B * 0.5) : B
-  const milestonePool = hasMilestoneHeads ? round2(B - installmentPool) : 0
+  let installmentPool = hasMilestoneHeads ? round2(B * 0.5) : B
+  let milestonePool = hasMilestoneHeads ? round2(B - installmentPool) : 0
 
   // 6. Time-based installments
   const periodCount: Record<InstallmentFrequencyKind, number> = {
@@ -179,37 +227,81 @@ export function computePlan(input: ComputeInput): PlanResult {
     warnings.push('At least one installment frequency must be active.')
   }
 
-  // Locked installment spend
-  let lockedSum = 0
-  for (const f of input.installments) {
-    if (f.active && f.locked) {
-      lockedSum += Math.max(0, f.valuePerPeriod) * periodCount[f.kind]
+  // Resolve per-frequency values. Two completely different flows:
+  //
+  // Mode 'fixed': DP is known. Compute installment pool from B = T-DP-P, sum
+  //   locked spend, distribute the leftover across unlocked frequencies so
+  //   every event of a given unlocked frequency carries the same amount.
+  //
+  // Mode 'auto':  DP unknown. Every active installment uses its stated value
+  //   (lock is decorative in this mode — installments drive DP, not the
+  //   other way around). After resolving, derive DP = T − Σinstallments − P
+  //   and validate against admin's [min, max] range.
+  let resolvedInstallments: InstallmentInput[]
+
+  if (effectiveMode === 'fixed') {
+    let lockedSum = 0
+    for (const f of input.installments) {
+      if (f.active && f.locked) {
+        lockedSum += Math.max(0, f.valuePerPeriod) * periodCount[f.kind]
+      }
+    }
+    lockedSum = round2(lockedSum)
+
+    const unlockedRemainder = round2(installmentPool - lockedSum)
+    let unlockedPerEvent = 0
+    const unlockedFreqs = input.installments.filter((f) => f.active && !f.locked)
+    const unlockedPeriodCount = unlockedFreqs.reduce(
+      (s, f) => s + periodCount[f.kind],
+      0,
+    )
+    if (unlockedPeriodCount > 0 && unlockedRemainder >= 0) {
+      unlockedPerEvent = round2(unlockedRemainder / unlockedPeriodCount)
+    } else if (unlockedRemainder < 0) {
+      warnings.push(
+        `Locked installments (PKR ${lockedSum.toLocaleString()}) exceed the time-based budget (PKR ${installmentPool.toLocaleString()}). Reduce a locked value or add a milestone head to absorb the balance.`,
+      )
+    }
+
+    resolvedInstallments = input.installments.map((f) => {
+      if (!f.active) return { ...f, valuePerPeriod: 0 }
+      if (f.locked) return { ...f, valuePerPeriod: Math.max(0, f.valuePerPeriod) }
+      return { ...f, valuePerPeriod: unlockedPerEvent }
+    })
+  } else {
+    // 'auto' — all active installments carry their stated value.
+    resolvedInstallments = input.installments.map((f) => ({
+      ...f,
+      valuePerPeriod: f.active ? Math.max(0, f.valuePerPeriod) : 0,
+    }))
+
+    const installmentTotal = round2(
+      resolvedInstallments.reduce(
+        (sum, f) => (f.active ? sum + f.valuePerPeriod * periodCount[f.kind] : sum),
+        0,
+      ),
+    )
+
+    DP = round2(T - installmentTotal - P)
+    B = round2(T - DP - P) // == installmentTotal
+    installmentPool = installmentTotal
+    milestonePool = 0
+
+    const computedDpPct = T > 0 ? round2((DP / T) * 100) : 0
+    if (DP < 0) {
+      warnings.push(
+        `Installments (PKR ${installmentTotal.toLocaleString()}) plus possession exceed the total. Down Payment would be negative — reduce installment amounts.`,
+      )
+    } else if (computedDpPct < dpMinPct) {
+      warnings.push(
+        `Auto-computed Down Payment is ${computedDpPct}% (PKR ${DP.toLocaleString()}), below this project's minimum of ${dpMinPct}%. Lower the installments to push more into the down payment, or switch off Auto DP.`,
+      )
+    } else if (computedDpPct > dpMaxPct) {
+      warnings.push(
+        `Auto-computed Down Payment is ${computedDpPct}% (PKR ${DP.toLocaleString()}), above this project's maximum of ${dpMaxPct}%. Raise the installments to absorb more of the balance, or switch off Auto DP.`,
+      )
     }
   }
-  lockedSum = round2(lockedSum)
-
-  // Distribute the remainder across active+unlocked periods (equal per-event).
-  const unlockedRemainder = round2(installmentPool - lockedSum)
-  let unlockedPerEvent = 0
-  const unlockedFreqs = input.installments.filter((f) => f.active && !f.locked)
-  const unlockedPeriodCount = unlockedFreqs.reduce(
-    (s, f) => s + periodCount[f.kind],
-    0,
-  )
-  if (unlockedPeriodCount > 0 && unlockedRemainder >= 0) {
-    unlockedPerEvent = round2(unlockedRemainder / unlockedPeriodCount)
-  } else if (unlockedRemainder < 0) {
-    warnings.push(
-      `Locked installments (PKR ${lockedSum.toLocaleString()}) exceed the time-based budget (PKR ${installmentPool.toLocaleString()}). Reduce a locked value.`,
-    )
-  }
-
-  // Resolve per-frequency values (locked stay; unlocked filled in)
-  const resolvedInstallments: InstallmentInput[] = input.installments.map((f) => {
-    if (!f.active) return { ...f, valuePerPeriod: 0 }
-    if (f.locked) return { ...f, valuePerPeriod: Math.max(0, f.valuePerPeriod) }
-    return { ...f, valuePerPeriod: unlockedPerEvent }
-  })
 
   // 7. Milestones
   const activeGreyHeads = input.heads.filter((h) => h.enabled && isGreyHead(h))
@@ -357,46 +449,64 @@ export function computePlan(input: ComputeInput): PlanResult {
   }
 
   // Possession row.
-  // Drift is the rounding gap between the engine's allocations and the
-  // exact total. We absorb it into the LAST installment row (or last
-  // milestone if no installments exist) instead of inflating possession —
-  // possession must stay ≤ the user-chosen percentage of T, never more.
+  // Drift = exact total minus what we've allocated so far minus possession.
+  // Sources of drift:
+  //   • Mode 'fixed' with a locked installment reduced below its computed
+  //     share — the locked sub-pool under-spends and the gap has to go
+  //     somewhere. Business rule: route it to milestones first (so all
+  //     installments of a given frequency stay identical), then to the DP
+  //     row. Never to an installment row — that would break the equal-
+  //     payment-per-frequency rule the user has explicitly called out.
+  //   • Mode 'auto' — DP was derived as the residual, so drift should be
+  //     ≤ rounding noise. Absorb it into DP silently.
+  //   • Tiny rounding from round2() splits in either mode — also DP-absorb.
   const possessionAmount = P
   const drift = round2(T - cumulative - possessionAmount)
   if (Math.abs(drift) > 0.005) {
-    // Find the last installment row; fall back to last milestone row.
-    const installmentIdx = (() => {
-      for (let i = rows.length - 1; i >= 0; i--) {
-        if (rows[i].kind.startsWith('installment-')) return i
-      }
-      return -1
-    })()
-    const fallbackIdx = (() => {
-      for (let i = rows.length - 1; i >= 0; i--) {
-        if (rows[i].kind === 'milestone') return i
-      }
-      return -1
-    })()
-    const absorbIdx = installmentIdx >= 0 ? installmentIdx : fallbackIdx
-    if (absorbIdx >= 0) {
-      rows[absorbIdx].amount = round2(rows[absorbIdx].amount + drift)
-      // Recompute cumulative from that row forward
-      let running = absorbIdx === 0 ? 0 : rows[absorbIdx - 1].cumulativeAmount
-      for (let i = absorbIdx; i < rows.length; i++) {
-        running = round2(running + rows[i].amount)
-        rows[i].cumulativeAmount = running
-      }
-      cumulative = running
-    } else {
-      // No installments AND no milestones — only DP + possession exists.
-      // Edge case: DP must equal T - P. If it doesn't, add drift to DP.
-      const dpIdx = rows.findIndex((r) => r.kind === 'down-payment')
-      if (dpIdx >= 0) {
-        rows[dpIdx].amount = round2(rows[dpIdx].amount + drift)
-        rows[dpIdx].cumulativeAmount = round2(rows[dpIdx].cumulativeAmount + drift)
-        cumulative = round2(cumulative + drift)
-      }
+    const milestoneIndices: number[] = []
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].kind === 'milestone') milestoneIndices.push(i)
     }
+    const dpIdx = rows.findIndex((r) => r.kind === 'down-payment')
+
+    if (effectiveMode === 'fixed' && milestoneIndices.length > 0) {
+      // Spread drift evenly across milestone rows. Last row carries the
+      // sub-rounding tail so cumulative lands exactly on T.
+      const perMilestone = round2(drift / milestoneIndices.length)
+      let distributed = 0
+      for (let k = 0; k < milestoneIndices.length; k++) {
+        const idx = milestoneIndices[k]
+        const isLast = k === milestoneIndices.length - 1
+        const delta = isLast ? round2(drift - distributed) : perMilestone
+        rows[idx].amount = round2(rows[idx].amount + delta)
+        distributed = round2(distributed + delta)
+      }
+    } else if (dpIdx >= 0) {
+      rows[dpIdx].amount = round2(rows[dpIdx].amount + drift)
+    } else if (drift > 0) {
+      // Edge case: drift exists but there's no DP row and no milestones to
+      // absorb it (admin disabled both, mode='fixed', dpPct=0). Synthesize
+      // a Down Payment row at month 0 so the schedule still totals T.
+      rows.unshift({
+        kind: 'down-payment',
+        label: 'At signing',
+        monthOffset: 0,
+        amount: round2(drift),
+        cumulativeAmount: 0,
+        cumulativePct: 0,
+        headName: 'Down Payment',
+      })
+      DP = round2(DP + drift)
+    }
+
+    // Recompute every cumulative from scratch — the cheapest correct path
+    // since we may have touched rows anywhere in the array.
+    let running = 0
+    for (const row of rows) {
+      running = round2(running + row.amount)
+      row.cumulativeAmount = running
+    }
+    cumulative = running
   }
 
   cumulative = round2(cumulative + possessionAmount)

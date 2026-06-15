@@ -7,6 +7,7 @@ import { formatPkr, smallestUnit } from '@/lib/featured-projects'
 import {
   computePlan,
   type ComputeInput,
+  type DownPaymentMode,
   type InstallmentFrequencyKind,
   type InstallmentInput,
   type PlanResult,
@@ -124,6 +125,13 @@ export function PaymentPlanCalculator({
   const [possessionPct, setPossessionPct] = useState<number>(
     possessionAdminEnabled ? possessionCap : 0,
   )
+
+  // Down-Payment mode:
+  //  'fixed' (default) — slider controls DP, installments fit the leftover
+  //  'auto'            — buyer types installment values, DP is derived as residual
+  // Auto only makes sense for ready-for-possession / non-milestone plans; the
+  // engine downgrades silently to 'fixed' (with a warning) if milestones exist.
+  const [dpMode, setDpMode] = useState<DownPaymentMode>('fixed')
 
   // If admin toggles Possession off after page render, force possessionPct to 0.
   // (Initial render handled above; this guards re-renders.)
@@ -273,6 +281,9 @@ export function PaymentPlanCalculator({
       possessionPct: effectivePossessionPct,
       installments: installmentsForEngine,
       heads: effectiveHeads,
+      dpMode,
+      downPaymentMinPct: minDown,
+      downPaymentMaxPct: maxDown,
     }
     return computePlan(input)
   }, [
@@ -284,7 +295,17 @@ export function PaymentPlanCalculator({
     effectivePossessionPct,
     installmentsForEngine,
     effectiveHeads,
+    dpMode,
+    minDown,
+    maxDown,
   ])
+
+  // Derived DP % shown by the slider in 'auto' mode.
+  const computedDpPct =
+    plan.totals.effectivePrice > 0
+      ? Math.round((plan.totals.downPayment / plan.totals.effectivePrice) * 100)
+      : 0
+  const dpDisplayPct = dpMode === 'auto' ? computedDpPct : downPaymentPct
 
   const [pdfOpen, setPdfOpen] = useState(false)
 
@@ -415,7 +436,7 @@ export function PaymentPlanCalculator({
                     Down Payment
                   </label>
                   <span className="font-serif text-2xl text-brand-deep">
-                    {downPaymentPct}%
+                    {dpDisplayPct}%
                   </span>
                 </div>
                 <input
@@ -424,9 +445,13 @@ export function PaymentPlanCalculator({
                   min={minDown}
                   max={maxDown}
                   step={1}
-                  value={downPaymentPct}
+                  value={Math.min(maxDown, Math.max(minDown, dpDisplayPct))}
                   onChange={(e) => setDownPaymentPct(Number(e.target.value))}
-                  className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-brand-deep/10 accent-gold"
+                  disabled={dpMode === 'auto'}
+                  className={cn(
+                    'mt-3 h-2 w-full appearance-none rounded-full bg-brand-deep/10 accent-gold',
+                    dpMode === 'auto' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
+                  )}
                 />
                 <div className="mt-2 flex items-baseline justify-between text-xs text-brand-deep/60">
                   <span>Min {minDown}%</span>
@@ -435,6 +460,25 @@ export function PaymentPlanCalculator({
                   </span>
                   <span>Max {maxDown}%</span>
                 </div>
+
+                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-brand-deep/10 bg-cream/30 p-2.5">
+                  <input
+                    type="checkbox"
+                    checked={dpMode === 'auto'}
+                    onChange={(e) => setDpMode(e.target.checked ? 'auto' : 'fixed')}
+                    className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-gold"
+                  />
+                  <span className="flex-1 text-[0.7rem] leading-snug text-brand-deep/75">
+                    Auto-compute Down Payment from installments.
+                    {dpMode === 'auto' && (
+                      <span className="block text-[0.65rem] text-brand-deep/55">
+                        Enter what you want to pay per period — we derive the down payment as the
+                        residual.
+                      </span>
+                    )}
+                  </span>
+                </label>
+
                 {plan.resolved.activeInitialHeadNames.length > 0 && (
                   <p className="mt-2 text-[0.65rem] text-brand-deep/55">
                     Split across: {plan.resolved.activeInitialHeadNames.join(', ')}
@@ -529,7 +573,7 @@ export function PaymentPlanCalculator({
                               min={0}
                               step={1000}
                               value={
-                                f.locked
+                                dpMode === 'auto' || f.locked
                                   ? f.valuePerPeriod
                                   : Math.round(resolved?.valuePerPeriod ?? 0)
                               }
@@ -540,10 +584,10 @@ export function PaymentPlanCalculator({
                                   Number(e.target.value),
                                 )
                               }
-                              readOnly={!f.locked}
+                              readOnly={dpMode === 'fixed' && !f.locked}
                               className={cn(
                                 'w-full rounded-md border px-3 py-2 text-sm',
-                                f.locked
+                                dpMode === 'auto' || f.locked
                                   ? 'border-brand-deep/30 bg-white text-brand-deep'
                                   : 'border-brand-deep/10 bg-cream/40 text-brand-deep/70',
                               )}
