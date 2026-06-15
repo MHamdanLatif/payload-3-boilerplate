@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, FileDown, Lock, Unlock } from 'lucide-react'
+import { FileDown, Lock, Unlock } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import { formatPkr, smallestUnit } from '@/lib/featured-projects'
 import {
@@ -53,6 +53,7 @@ export function PaymentPlanCalculator({
       category: h.category as PaymentHeadCategory,
       enabled: h.enabled ?? true,
       isCustom: h.isCustom ?? false,
+      numberOfSlabs: h.numberOfSlabs ?? null,
     }))
   }, [config?.paymentHeads])
 
@@ -742,25 +743,6 @@ export function PaymentPlanCalculator({
                 </table>
               </div>
 
-              <ul className="mt-6 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
-                <RuleBadge
-                  ok={possessionPct <= 5}
-                  text={`Possession ≤ 5% (now ${possessionPct}%)`}
-                />
-                {adminGreyCount > 0 && (
-                  <RuleBadge
-                    ok={plan.resolved.activeGreyHeadNames.length >= 2}
-                    text={`${plan.resolved.activeGreyHeadNames.length} early-stage active`}
-                  />
-                )}
-                {adminFinishingCount > 0 && (
-                  <RuleBadge
-                    ok={plan.resolved.activeFinishingHeadNames.length >= 2}
-                    text={`${plan.resolved.activeFinishingHeadNames.length} late-stage active`}
-                  />
-                )}
-              </ul>
-
               <button
                 type="button"
                 onClick={() => setPdfOpen(true)}
@@ -789,19 +771,5 @@ export function PaymentPlanCalculator({
         totalPrice={plan.totals.effectivePrice}
       />
     </section>
-  )
-}
-
-function RuleBadge({ ok, text }: { ok: boolean; text: string }) {
-  return (
-    <li
-      className={cn(
-        'flex items-center gap-2 rounded-md px-3 py-2',
-        ok ? 'bg-gold/10 text-brand-deep' : 'bg-red-50 text-red-700',
-      )}
-    >
-      <Check className={cn('h-3.5 w-3.5 shrink-0', ok ? 'text-gold' : 'text-red-500')} />
-      <span>{text}</span>
-    </li>
   )
 }

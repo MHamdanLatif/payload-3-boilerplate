@@ -463,6 +463,21 @@ export const FeaturedProjects: CollectionConfig = {
               defaultValue: false,
               admin: { description: 'Auto-set. Defaults are isCustom=false; admin-added heads = true.' },
             },
+            {
+              name: 'numberOfSlabs',
+              type: 'number',
+              min: 1,
+              max: 50,
+              label: 'Number of Slabs',
+              admin: {
+                description:
+                  'Slab Casting only. One slab payment fires per casting event, so the buyer pays this head N times (each = head allocation ÷ N). Leave blank for non-slab heads.',
+                condition: (_, siblingData) =>
+                  siblingData?.category === 'Grey Structure' &&
+                  typeof siblingData?.name === 'string' &&
+                  /\bslab\b/i.test(siblingData.name),
+              },
+            },
           ],
         },
         // Legacy — kept for PaymentPlanLeads backwards compat; not used by the new compute engine.

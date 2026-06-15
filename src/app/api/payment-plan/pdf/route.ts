@@ -31,6 +31,7 @@ function resolveHeads(project: FeaturedProject): PaymentHead[] {
     category: (h.category as PaymentHeadCategory) ?? 'Initial Payment',
     enabled: h.enabled ?? true,
     isCustom: h.isCustom ?? false,
+    numberOfSlabs: h.numberOfSlabs ?? null,
   }))
 }
 

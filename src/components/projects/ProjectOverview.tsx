@@ -1,8 +1,9 @@
-import { Download, MapPin, BadgeCheck, Building2, Layers, BedDouble } from 'lucide-react'
+import { MapPin, BadgeCheck, Building2, Layers, BedDouble } from 'lucide-react'
 import type { FeaturedProject, Media } from '@/payload-types'
 import { SectionRule } from '@/components/landing/SectionRule'
 import { formatPkr, smallestUnit, imageUrl } from '@/lib/featured-projects'
 import RichText from '@/components/RichText'
+import { BrochureDownloadButton } from './BrochureDownloadButton'
 
 const FACT_ICON = {
   status: BadgeCheck,
@@ -94,15 +95,11 @@ export function ProjectOverview({ project }: { project: FeaturedProject }) {
             </dl>
 
             {brochureUrl && (
-              <a
-                href={brochureUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-deep px-6 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold hover:text-brand-deep"
-              >
-                <Download className="h-4 w-4" />
-                Download Brochure
-              </a>
+              <BrochureDownloadButton
+                brochureUrl={brochureUrl}
+                projectTitle={project.title}
+                projectSlug={project.slug ?? ''}
+              />
             )}
           </div>
         </aside>

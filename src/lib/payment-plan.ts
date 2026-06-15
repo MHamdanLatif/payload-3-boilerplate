@@ -49,7 +49,7 @@
  */
 
 import type { PaymentHead, InstallmentFrequencyKind } from './payment-heads'
-import { FREQUENCY_MONTHS, isGreyHead, isFinishingHead } from './payment-heads'
+import { FREQUENCY_MONTHS, isGreyHead, isFinishingHead, headEventCount } from './payment-heads'
 
 export type { InstallmentFrequencyKind } from './payment-heads'
 
@@ -326,12 +326,19 @@ export function computePlan(input: ComputeInput): PlanResult {
 
   const greyTotal = round2(milestonePool * 0.5)
   const finishingTotal = round2(milestonePool - greyTotal)
-  const perGrey =
-    activeGreyHeads.length > 0 ? round2(greyTotal / activeGreyHeads.length) : 0
-  const perFinishing =
-    activeFinishingHeads.length > 0
-      ? round2(finishingTotal / activeFinishingHeads.length)
-      : 0
+
+  // Per-EVENT (not per-head) so Slab Casting with N slabs splits its allocation
+  // across N events. Each grey/finishing casting is one payment trigger; total
+  // events = sum of headEventCount over active heads.
+  const activeGreyEventCount = activeGreyHeads.reduce((s, h) => s + headEventCount(h), 0)
+  const activeFinishingEventCount = activeFinishingHeads.reduce(
+    (s, h) => s + headEventCount(h),
+    0,
+  )
+  const perGreyEvent =
+    activeGreyEventCount > 0 ? round2(greyTotal / activeGreyEventCount) : 0
+  const perFinishingEvent =
+    activeFinishingEventCount > 0 ? round2(finishingTotal / activeFinishingEventCount) : 0
 
   // 8. Build the row schedule
   const rows: PlanRow[] = []
@@ -412,35 +419,48 @@ export function computePlan(input: ComputeInput): PlanResult {
     })
   }
 
-  // Milestone rows — single list, no Grey/Finishing labels exposed.
-  // Spread grey then finishing across the construction period for a natural schedule.
-  const milestoneRowsRaw: { headName: string; amount: number; month: number }[] = []
-  const greyHalfEnd = Math.max(1, Math.floor(input.totalDurationMonths / 2))
-  if (activeGreyHeads.length > 0) {
-    const gStep = greyHalfEnd / activeGreyHeads.length
-    activeGreyHeads.forEach((h, i) => {
-      const month = Math.max(1, Math.round((i + 1) * gStep))
-      milestoneRowsRaw.push({ headName: h.name, amount: perGrey, month })
-    })
-  }
-  if (activeFinishingHeads.length > 0) {
-    const fStep = (input.totalDurationMonths - greyHalfEnd) / activeFinishingHeads.length
-    activeFinishingHeads.forEach((h, i) => {
-      const month = greyHalfEnd + Math.max(1, Math.round((i + 1) * fStep))
+  // Milestone rows.
+  //
+  // Milestones are NOT pinned to a calendar month — they fire on construction
+  // events (foundation cast, slab cast, plaster done, etc.) which slip with the
+  // build. Spreading them across months 1..36 used to compete visually with the
+  // time-based installments (buyer thought month-12 milestone replaced their
+  // month-12 monthly payment). Now: every milestone shows "Milestone Payment"
+  // in the When column and they sit between the last time-based installment
+  // and Possession. Time-based installments still cover the full duration.
+  //
+  // Slab Casting expansion: a single head can fire multiple times (once per
+  // slab). headEventCount(h) returns N; we emit N rows each carrying the head
+  // name (suffixed with "#i/N" when N>1 so the buyer sees each slab payment).
+  const milestoneRowsRaw: { headName: string; amount: number }[] = []
+  for (const h of activeGreyHeads) {
+    const n = headEventCount(h)
+    for (let i = 0; i < n; i++) {
       milestoneRowsRaw.push({
-        headName: h.name,
-        amount: perFinishing,
-        month: Math.min(input.totalDurationMonths, month),
+        headName: n > 1 ? `${h.name} #${i + 1}/${n}` : h.name,
+        amount: perGreyEvent,
       })
-    })
+    }
   }
-  milestoneRowsRaw.sort((a, b) => a.month - b.month)
+  for (const h of activeFinishingHeads) {
+    const n = headEventCount(h)
+    for (let i = 0; i < n; i++) {
+      milestoneRowsRaw.push({
+        headName: n > 1 ? `${h.name} #${i + 1}/${n}` : h.name,
+        amount: perFinishingEvent,
+      })
+    }
+  }
+  // Park all milestones at duration+0.5 so they sort cleanly between the last
+  // monthly installment (duration) and the Possession row (duration+1) without
+  // suggesting a specific calendar month to the buyer.
+  const milestoneOffset = input.totalDurationMonths + 0.5
   for (const m of milestoneRowsRaw) {
     cumulative = round2(cumulative + m.amount)
     rows.push({
       kind: 'milestone',
-      label: `Month ${m.month}`,
-      monthOffset: m.month,
+      label: 'Milestone Payment',
+      monthOffset: milestoneOffset,
       amount: m.amount,
       cumulativeAmount: cumulative,
       cumulativePct: 0,

@@ -17,6 +17,26 @@ export type PaymentHead = {
   category: PaymentHeadCategory
   enabled: boolean
   isCustom: boolean
+  /**
+   * Slab Casting only. The slab payment fires once per slab cast; with N slabs
+   * the schedule shows N milestone rows under this head, each carrying the
+   * head's allocated amount / N. Falsy / unset → 1 event (the head fires once).
+   */
+  numberOfSlabs?: number | null
+}
+
+const SLAB_HEAD_PATTERN = /\bslab\b/i
+
+/** Does this head's name look like the slab-casting milestone? */
+export function isSlabCastingHead(h: PaymentHead): boolean {
+  return h.category === 'Grey Structure' && SLAB_HEAD_PATTERN.test(h.name)
+}
+
+/** How many separate events this head fires. Slab Casting honours numberOfSlabs; all others = 1. */
+export function headEventCount(h: PaymentHead): number {
+  if (!isSlabCastingHead(h)) return 1
+  const n = Number(h.numberOfSlabs ?? 0)
+  return n > 0 ? Math.floor(n) : 1
 }
 
 export const DEFAULT_PAYMENT_HEADS: PaymentHead[] = [

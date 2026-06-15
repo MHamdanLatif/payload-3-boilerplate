@@ -945,6 +945,10 @@ export interface FeaturedProject {
            * Auto-set. Defaults are isCustom=false; admin-added heads = true.
            */
           isCustom?: boolean | null;
+          /**
+           * Slab Casting only. One slab payment fires per casting event, so the buyer pays this head N times (each = head allocation ÷ N). Leave blank for non-slab heads.
+           */
+          numberOfSlabs?: number | null;
           id?: string | null;
         }[]
       | null;
@@ -1898,6 +1902,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
               category?: T;
               enabled?: T;
               isCustom?: T;
+              numberOfSlabs?: T;
               id?: T;
             };
         greyStructureSharePct?: T;
