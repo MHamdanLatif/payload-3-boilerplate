@@ -82,8 +82,8 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
                 Tell us a little about you.
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-brand-deep/65">
-                A senior advisor will call within 24 hours with available units, prices,
-                and a viewing slot.
+                A senior advisor typically calls within 15 minutes with available units,
+                prices, and a viewing slot.
               </p>
               <div className="mt-5">
                 <LeadForm

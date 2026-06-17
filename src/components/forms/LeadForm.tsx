@@ -49,7 +49,7 @@ export function LeadForm({
   placement = 'hero',
   tone = 'light',
   submitLabel = 'Request a Callback',
-  footnote = "We'll call within 24 hours. Your details stay private.",
+  footnote = "We typically call within 15 minutes. Your details stay private.",
   onSuccess,
 }: Props) {
   const router = useRouter()

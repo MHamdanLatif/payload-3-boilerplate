@@ -107,9 +107,9 @@ export default function PrivacyPolicyPage() {
             <p>We use personal information for the following purposes:</p>
             <ul>
               <li>
-                <strong>Responding to your enquiry</strong> — a senior advisor will
-                contact you within 24 hours by phone, WhatsApp, or email to discuss
-                the property, send details, or schedule a viewing.
+                <strong>Responding to your enquiry</strong> — a senior advisor
+                typically contacts you within 15 minutes by phone, WhatsApp, or email to
+                discuss the property, send details, or schedule a viewing.
               </li>
               <li>
                 <strong>Lead management and customer relationship management (CRM)

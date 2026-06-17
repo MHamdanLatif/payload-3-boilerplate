@@ -131,7 +131,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
           sourceSlug={listing.slug ?? ''}
           sourceKind="listing"
           sectionNumber="07 / ENQUIRE"
-          intro="Share your details — a senior advisor will reach you within 24 hours to schedule a viewing and answer questions on title, possession, or financing."
+          intro="Share your details — a senior advisor typically reaches you within 15 minutes to schedule a viewing and answer questions on title, possession, or financing."
         />
       </main>
     </>

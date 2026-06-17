@@ -179,7 +179,7 @@ export function BrochureDownloadModal({
                     >
                       open it here
                     </a>
-                    . A senior advisor will follow up within 24 hours.
+                    . A senior advisor typically follows up within 15 minutes.
                   </p>
                   <button
                     type="button"

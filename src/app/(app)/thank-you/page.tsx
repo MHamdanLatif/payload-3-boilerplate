@@ -23,7 +23,7 @@ function parseSource(source: string | undefined, legacyProject: string | undefin
 
 export const metadata: Metadata = {
   title: 'Thank you | Lateef Properties',
-  description: 'Your enquiry has been received. A senior advisor will reach out within 24 hours.',
+  description: 'Your enquiry has been received. A senior advisor typically reaches out within 15 minutes.',
   robots: { index: false, follow: false },
 }
 
@@ -99,7 +99,7 @@ export default async function ThankYouPage({
             REQUEST RECEIVED
           </span>
           <h1 className="mt-4 font-serif text-4xl leading-tight tracking-tight text-brand-deep md:text-5xl lg:text-6xl">
-            Thank you — we&rsquo;ll be in touch within 24 hours.
+            Thank you — we&rsquo;ll be in touch within 15 minutes.
           </h1>
           <p className="mt-6 text-base leading-relaxed text-brand-deep/70 md:text-lg">
             A senior advisor will call you on the number you shared{' '}

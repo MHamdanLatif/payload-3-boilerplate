@@ -196,7 +196,7 @@ export default async function LocationLandingPage({
           sourceSlug={entry.slug}
           sourceKind="location"
           sectionNumber="03 / ENQUIRE"
-          intro={`Share your ${entry.canonical} buying brief — a senior advisor will reach you within 24 hours with current availability and pricing.`}
+          intro={`Share your ${entry.canonical} buying brief — a senior advisor typically reaches you within 15 minutes with current availability and pricing.`}
         />
       </main>
     </>

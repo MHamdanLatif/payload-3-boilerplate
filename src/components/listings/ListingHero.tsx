@@ -98,8 +98,8 @@ export function ListingHero({ listing }: { listing: PropertyListing }) {
                 Schedule a viewing.
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-brand-deep/65">
-                A senior advisor will call within 24 hours to arrange a visit and answer
-                any questions on title, financing, or possession.
+                A senior advisor typically calls within 15 minutes to arrange a visit and
+                answer any questions on title, financing, or possession.
               </p>
               <div className="mt-5">
                 <LeadForm

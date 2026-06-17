@@ -155,8 +155,8 @@ export function ConsultationForm() {
 
             <motion.p variants={fadeUp} className="mt-6 max-w-md text-brand/70 leading-relaxed">
               Send your requirements — apartment, plot, office or shop — and a
-              Karachi-based advisor will reach you on WhatsApp within 24 hours.
-              No robocalls, no pressure.
+              Karachi-based advisor typically reaches you on WhatsApp within 15
+              minutes. No robocalls, no pressure.
             </motion.p>
 
             <motion.div variants={fadeUp} className="mt-10 space-y-1 text-sm">
@@ -347,7 +347,7 @@ export function ConsultationForm() {
                       </motion.div>
                       <p className="mt-6 eyebrow text-gold">Thank you, {values.fullName.split(' ')[0]}.</p>
                       <h3 className="mt-3 font-serif text-3xl leading-tight text-ivory">
-                        We&rsquo;ll be in touch within 24 hours.
+                        We&rsquo;ll be in touch within 15 minutes.
                       </h3>
                       <p className="mt-4 text-sm leading-relaxed text-ivory/80">
                         A Karachi-based advisor will message you on WhatsApp at the

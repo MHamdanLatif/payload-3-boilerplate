@@ -24,6 +24,7 @@ import { PhotoGallerySection } from '@/components/shared/PhotoGallerySection'
 import { MapSection } from '@/components/shared/MapSection'
 import { FaqSection } from '@/components/shared/FaqSection'
 import { FinalCTASection } from '@/components/shared/FinalCTASection'
+import { WhatsAppFloatingCta } from '@/components/projects/WhatsAppFloatingCta'
 import { JsonLd } from '@/components/shared/JsonLd'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -136,6 +137,7 @@ export default async function ProjectLandingPage({
           sectionNumber="07 / ENQUIRE"
         />
       </main>
+      <WhatsAppFloatingCta projectTitle={project.title} />
     </>
   )
 }

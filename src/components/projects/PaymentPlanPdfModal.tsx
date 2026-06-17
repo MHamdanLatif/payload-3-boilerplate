@@ -191,7 +191,7 @@ export function PaymentPlanPdfModal({
                   </div>
                   <p className="mt-4 font-serif text-xl text-brand-deep">Plan downloaded.</p>
                   <p className="mt-2 text-sm text-brand-deep/65">
-                    A senior advisor will follow up within 24 hours.
+                    A senior advisor typically follows up within 15 minutes.
                   </p>
                   <button
                     type="button"

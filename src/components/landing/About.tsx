@@ -16,10 +16,10 @@ const STATS = [
   },
   {
     icon: Zap,
-    value: '<24h',
+    value: '~15m',
     label: 'Advisor Callback',
     detail:
-      'Speak to a Karachi-based advisor on WhatsApp — usually the same hour you write in.',
+      'Speak to a Karachi-based advisor on WhatsApp — typically within 15 minutes of writing in.',
   },
   {
     icon: Compass,

@@ -16,7 +16,7 @@ export function FinalCTASection({
   sourceSlug,
   sourceKind,
   sectionNumber = '05 / ENQUIRE',
-  intro = 'Share your details — a senior advisor will reach you within 24 hours with availability, pricing, and a viewing slot.',
+  intro = 'Share your details — a senior advisor typically reaches you within 15 minutes with availability, pricing, and a viewing slot.',
   italicAccent,
 }: Props) {
   const accent = italicAccent ?? sourceName
@@ -62,7 +62,7 @@ export function FinalCTASection({
               placement="final"
               tone="dark"
               submitLabel="Get in Touch"
-              footnote="We'll call within 24 hours. Your details stay private."
+              footnote="We typically call within 15 minutes. Your details stay private."
             />
           </div>
         </div>
