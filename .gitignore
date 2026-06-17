@@ -10,3 +10,6 @@ test-results
 
 # Payload default media upload directory
 public/media/
+
+# TypeScript incremental build cache (machine-specific, regenerated every build)
+tsconfig.tsbuildinfo
