@@ -12,6 +12,8 @@ import { Header } from '@/Header/Component'
 import { LivePreviewListener } from '@/components/LivePreviewListener'
 import { MetaPixel } from '@/components/MetaPixel'
 import { MetaPixelRouteTracker } from '@/components/MetaPixelRouteTracker'
+import { GoogleAnalytics } from '@/components/GoogleAnalytics'
+import { GoogleAnalyticsRouteTracker } from '@/components/GoogleAnalyticsRouteTracker'
 import { Providers } from '@/providers'
 import { SplashLoader } from '@/components/shared/SplashLoader'
 import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
@@ -55,6 +57,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <body className="bg-background text-foreground">
         <MetaPixel />
         <MetaPixelRouteTracker />
+        <GoogleAnalytics />
+        <GoogleAnalyticsRouteTracker />
         <Providers>
           <SplashLoader />
           <AdminBar adminBarProps={{ preview: isEnabled }} />
