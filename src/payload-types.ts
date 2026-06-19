@@ -1128,14 +1128,6 @@ export interface Blog {
    */
   excerpt?: string | null;
   /**
-   * SEO title (≤ 60-70 chars for Google SERPs). Overrides the default `${title} | Lateef Properties` pattern.
-   */
-  metaTitle?: string | null;
-  /**
-   * SEO meta description (≤ 160 chars ideal).
-   */
-  metaDescription?: string | null;
-  /**
    * Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.
    */
   keywords?:
@@ -1985,8 +1977,6 @@ export interface BlogsSelect<T extends boolean = true> {
   publishedAt?: T;
   readTime?: T;
   excerpt?: T;
-  metaTitle?: T;
-  metaDescription?: T;
   keywords?:
     | T
     | {

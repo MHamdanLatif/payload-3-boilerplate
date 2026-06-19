@@ -406,7 +406,7 @@ export function articleSchema(blog: Blog) {
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     headline: blog.title,
     description:
-      blog.metaDescription ?? blog.excerpt ?? `${blog.title} — Lateef Properties`,
+      blog.meta?.description ?? blog.excerpt ?? `${blog.title} — Lateef Properties`,
     inLanguage: 'en-PK',
     url,
     datePublished: published,

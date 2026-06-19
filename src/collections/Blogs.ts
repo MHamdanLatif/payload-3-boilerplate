@@ -94,23 +94,13 @@ export const Blogs: CollectionConfig = {
       maxLength: 280,
       admin: { description: 'Index-card teaser. Max 280 chars.' },
     },
-    {
-      name: 'metaTitle',
-      type: 'text',
-      maxLength: 70,
-      admin: {
-        description:
-          'SEO title (≤ 60-70 chars for Google SERPs). Overrides the default `${title} | Lateef Properties` pattern.',
-      },
-    },
-    {
-      name: 'metaDescription',
-      type: 'textarea',
-      maxLength: 220,
-      admin: {
-        description: 'SEO meta description (≤ 160 chars ideal).',
-      },
-    },
+    // SEO meta (title / description / image) is owned by @payloadcms/plugin-seo
+    // — see src/plugins/index.ts. It auto-injects a `meta` group on this
+    // collection, with a richer preview + character counter UX than custom
+    // fields could provide. Manual metaTitle / metaDescription fields used to
+    // live here, but they wrote to the same Postgres columns (meta_title,
+    // meta_description) as the plugin's group, producing an INSERT statement
+    // with each column listed twice → SQL crash on every blog save. Removed.
     {
       name: 'keywords',
       type: 'array',

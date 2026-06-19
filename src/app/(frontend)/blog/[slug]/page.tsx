@@ -39,10 +39,8 @@ export async function generateMetadata({
   const blog = await fetchBlogBySlug(payload, slug)
   if (!blog) return { title: 'Article not found | Lateef Properties' }
 
-  const seoTitle =
-    blog.meta?.title ?? blog.metaTitle ?? `${blog.title} | Lateef Properties`
-  const seoDescription =
-    blog.meta?.description ?? blog.metaDescription ?? blog.excerpt ?? ''
+  const seoTitle = blog.meta?.title ?? `${blog.title} | Lateef Properties`
+  const seoDescription = blog.meta?.description ?? blog.excerpt ?? ''
   const ogImage =
     (typeof blog.meta?.image === 'object' && blog.meta?.image?.url) ||
     blogImage(blog) ||

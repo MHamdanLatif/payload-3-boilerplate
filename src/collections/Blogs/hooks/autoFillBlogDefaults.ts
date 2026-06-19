@@ -31,9 +31,15 @@ export const autoFillBlogDefaults: CollectionBeforeChangeHook<Blog> = ({
     data.excerpt = smartTruncate(plainText, 280)
   }
 
-  // ── metaDescription ────────────────────────────────────────
-  if (isBlank(data.metaDescription) && plainText) {
-    data.metaDescription = smartTruncate(plainText, 160)
+  // ── meta.description ───────────────────────────────────────
+  // Owned by @payloadcms/plugin-seo's `meta` group on this collection.
+  // Only fill when the admin hasn't typed one in.
+  const meta = (data as { meta?: { description?: string | null } }).meta
+  if (isBlank(meta?.description) && plainText) {
+    ;(data as { meta?: { description?: string | null } }).meta = {
+      ...(meta ?? {}),
+      description: smartTruncate(plainText, 160),
+    }
   }
 
   // ── readTime ───────────────────────────────────────────────
