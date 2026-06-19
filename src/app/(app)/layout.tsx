@@ -80,7 +80,12 @@ export const metadata: Metadata = {
     creator: '@lateefproperties',
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || undefined,
+    // Google Search Console meta-tag verification. Public token (visible in
+    // any view-source), so hardcoded as the default; override via env if a
+    // future deploy ever needs a different one.
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION ||
+      'B51TUGaIkFBwKj0kMH9JWAFA61PViu4c8ve0Y9KC510',
     other: process.env.NEXT_PUBLIC_BING_VERIFICATION
       ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_VERIFICATION }
       : undefined,
