@@ -56,7 +56,13 @@ function geoCoordinates(url: string | null | undefined) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Project schema — RealEstateListing + Product (multi-type)                  */
+/* Project schema — RealEstateListing                                         */
+/*                                                                             */
+/* Previously multi-typed as ['Product', 'RealEstateListing']. Search Console  */
+/* then expected the Product fields review + aggregateRating on every project; */
+/* fabricating those would violate Google's structured-data guidelines. We     */
+/* drop Product since real estate isn't a product in schema.org's sense — the  */
+/* offer/price still surfaces because RealEstateListing supports `offers`.     */
 /* -------------------------------------------------------------------------- */
 
 export function realEstateListingSchema(project: FeaturedProject) {
@@ -82,17 +88,13 @@ export function realEstateListingSchema(project: FeaturedProject) {
 
   return {
     '@context': 'https://schema.org',
-    '@type': ['Product', 'RealEstateListing'],
+    '@type': 'RealEstateListing',
     '@id': url,
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     name: project.title,
     description,
     image: image ? [image] : undefined,
-    brand: project.builderName
-      ? { '@type': 'Brand', name: project.builderName }
-      : undefined,
     url,
-    sku: project.slug,
     category: project.propertyType,
     address: postalAddress(project.addressLine, project.location),
     ...(geo && { geo }),
@@ -114,6 +116,11 @@ export function realEstateListingSchema(project: FeaturedProject) {
         name: 'Project Category',
         value: project.projectType,
       },
+      project.builderName && {
+        '@type': 'PropertyValue',
+        name: 'Builder',
+        value: project.builderName,
+      },
       project.startingPrice && {
         '@type': 'PropertyValue',
         name: 'Starting Price',
@@ -129,7 +136,8 @@ export function realEstateListingSchema(project: FeaturedProject) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Listing schema — RealEstateListing + Product (multi-type)                  */
+/* Listing schema — RealEstateListing                                         */
+/* (See note on the project schema above re: why Product was removed.)        */
 /* -------------------------------------------------------------------------- */
 
 export function propertyListingSchema(listing: PropertyListing) {
@@ -154,19 +162,17 @@ export function propertyListingSchema(listing: PropertyListing) {
 
   return {
     '@context': 'https://schema.org',
-    '@type': ['Product', 'RealEstateListing'],
+    '@type': 'RealEstateListing',
     '@id': url,
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     name: listing.title,
     description,
     image: image ? [image] : undefined,
     url,
-    sku: listing.slug,
     category: listing.propertyType,
     address: postalAddress(listing.addressLine, listing.location),
     ...(geo && { geo }),
     ...(listing.rooms != null && { numberOfRooms: listing.rooms }),
-    ...(society && { brand: { '@type': 'Brand', name: society } }),
     ...(listing.areaSqFt != null && {
       floorSize: {
         '@type': 'QuantitativeValue',
@@ -205,6 +211,11 @@ export function propertyListingSchema(listing: PropertyListing) {
         '@type': 'PropertyValue',
         name: 'Society / Project',
         value: society,
+      },
+      listing.price && {
+        '@type': 'PropertyValue',
+        name: 'Price',
+        value: formatPkr(listing.price),
       },
     ].filter(Boolean),
   }
