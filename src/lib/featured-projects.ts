@@ -43,7 +43,17 @@ export function heroImage(project: FeaturedProject): string | null {
   return imageUrl(first)
 }
 
-/** Fetch all featured projects in display order. */
+// Lower number wins. Anything outside the map (incl. null / undefined) gets
+// HIGHLIGHT_TAG_RANK_DEFAULT so untagged projects fall to the back of the
+// curated section but otherwise keep their -updatedAt order.
+const HIGHLIGHT_TAG_RANK: Record<string, number> = {
+  'hot-selling': 1,
+  'newly-launched': 2,
+  'limited-inventory': 3,
+}
+const HIGHLIGHT_TAG_RANK_DEFAULT = 99
+
+/** Fetch all featured projects in display order — tagged first, then -updatedAt. */
 export async function fetchPublishedProjects(payload: Payload): Promise<FeaturedProject[]> {
   const res = await payload.find({
     collection: 'featured-projects',
@@ -51,7 +61,13 @@ export async function fetchPublishedProjects(payload: Payload): Promise<Featured
     limit: 250,
     sort: '-updatedAt',
   })
-  return res.docs as FeaturedProject[]
+  // Stable sort by (tag rank ASC). `Array.prototype.sort` is stable since ES2019,
+  // so ties (incl. all untagged projects) keep the -updatedAt order from Postgres.
+  return (res.docs as FeaturedProject[]).slice().sort((a, b) => {
+    const rankA = HIGHLIGHT_TAG_RANK[a.highlightTag ?? ''] ?? HIGHLIGHT_TAG_RANK_DEFAULT
+    const rankB = HIGHLIGHT_TAG_RANK[b.highlightTag ?? ''] ?? HIGHLIGHT_TAG_RANK_DEFAULT
+    return rankA - rankB
+  })
 }
 
 /** Fetch a single project by slug. */

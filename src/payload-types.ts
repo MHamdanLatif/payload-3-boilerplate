@@ -782,6 +782,10 @@ export interface FeaturedProject {
     | 'Other';
   status: 'Pre-launch' | 'Under Construction';
   /**
+   * Optional curated tag rendered on the home-page card. Tagged projects sort to the top of the Featured Projects grid (Hot Selling first, then Newly Launched, then Limited Inventory). Leave blank for no tag.
+   */
+  highlightTag?: ('hot-selling' | 'newly-launched' | 'limited-inventory') | null;
+  /**
    * One-sentence pitch (under 160 chars ideal). Used as the SEO meta description when no Meta Description is set in the SEO tab.
    */
   summary?: string | null;
@@ -1820,6 +1824,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
   startingPrice?: T;
   location?: T;
   status?: T;
+  highlightTag?: T;
   summary?: T;
   elevationImages?:
     | T

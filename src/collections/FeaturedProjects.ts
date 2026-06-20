@@ -116,6 +116,21 @@ export const FeaturedProjects: CollectionConfig = {
       ],
     },
     {
+      name: 'highlightTag',
+      type: 'select',
+      label: 'Highlight Tag',
+      admin: {
+        position: 'sidebar',
+        description:
+          'Optional curated tag rendered on the home-page card. Tagged projects sort to the top of the Featured Projects grid (Hot Selling first, then Newly Launched, then Limited Inventory). Leave blank for no tag.',
+      },
+      options: [
+        { label: 'Hot Selling', value: 'hot-selling' },
+        { label: 'Newly Launched', value: 'newly-launched' },
+        { label: 'Limited Inventory', value: 'limited-inventory' },
+      ],
+    },
+    {
       name: 'summary',
       type: 'textarea',
       label: 'Short Summary (SEO)',

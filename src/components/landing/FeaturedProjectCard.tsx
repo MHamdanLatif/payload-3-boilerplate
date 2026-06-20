@@ -8,6 +8,7 @@ import { ArrowUpRight, BedDouble, MapPin } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import { heroImage, imageAlt, formatPkr, smallestUnit } from '@/lib/featured-projects'
 import { InquiryModal } from '@/components/shared/InquiryModal'
+import { HighlightBadge, type HighlightTag } from './HighlightBadge'
 import { fadeUp } from './_motion'
 
 const PLACEHOLDER =
@@ -36,10 +37,15 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/80 via-brand-deep/15 to-transparent" />
 
-          <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-gold px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-brand-deep shadow-sm">
-            <span className="h-1 w-1 rounded-full bg-brand-deep" />
-            {project.status}
-          </span>
+          <div className="absolute left-5 top-5 z-10 flex flex-col items-start gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-brand-deep shadow-sm">
+              <span className="h-1 w-1 rounded-full bg-brand-deep" />
+              {project.status}
+            </span>
+            {project.highlightTag && (
+              <HighlightBadge tag={project.highlightTag as HighlightTag} />
+            )}
+          </div>
 
           {project.builderName && (
             <span className="absolute right-5 top-5 rounded-full bg-white/15 px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.25em] text-white backdrop-blur-sm">
