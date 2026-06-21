@@ -11,7 +11,7 @@ import Script from 'next/script'
  * via `NEXT_PUBLIC_META_PIXEL_ID`.
  */
 export const META_PIXEL_ID =
-  process.env.NEXT_PUBLIC_META_PIXEL_ID || '1655019522393247'
+  process.env.NEXT_PUBLIC_META_PIXEL_ID || '2084168446317946'
 
 export function MetaPixel() {
   if (!META_PIXEL_ID) return null
