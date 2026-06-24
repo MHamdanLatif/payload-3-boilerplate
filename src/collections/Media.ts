@@ -39,7 +39,11 @@ export const Media: CollectionConfig = {
     },
   ],
   upload: {
-    // Upload to the public/media directory in Next.js making them publicly accessible even outside of Payload
+    // staticDir is vestigial — the `s3Storage` plugin in payload.config.ts has
+    // `disableLocalStorage: true` for this collection, so uploads land on
+    // Cloudflare R2 and never touch the local filesystem. The path is kept
+    // only so Payload's default URL pattern (`/api/media/file/<name>`) keeps
+    // resolving; the actual bytes come from R2 via the plugin's static handler.
     staticDir: path.resolve(dirname, '../../public/media'),
     adminThumbnail: 'thumbnail',
     // Convert every upload's master file to WebP at quality 82. Sharp accepts

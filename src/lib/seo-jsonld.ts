@@ -296,10 +296,13 @@ export function organizationSchema() {
   const WHATSAPP_URL = 'https://wa.me/923363528333'
   // priceRange: a qualitative band ($, $$, $$$, $$$$) or a literal range string.
   const PRICE_RANGE = 'PKR 80 Lac+'
-  // Real socials go here when supplied (Instagram / Facebook / LinkedIn / YouTube).
-  // Placeholder hosts (`https://instagram.com`, `https://facebook.com`) were
-  // deliberately removed — they fail Google's brand-verification.
-  const SAME_AS: string[] = [WHATSAPP_URL]
+  // Real socials. WhatsApp first (it's the primary contact channel) then the
+  // public social profiles Google uses for the Knowledge Panel.
+  const SAME_AS: string[] = [
+    WHATSAPP_URL,
+    'https://www.instagram.com/lateefproperties',
+    'https://www.facebook.com/lateefpropertiespk',
+  ]
   // ──────────────────────────────────────────────────────────────────────────
 
   return {

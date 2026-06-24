@@ -8,7 +8,9 @@ import { About } from '@/components/landing/About'
 import { Services } from '@/components/landing/Services'
 import { ConsultationForm } from '@/components/landing/ConsultationForm'
 import { JsonLd } from '@/components/shared/JsonLd'
-import { organizationSchema, breadcrumbListSchema } from '@/lib/seo-jsonld'
+// organizationSchema is mounted in the root layout (sitewide); emitting it
+// again here would produce a duplicate JSON-LD block on the home page.
+import { breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -19,10 +21,7 @@ const base = getServerSideURL().replace(/\/$/, '')
 export const revalidate = 60
 
 export default function HomePage() {
-  const schemas = [
-    organizationSchema(),
-    breadcrumbListSchema([{ name: 'Home', url: `${base}/` }]),
-  ]
+  const schemas = [breadcrumbListSchema([{ name: 'Home', url: `${base}/` }])]
 
   return (
     <>

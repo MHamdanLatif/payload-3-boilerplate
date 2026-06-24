@@ -1,5 +1,5 @@
-// storage-adapter-import-placeholder
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { s3Storage } from '@payloadcms/storage-s3'
 
 import sharp from 'sharp' // sharp-import
 import path from 'path'
@@ -87,7 +87,32 @@ export default buildConfig({
   globals: [Header, Footer],
   plugins: [
     ...plugins,
-    // storage-adapter-placeholder
+    // Cloudflare R2 (S3-compatible) — persistent object storage for the Media
+    // collection. Replaces local-disk uploads, which were getting wiped on
+    // every Railway redeploy because the container filesystem is ephemeral.
+    //
+    // Files are stored in R2; Payload's `/api/media/file/<name>` endpoint
+    // proxies the GET to R2. Existing media-URL paths in the DB (and any
+    // hard-coded references) keep working without rewriting.
+    s3Storage({
+      collections: {
+        media: {
+          disableLocalStorage: true,
+        },
+      },
+      bucket: process.env.S3_BUCKET || 'lateef-properties-media',
+      config: {
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+        },
+        // R2 ignores region but the SDK requires a value; 'auto' is the
+        // Cloudflare-recommended placeholder.
+        region: 'auto',
+        endpoint: process.env.S3_ENDPOINT || '',
+        forcePathStyle: true,
+      },
+    }),
   ],
   endpoints: [
     {

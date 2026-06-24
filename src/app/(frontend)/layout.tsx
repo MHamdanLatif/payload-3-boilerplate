@@ -16,6 +16,8 @@ import { GoogleAnalytics } from '@/components/GoogleAnalytics'
 import { GoogleAnalyticsRouteTracker } from '@/components/GoogleAnalyticsRouteTracker'
 import { Providers } from '@/providers'
 import { SplashLoader } from '@/components/shared/SplashLoader'
+import { JsonLd } from '@/components/shared/JsonLd'
+import { organizationSchema } from '@/lib/seo-jsonld'
 import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
 import { draftMode } from 'next/headers'
 
@@ -55,6 +57,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <head>{/* Favicon auto-injected by Next.js from src/app/icon.png + apple-icon.png */}</head>
       <body className="bg-background text-foreground">
+        {/* Sitewide RealEstateAgent / LocalBusiness JSON-LD — every public page
+            renders this so Google can attach the brand entity to any URL. */}
+        <JsonLd data={organizationSchema()} />
         <MetaPixel />
         <MetaPixelRouteTracker />
         <GoogleAnalytics />
