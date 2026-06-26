@@ -78,9 +78,18 @@ export const LOCATION_ENTITIES: EntityEntry[] = [
   },
   {
     kind: 'location',
-    canonical: 'Gulistan-e-Jauhar',
-    aliases: ['Gulistan e Jauhar', 'Jauhar', 'Gulistan e-Jauhar'],
-    slug: 'gulistan-e-jauhar',
+    canonical: 'Gulistan-e-Johar',
+    // Keep the historic "Jauhar" variants as aliases — legacy blog content,
+    // old social posts and any external links still using the old spelling
+    // continue to auto-link to this entity instead of becoming dead text.
+    aliases: [
+      'Gulistan e Johar',
+      'Gulistan-e-Jauhar',
+      'Gulistan e Jauhar',
+      'Johar',
+      'Jauhar',
+    ],
+    slug: 'gulistan-e-johar',
     url: locationUrl,
   },
   {

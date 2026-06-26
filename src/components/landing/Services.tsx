@@ -10,7 +10,7 @@ const SERVICES = [
     icon: Home,
     label: 'Residential Sales',
     title: 'Apartments and duplexes across Karachi.',
-    body: 'Flats and duplex apartments in Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir — pre-launch, under-construction and ready-to-move.',
+    body: 'Flats and duplex apartments in Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir — pre-launch, under-construction and ready-to-move.',
     bullets: ['Pre-launch allocations', 'Installment plan support', 'Possession & handover assistance'],
   },
   {

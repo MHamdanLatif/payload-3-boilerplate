@@ -13,7 +13,7 @@ export default function LocationNotFound() {
         </h1>
         <p className="mt-6 text-base leading-relaxed text-brand-deep/70 md:text-lg">
           Our advisors focus on Karachi. Browse our active developments and ready-to-move inventory
-          across Gulshan, Scheme 33, Gulistan-e-Jauhar and DHA.
+          across Gulshan, Scheme 33, Gulistan-e-Johar and DHA.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link

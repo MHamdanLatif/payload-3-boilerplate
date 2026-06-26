@@ -5,7 +5,7 @@ export const VALID_PROPERTY_TYPES = ['Flat', 'Plot', 'Office', 'Shop', 'Commerci
 export const VALID_FILTER_STATUSES = ['Ready', 'Under Construction', 'Pre-launch'] as const
 export const VALID_LOCATIONS = [
   'Gulshan-e-Iqbal',
-  'Gulistan-e-Jauhar',
+  'Gulistan-e-Johar',
   'Scheme 33',
   'DHA',
   'Clifton',

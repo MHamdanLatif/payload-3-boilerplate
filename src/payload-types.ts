@@ -768,7 +768,7 @@ export interface FeaturedProject {
   startingPrice?: number | null;
   location:
     | 'Gulshan-e-Iqbal'
-    | 'Gulistan-e-Jauhar'
+    | 'Gulistan-e-Johar'
     | 'Scheme 33'
     | 'DHA'
     | 'Clifton'
@@ -1002,7 +1002,7 @@ export interface PropertyListing {
   price: number;
   location:
     | 'Gulshan-e-Iqbal'
-    | 'Gulistan-e-Jauhar'
+    | 'Gulistan-e-Johar'
     | 'Scheme 33'
     | 'DHA'
     | 'Clifton'

@@ -85,7 +85,7 @@ export default async function PropertiesPage({
             </h1>
             <p className="mt-5 text-base leading-relaxed text-brand-deep/70 md:text-lg">
               Pre-launch allocations, ready-to-move listings and off-market resale
-              across Gulshan-e-Iqbal, Scheme 33, Gulistan-e-Jauhar, DHA and Clifton.
+              across Gulshan-e-Iqbal, Scheme 33, Gulistan-e-Johar, DHA and Clifton.
               Set your filters — we&rsquo;ll source what isn&rsquo;t here.
             </p>
           </div>

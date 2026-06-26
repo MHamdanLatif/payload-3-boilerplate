@@ -37,6 +37,16 @@ const redirects = async () => {
 
     // Anything else the old site exposed under /featured/* — funnel to listings
     { source: '/featured/:slug*', destination: '/properties', permanent: true },
+
+    // Spelling: Gulistan-e-Jauhar → Gulistan-e-Johar. People search "johar",
+    // not "jauhar"; the location entity slug was renamed in code and the old
+    // URL needs to forward so any existing GSC ranking or external link still
+    // lands buyers on the correct page.
+    {
+      source: '/locations/gulistan-e-jauhar',
+      destination: '/locations/gulistan-e-johar',
+      permanent: true,
+    },
   ]
 
   // ── Canonicalize host: www → apex ─────────────────────────────────────────

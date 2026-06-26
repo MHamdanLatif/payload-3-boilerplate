@@ -317,7 +317,7 @@ export function organizationSchema() {
     telephone: PHONE_E164,
     email: EMAIL,
     description:
-      'Authorised marketing agency for Karachi real estate. Apartments, plots, offices and shops across Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch allocations on Karachi’s leading developments and off-market resale.',
+      'Authorised marketing agency for Karachi real estate. Apartments, plots, offices and shops across Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch allocations on Karachi’s leading developments and off-market resale.',
     address: {
       '@type': 'PostalAddress',
       streetAddress: STREET,
@@ -335,7 +335,7 @@ export function organizationSchema() {
       { '@type': 'City', name: 'Karachi' },
       { '@type': 'City', name: 'Sukkur' },
       { '@type': 'Place', name: 'Gulshan-e-Iqbal' },
-      { '@type': 'Place', name: 'Gulistan-e-Jauhar' },
+      { '@type': 'Place', name: 'Gulistan-e-Johar' },
       { '@type': 'Place', name: 'Scheme 33' },
       { '@type': 'Place', name: 'DHA Karachi' },
       { '@type': 'Place', name: 'Clifton' },
@@ -379,7 +379,7 @@ export function organizationSchema() {
       'Off-market resale',
       'Property investment Karachi',
       'Apartments in Gulshan-e-Iqbal',
-      'Apartments in Gulistan-e-Jauhar',
+      'Apartments in Gulistan-e-Johar',
       'Apartments in Scheme 33',
       'Apartments in DHA Karachi',
       'Apartments in Clifton',

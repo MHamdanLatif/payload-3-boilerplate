@@ -35,7 +35,7 @@ export async function ListingsSection() {
           </div>
           <p className="text-base leading-relaxed text-brand-deep/70 lg:col-span-5 lg:text-lg">
             Apartments, plots, offices and shops for sale across Gulshan-e-Iqbal,
-            Gulistan-e-Jauhar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah
+            Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah
             Avenue and Malir. Viewings within 48 hours.
           </p>
         </div>

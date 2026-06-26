@@ -7,7 +7,7 @@ import { seedPaymentHeads } from './FeaturedProjects/hooks/seedPaymentHeads'
 
 export const LOCATION_OPTIONS = [
   'Gulshan-e-Iqbal',
-  'Gulistan-e-Jauhar',
+  'Gulistan-e-Johar',
   'Scheme 33',
   'DHA',
   'Clifton',

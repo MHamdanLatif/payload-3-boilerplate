@@ -53,7 +53,7 @@ export function Footer() {
             <p className="text-sm leading-relaxed text-ivory/75">
               Authorised marketing agency for Karachi&rsquo;s leading developers.
               Pre-launch allocations, ready-to-move resale and off-market deals
-              across Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton,
+              across Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton,
               M.A. Jinnah Road, Jinnah Avenue and Malir.
             </p>
             <a
@@ -116,7 +116,7 @@ export function Footer() {
 
           <FooterCol heading="Neighbourhoods">
             <FooterLink href="/locations/gulshan-e-iqbal">Gulshan-e-Iqbal</FooterLink>
-            <FooterLink href="/locations/gulistan-e-jauhar">Gulistan-e-Jauhar</FooterLink>
+            <FooterLink href="/locations/gulistan-e-johar">Gulistan-e-Johar</FooterLink>
             <FooterLink href="/locations/scheme-33">Scheme 33</FooterLink>
             <FooterLink href="/locations/dha">DHA</FooterLink>
             <FooterLink href="/locations/clifton">Clifton</FooterLink>

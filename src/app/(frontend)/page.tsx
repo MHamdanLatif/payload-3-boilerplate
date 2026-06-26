@@ -42,7 +42,7 @@ export default function HomePage() {
 export const metadata: Metadata = {
   title: 'Lateef Properties | Karachi Apartments, Plots & Commercial Property | Authorised Marketing Agency',
   description:
-    'Karachi apartments, plots, offices and shops for sale in Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch, under-construction and ready-for-possession projects with flexible payment plans.',
+    'Karachi apartments, plots, offices and shops for sale in Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch, under-construction and ready-for-possession projects with flexible payment plans.',
   openGraph: mergeOpenGraph({
     title: 'Lateef Properties | Karachi Apartments, Plots & Commercial Property | Authorised Marketing Agency',
     description:
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     'offices for sale Karachi',
     'shops for sale Karachi',
     'Gulshan-e-Iqbal apartments',
-    'Gulistan-e-Jauhar apartments',
+    'Gulistan-e-Johar apartments',
     'Scheme 33 Karachi',
     'DHA Karachi apartments',
     'Clifton Karachi apartments',

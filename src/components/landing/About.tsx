@@ -12,7 +12,7 @@ const STATS = [
     value: 'Karachi',
     label: 'Coverage',
     detail:
-      'Apartments, plots, offices and shops across Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir.',
+      'Apartments, plots, offices and shops across Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir.',
   },
   {
     icon: Zap,
@@ -111,7 +111,7 @@ export function About() {
                 Lateef Properties is the authorised marketing agency for Karachi
                 apartments, plots and commercial property. We move pre-launch
                 allocations on partner developments and off-market resale across
-                Gulshan-e-Iqbal, Gulistan-e-Jauhar, Scheme 33, DHA, Clifton,
+                Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton,
                 M.A. Jinnah Road, Jinnah Avenue and Malir.
               </p>
               <p>
