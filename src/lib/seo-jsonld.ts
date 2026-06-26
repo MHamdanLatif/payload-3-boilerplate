@@ -307,7 +307,11 @@ export function organizationSchema() {
 
   return {
     '@context': 'https://schema.org',
-    '@type': ['LocalBusiness', 'RealEstateAgent'],
+    // Explicit Organization in the type array helps Google's favicon-resolution
+    // algorithm tie the domain → brand → logo. LocalBusiness + RealEstateAgent
+    // are already Organization subtypes, but listing Organization directly
+    // avoids any inheritance lookup the crawler might skip on a thin first crawl.
+    '@type': ['Organization', 'LocalBusiness', 'RealEstateAgent'],
     '@id': `${url}/#organization`,
     name: NAME,
     legalName: NAME,
