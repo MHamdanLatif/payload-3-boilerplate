@@ -35,6 +35,38 @@ export async function fetchBlogBySlug(
   return (res.docs[0] as Blog) ?? null
 }
 
+/**
+ * Published blogs related to a set of match terms (a project/location name and
+ * its aliases). A post matches when any term appears — case-insensitively — in
+ * its title, excerpt or keywords. Newest-first, capped at `limit`. Used to link
+ * project/location pages *into* their matching articles (reverse of the blog's
+ * own outbound seoInternalLinks).
+ */
+export async function fetchRelatedBlogs(
+  payload: Payload,
+  terms: (string | null | undefined)[],
+  limit = 3,
+): Promise<Blog[]> {
+  const needles = terms
+    .map((t) => t?.toLowerCase().trim())
+    .filter((t): t is string => Boolean(t))
+  if (!needles.length) return []
+
+  const blogs = await fetchPublishedBlogs(payload, 50)
+  return blogs
+    .filter((b) => {
+      const hay = [
+        b.title ?? '',
+        b.excerpt ?? '',
+        ...(b.keywords ?? []).map((k) => k.keyword ?? ''),
+      ]
+        .join(' ')
+        .toLowerCase()
+      return needles.some((n) => hay.includes(n))
+    })
+    .slice(0, limit)
+}
+
 /** generateStaticParams helper — just the slugs of every published blog. */
 export async function fetchPublishedBlogSlugs(payload: Payload): Promise<string[]> {
   const res = await payload.find({

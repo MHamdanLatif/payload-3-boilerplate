@@ -33,9 +33,12 @@ export const PROJECT_ENTITIES: EntityEntry[] = [
   },
   {
     kind: 'project',
-    canonical: 'Tulip Comforts',
-    aliases: ['Tulip Comfort', 'Tulip'],
-    slug: 'tulip-comforts',
+    // Canonical matches the live project doc + URL (/projects/tulip-comfort).
+    // The plural "Tulip Comforts" is kept as an alias so legacy blog content
+    // using the old spelling still auto-links to the correct project.
+    canonical: 'Tulip Comfort',
+    aliases: ['Tulip Comforts', 'Tulip'],
+    slug: 'tulip-comfort',
     url: projectUrl,
   },
   {

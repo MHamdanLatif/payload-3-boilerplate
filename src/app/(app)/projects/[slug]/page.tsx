@@ -14,6 +14,8 @@ import {
   breadcrumbListSchema,
   faqPageSchema,
 } from '@/lib/seo-jsonld'
+import { fetchRelatedBlogs } from '@/lib/blogs'
+import { findEntityByProjectSlug } from '@/lib/project-mapper'
 import { deriveProjectKeywords } from '@/lib/seo-keywords'
 import { ProjectHero } from '@/components/projects/ProjectHero'
 import { ProjectOverview } from '@/components/projects/ProjectOverview'
@@ -23,6 +25,7 @@ import { AmenitiesSection } from '@/components/shared/AmenitiesSection'
 import { PhotoGallerySection } from '@/components/shared/PhotoGallerySection'
 import { MapSection } from '@/components/shared/MapSection'
 import { FaqSection } from '@/components/shared/FaqSection'
+import { InsightsSection } from '@/components/blog/InsightsSection'
 import { FinalCTASection } from '@/components/shared/FinalCTASection'
 import { WhatsAppFloatingCta } from '@/components/projects/WhatsAppFloatingCta'
 import { JsonLd } from '@/components/shared/JsonLd'
@@ -96,6 +99,15 @@ export default async function ProjectLandingPage({
   const project = await fetchProjectBySlug(payload, slug)
   if (!project) notFound()
 
+  // Reverse internal links: surface articles that mention this project. Match on
+  // the project title plus its entity aliases (so "Saima Elite" / "Tulip" hit too).
+  const entity = project.slug ? findEntityByProjectSlug(project.slug) : null
+  const relatedBlogs = await fetchRelatedBlogs(
+    payload,
+    [project.title, ...(entity?.aliases ?? [])],
+    3,
+  )
+
   const base = getServerSideURL().replace(/\/$/, '')
   const canonical = `${base}/projects/${project.slug}`
 
@@ -130,6 +142,13 @@ export default async function ProjectLandingPage({
           sectionNumber="05 / LOCATION"
         />
         <FaqSection faqs={project.faqs} sectionNumber="06 / FAQ" />
+        <InsightsSection
+          blogs={relatedBlogs}
+          eyebrow="FURTHER READING"
+          heading={`More on ${project.title}.`}
+          intro={`Guides and pricing breakdowns that reference ${project.title} and its location.`}
+          bg="bg-cream"
+        />
         <FinalCTASection
           sourceName={project.title}
           sourceSlug={project.slug ?? ''}

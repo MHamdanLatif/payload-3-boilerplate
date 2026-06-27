@@ -5,12 +5,14 @@ import config from '@payload-config'
 
 import { fetchProjectsByLocation } from '@/lib/featured-projects'
 import { fetchListingsByLocation } from '@/lib/property-listings'
+import { fetchRelatedBlogs } from '@/lib/blogs'
 import { LOCATION_ENTITIES, findEntityByLocationSlug } from '@/lib/project-mapper'
 import { breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
 import { SectionRule } from '@/components/landing/SectionRule'
 import { FeaturedProjectCard } from '@/components/landing/FeaturedProjectCard'
 import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
+import { InsightsSection } from '@/components/blog/InsightsSection'
 import { FinalCTASection } from '@/components/shared/FinalCTASection'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -79,9 +81,10 @@ export default async function LocationLandingPage({
   if (!entry) notFound()
 
   const payload = await getPayload({ config })
-  const [projects, listings] = await Promise.all([
+  const [projects, listings, relatedBlogs] = await Promise.all([
     fetchProjectsByLocation(payload, entry.canonical),
     fetchListingsByLocation(payload, entry.canonical),
+    fetchRelatedBlogs(payload, [entry.canonical, ...entry.aliases], 3),
   ])
 
   const base = getServerSideURL().replace(/\/$/, '')
@@ -190,6 +193,13 @@ export default async function LocationLandingPage({
             </div>
           </section>
         )}
+
+        <InsightsSection
+          blogs={relatedBlogs}
+          eyebrow={`READING · ${entry.canonical.toUpperCase()}`}
+          heading={`${entry.canonical} buyer guides.`}
+          intro={`Area deep-dives and pricing breakdowns to read before you buy in ${entry.canonical}.`}
+        />
 
         <FinalCTASection
           sourceName={entry.canonical}

@@ -47,6 +47,20 @@ const redirects = async () => {
       destination: '/locations/gulistan-e-johar',
       permanent: true,
     },
+
+    // Blog slug cleanups (site audit). The Tulip post was standardised to the
+    // singular project name; the Saima Elite post had a stray double hyphen
+    // left over from the "&" in its title. Forward the old slugs.
+    {
+      source: '/blog/tulip-comforts-pre-launch-apartments-in-scheme-33-karachi',
+      destination: '/blog/tulip-comfort-pre-launch-apartments-in-scheme-33-karachi',
+      permanent: true,
+    },
+    {
+      source: '/blog/saima-elite-enclave-price-payment-plan--location-guide',
+      destination: '/blog/saima-elite-enclave-price-payment-plan-location-guide',
+      permanent: true,
+    },
   ]
 
   // ── Canonicalize host: www → apex ─────────────────────────────────────────

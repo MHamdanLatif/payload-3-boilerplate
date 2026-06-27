@@ -80,15 +80,13 @@ export function ProjectOverview({ project }: { project: FeaturedProject }) {
                 return (
                   <div
                     key={label}
-                    className="flex items-center gap-3 bg-white px-4 py-3.5"
+                    className="flex items-center justify-between gap-3 bg-white px-4 py-3.5"
                   >
-                    <Icon className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.6} />
-                    <div className="flex flex-1 items-baseline justify-between gap-3">
-                      <dt className="text-[0.7rem] uppercase tracking-[0.2em] text-brand-deep/55">
-                        {label}
-                      </dt>
-                      <dd className="text-right font-medium text-brand-deep">{value}</dd>
-                    </div>
+                    <dt className="flex items-center gap-3 text-[0.7rem] uppercase tracking-[0.2em] text-brand-deep/55">
+                      <Icon className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.6} />
+                      {label}
+                    </dt>
+                    <dd className="text-right font-medium text-brand-deep">{value}</dd>
                   </div>
                 )
               })}

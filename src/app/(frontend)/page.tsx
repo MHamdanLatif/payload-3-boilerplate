@@ -6,6 +6,7 @@ import { FeaturedListings } from '@/components/landing/FeaturedListings'
 import { ListingsSection } from '@/components/landing/ListingsSection'
 import { About } from '@/components/landing/About'
 import { Services } from '@/components/landing/Services'
+import { LatestInsights } from '@/components/landing/LatestInsights'
 import { ConsultationForm } from '@/components/landing/ConsultationForm'
 import { JsonLd } from '@/components/shared/JsonLd'
 // organizationSchema is mounted in the root layout (sitewide); emitting it
@@ -33,6 +34,7 @@ export default function HomePage() {
         <ListingsSection />
         <About />
         <Services />
+        <LatestInsights />
         <ConsultationForm />
       </main>
     </>
