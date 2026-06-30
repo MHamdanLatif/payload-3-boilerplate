@@ -3,7 +3,8 @@ import type { CollectionConfig } from 'payload'
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
-import { LOCATION_OPTIONS } from './FeaturedProjects'
+import { richDescriptionEditor } from '@/fields/richDescriptionEditor'
+import { LOCATION_OPTIONS, UNIT_TYPE_OPTIONS } from './FeaturedProjects'
 
 export const PROPERTY_TYPE_OPTIONS = ['Flat', 'Plot', 'Office', 'Shop', 'Commercial'] as const
 
@@ -41,6 +42,16 @@ export const PropertyListings: CollectionConfig = {
       options: PROPERTY_TYPE_OPTIONS.map((v) => ({ label: v, value: v })),
     },
     {
+      name: 'unitType',
+      type: 'select',
+      label: 'Unit Type',
+      options: UNIT_TYPE_OPTIONS.map((v) => ({ label: v, value: v })),
+      admin: {
+        description:
+          'Exact layout of this unit (e.g. "3 Bed Drawing"). Powers the /properties Unit Type filter so the listing surfaces under the precise layout a buyer selects — not just by bed count. Recommended for flats; leave blank for plots/shops.',
+      },
+    },
+    {
       name: 'price',
       type: 'number',
       required: true,
@@ -55,10 +66,9 @@ export const PropertyListings: CollectionConfig = {
     {
       name: 'rooms',
       type: 'number',
-      label: 'Rooms',
+      label: 'Beds',
       admin: {
-        description:
-          'Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).',
+        description: 'Number of bedrooms in this unit.',
       },
     },
     {
@@ -183,6 +193,7 @@ export const PropertyListings: CollectionConfig = {
       name: 'description',
       type: 'richText',
       label: 'Long Description',
+      editor: richDescriptionEditor,
       admin: { description: 'Renders in the Overview section of the landing page.' },
     },
   ],

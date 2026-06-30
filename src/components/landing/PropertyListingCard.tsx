@@ -89,16 +89,28 @@ export function PropertyListingCard({ listing }: { listing: PropertyListing }) {
                 {formatPkr(listing.price)}
               </p>
             </div>
-            {listing.rooms != null && (
+            {listing.unitType ? (
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/55">
-                  Rooms
+                  Unit Type
                 </p>
                 <p className="mt-1 inline-flex items-center gap-1.5 font-serif text-lg text-brand-deep">
-                  <BedDouble className="h-4 w-4 text-gold" />
-                  {listing.rooms}
+                  <BedDouble className="h-4 w-4 shrink-0 text-gold" />
+                  {listing.unitType}
                 </p>
               </div>
+            ) : (
+              listing.rooms != null && (
+                <div>
+                  <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/55">
+                    Beds
+                  </p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 font-serif text-lg text-brand-deep">
+                    <BedDouble className="h-4 w-4 text-gold" />
+                    {listing.rooms}
+                  </p>
+                </div>
+              )
             )}
           </div>
 

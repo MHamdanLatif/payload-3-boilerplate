@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
+import { richDescriptionEditor } from '@/fields/richDescriptionEditor'
 import { seedPaymentHeads } from './FeaturedProjects/hooks/seedPaymentHeads'
 
 export const LOCATION_OPTIONS = [
@@ -380,6 +381,7 @@ export const FeaturedProjects: CollectionConfig = {
       name: 'description',
       type: 'richText',
       label: 'Long Description',
+      editor: richDescriptionEditor,
       admin: {
         description: 'Renders in the Overview section of the landing page.',
       },

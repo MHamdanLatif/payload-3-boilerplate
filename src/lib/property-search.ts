@@ -142,17 +142,28 @@ export async function fetchUnified(payload: Payload, sp: ParsedSearchParams): Pr
   }
   // Unit-type filter:
   //   • FeaturedProjects: match against `unitTypes.type` directly.
-  //   • PropertyListings: derive a room count and match against `rooms`.
+  //   • PropertyListings: match the exact `unitType`. For legacy listings that
+  //     pre-date the field (unitType unset), fall back to the room-count
+  //     heuristic so they still surface instead of disappearing.
   if (sp.unitType) {
     pushIf(sharedProjectWhere.and as Where[], { 'unitTypes.type': { equals: sp.unitType } })
+
     const rc = unitTypeRoomCount(sp.unitType)
-    if (rc.exact != null) {
-      pushIf(sharedListingWhere.and as Where[], { rooms: { equals: rc.exact } })
-    } else if (rc.atLeast != null) {
-      pushIf(sharedListingWhere.and as Where[], { rooms: { greater_than_equal: rc.atLeast } })
-    } else if (rc.oneOf?.length) {
-      pushIf(sharedListingWhere.and as Where[], { rooms: { in: rc.oneOf } })
-    }
+    const roomWhere: Where | null =
+      rc.exact != null
+        ? { rooms: { equals: rc.exact } }
+        : rc.atLeast != null
+          ? { rooms: { greater_than_equal: rc.atLeast } }
+          : rc.oneOf?.length
+            ? { rooms: { in: rc.oneOf } }
+            : null
+
+    pushIf(sharedListingWhere.and as Where[], {
+      or: [
+        { unitType: { equals: sp.unitType } },
+        ...(roomWhere ? [{ and: [{ unitType: { exists: false } }, roomWhere] }] : []),
+      ],
+    })
   }
   pushIf(sharedListingWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'price'))
   pushIf(sharedProjectWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'startingPrice'))
@@ -213,7 +224,10 @@ export async function fetchUnified(payload: Payload, sp: ParsedSearchParams): Pr
 function toUnifiedListing(doc: PropertyListing): UnifiedListing {
   const meta: string[] = []
   if (doc.propertyType) meta.push(doc.propertyType)
-  if (doc.rooms) meta.push(`${doc.rooms} room${doc.rooms === 1 ? '' : 's'}`)
+  // Prefer the exact unit-type layout (e.g. "3 Bed Drawing"); fall back to a
+  // bare bed count for legacy listings without a unitType set.
+  if (doc.unitType) meta.push(doc.unitType)
+  else if (doc.rooms) meta.push(`${doc.rooms} bed${doc.rooms === 1 ? '' : 's'}`)
   if (doc.bathrooms) meta.push(`${doc.bathrooms} bath`)
   if (doc.areaSqFt) meta.push(`${doc.areaSqFt.toLocaleString()} sq ft`)
   return {

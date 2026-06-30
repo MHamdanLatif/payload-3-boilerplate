@@ -43,7 +43,7 @@ export function ListingOverview({ listing }: { listing: PropertyListing }) {
     },
     listing.rooms != null && {
       icon: 'rooms' as const,
-      label: 'Rooms',
+      label: 'Beds',
       value: `${listing.rooms}`,
     },
     listing.bathrooms != null && {

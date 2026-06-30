@@ -999,6 +999,21 @@ export interface PropertyListing {
   slug?: string | null;
   slugLock?: boolean | null;
   propertyType: 'Flat' | 'Plot' | 'Office' | 'Shop' | 'Commercial';
+  /**
+   * Exact layout of this unit (e.g. "3 Bed Drawing"). Powers the /properties Unit Type filter so the listing surfaces under the precise layout a buyer selects — not just by bed count. Recommended for flats; leave blank for plots/shops.
+   */
+  unitType?:
+    | (
+        | '1 Bed Lounge'
+        | '2 Bed Lounge'
+        | '2 Bed Drawing'
+        | '2 Bed DD / 3 Bed Lounge'
+        | '3 Bed Lounge'
+        | '3 Bed Drawing'
+        | '4 Bed Drawing'
+        | '4+ Rooms'
+      )
+    | null;
   price: number;
   location:
     | 'Gulshan-e-Iqbal'
@@ -1015,7 +1030,7 @@ export interface PropertyListing {
     | 'Sukkur'
     | 'Other';
   /**
-   * Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).
+   * Number of bedrooms in this unit.
    */
   rooms?: number | null;
   bathrooms?: number | null;
@@ -1926,6 +1941,7 @@ export interface PropertyListingsSelect<T extends boolean = true> {
   slug?: T;
   slugLock?: T;
   propertyType?: T;
+  unitType?: T;
   price?: T;
   location?: T;
   rooms?: T;
