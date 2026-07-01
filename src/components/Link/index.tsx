@@ -3,8 +3,6 @@ import { cn } from 'src/utilities/cn'
 import Link from 'next/link'
 import React from 'react'
 
-import type { Page, Post } from '@/payload-types'
-
 type CMSLinkType = {
   appearance?: 'inline' | ButtonProps['variant']
   children?: React.ReactNode
@@ -12,12 +10,30 @@ type CMSLinkType = {
   label?: string | null
   newTab?: boolean | null
   reference?: {
-    relationTo: 'pages' | 'posts'
-    value: Page | Post | string | number
+    relationTo: string
+    value: { slug?: string | null } | string | number
   } | null
   size?: ButtonProps['size'] | null
   type?: 'custom' | 'reference' | null
   url?: string | null
+}
+
+// The public route for a collection often differs from its Payload collection
+// slug. Internal (reference) links must resolve to the real route, not
+// `/<collectionSlug>/<slug>`. Add a mapping here whenever a routable collection
+// lives under a different path. `pages` sit at the root; anything not listed
+// falls back to `/<relationTo>/<slug>`.
+const COLLECTION_ROUTE_PREFIX: Record<string, string> = {
+  pages: '',
+  posts: '/posts',
+  blogs: '/blog',
+  'featured-projects': '/projects',
+  'property-listings': '/listings',
+}
+
+function referenceHref(relationTo: string, slug: string): string {
+  const prefix = COLLECTION_ROUTE_PREFIX[relationTo] ?? `/${relationTo}`
+  return `${prefix}/${slug}`
 }
 
 export const CMSLink: React.FC<CMSLinkType> = (props) => {
@@ -35,9 +51,7 @@ export const CMSLink: React.FC<CMSLinkType> = (props) => {
 
   const href =
     type === 'reference' && typeof reference?.value === 'object' && reference.value.slug
-      ? `${reference?.relationTo !== 'pages' ? `/${reference?.relationTo}` : ''}/${
-          reference.value.slug
-        }`
+      ? referenceHref(reference.relationTo, reference.value.slug)
       : url
 
   if (!href) return null

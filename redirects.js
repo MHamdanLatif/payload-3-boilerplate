@@ -61,6 +61,24 @@ const redirects = async () => {
       destination: '/blog/saima-elite-enclave-price-payment-plan-location-guide',
       permanent: true,
     },
+
+    // Slug tidy-ups: stray double hyphens (from " - " / "/" in titles) collapsed
+    // to single, and a trailing hyphen trimmed. formatSlug now prevents these.
+    {
+      source: '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2--urgent-sale',
+      destination: '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2-urgent-sale',
+      permanent: true,
+    },
+    {
+      source: '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33--roof-terrace',
+      destination: '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33-roof-terrace',
+      permanent: true,
+    },
+    {
+      source: '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal-',
+      destination: '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal',
+      permanent: true,
+    },
   ]
 
   // ── Canonicalize host: www → apex ─────────────────────────────────────────

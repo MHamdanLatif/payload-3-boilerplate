@@ -4,6 +4,10 @@ export const formatSlug = (val: string): string =>
   val
     .replace(/ /g, '-')
     .replace(/[^\w-]+/g, '')
+    // Collapse runs of hyphens (e.g. from " - " or "/" in a title) to one, and
+    // trim any leading/trailing hyphens so slugs never contain "--" or dangle.
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .toLowerCase()
 
 export const formatSlugHook =
