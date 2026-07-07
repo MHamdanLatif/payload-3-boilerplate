@@ -10,6 +10,16 @@ import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@/utilities/cn'
+import { trackLead } from '@/lib/analytics'
+
+// GA4 form_name per source kind. Keeps the conversion event segmentable by the
+// kind of page the enquiry came from.
+const LEAD_FORM_NAME: Record<LeadFormSourceKind, string> = {
+  project: 'project_enquiry',
+  listing: 'listing_enquiry',
+  location: 'location_enquiry',
+  'payment-plan': 'payment_plan_enquiry',
+}
 
 // The PhoneInput component pulls in the country flag SVG metadata
 // (~50 KB gzipped on its own). Defer to a separate chunk so pages that
@@ -93,6 +103,9 @@ export function LeadForm({
         setSubmitting(false)
         return
       }
+      // Confirmed success (Privyr accepted the lead). Fire the GA4 conversion
+      // before navigating away so it's queued while this page is still live.
+      trackLead({ form_name: LEAD_FORM_NAME[sourceKind], project: sourceSlug || undefined })
       onSuccess?.()
       router.push(`/thank-you?source=${sourceKind}:${encodeURIComponent(sourceSlug)}`)
     } catch {

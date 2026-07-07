@@ -11,6 +11,7 @@ import type { FeaturedProject } from '@/payload-types'
 import type { InstallmentInput } from '@/lib/payment-plan'
 import { formatPkr } from '@/lib/featured-projects'
 import { cn } from '@/utilities/cn'
+import { trackLead } from '@/lib/analytics'
 
 const PhoneInput = dynamic(() => import('react-phone-number-input'), {
   ssr: false,
@@ -128,6 +129,9 @@ export function PaymentPlanPdfModal({
       a.remove()
       URL.revokeObjectURL(url)
       setDone(true)
+      // Confirmed success (lead recorded via /api/payment-plan/pdf → Privyr +
+      // PDF served). Labeled as a download to separate it from enquiry leads.
+      trackLead({ form_name: 'payment_plan_pdf', project: project.slug || undefined })
     } catch (e) {
       setServerError((e as Error).message || 'Network error.')
     } finally {

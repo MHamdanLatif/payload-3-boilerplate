@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Check, RotateCcw } from 'lucide-react'
 import type { ParsedSearchParams } from '@/lib/property-search'
+import { trackLead } from '@/lib/analytics'
 
 const WHATSAPP_RE = /^(\+92|0)3\d{9}$/
 
@@ -60,6 +61,8 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
         return
       }
       setSubmitted(true)
+      // Confirmed success — tie the lead to the searched area when one was set.
+      trackLead({ form_name: 'off_market_request', project: searchedParams.location || undefined })
     } catch {
       setErrors({ api: 'Network error. Please try again.' })
     } finally {

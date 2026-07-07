@@ -8,6 +8,7 @@ import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
 import { Check, Download, Loader2, X } from 'lucide-react'
 import { cn } from '@/utilities/cn'
+import { trackLead } from '@/lib/analytics'
 
 const PhoneInput = dynamic(() => import('react-phone-number-input'), {
   ssr: false,
@@ -107,6 +108,9 @@ export function BrochureDownloadModal({
       a.click()
       a.remove()
       setDone(true)
+      // Confirmed success (lead recorded + brochure served). Labeled as a
+      // download so it can be separated from enquiry leads in GA4.
+      trackLead({ form_name: 'brochure_download', project: projectSlug || undefined })
     } catch (e) {
       setServerError((e as Error).message || 'Network error.')
     } finally {

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Phone, Mail, MapPin, ArrowRight, RotateCcw } from 'lucide-react'
 import { SectionRule } from './SectionRule'
 import { fadeUp, staggerContainer, viewportOnce } from './_motion'
+import { trackLead } from '@/lib/analytics'
 
 type FormValues = {
   fullName: string
@@ -106,6 +107,8 @@ export function ConsultationForm() {
       }
       setSubmitting(false)
       setSubmitted(true)
+      // Confirmed success — the general home contact form has no single project.
+      trackLead({ form_name: 'contact' })
     } catch {
       setErrors({ fullName: 'Network error. Please try again.' })
       setSubmitting(false)
