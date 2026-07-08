@@ -344,7 +344,7 @@ export function PaymentPlanCalculator({
             <span className="h-px w-10 bg-gold" />
           </div>
           <h2 className="mt-6 font-serif text-4xl leading-[1.05] tracking-tight text-brand-deep text-balance md:text-5xl">
-            Customise your payment plan.
+            Custom {project.title} Payment Plan Calculator
           </h2>
           <SectionRule className="mt-6" />
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-brand-deep/70 md:text-lg">
