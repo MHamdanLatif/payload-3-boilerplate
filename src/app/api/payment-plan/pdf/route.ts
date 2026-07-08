@@ -216,8 +216,11 @@ export async function POST(req: Request) {
   })
 
   // ── 5a. Audit-log row ───────────────────────────────────────
-  payload
-    .create({
+  // Awaited on purpose: a floating promise can be dropped when the container is
+  // recycled before it settles, silently losing the lead record. A failure here
+  // is logged but must never block the buyer's PDF.
+  try {
+    await payload.create({
       collection: 'payment-plan-leads',
       data: {
         name,
@@ -246,45 +249,56 @@ export async function POST(req: Request) {
         userAgent: req.headers.get('user-agent') ?? null,
       },
     })
-    .catch((e) => {
-      console.warn('[payment-plan/pdf] PaymentPlanLeads persist failed:', (e as Error).message)
-    })
+  } catch (e) {
+    console.warn('[payment-plan/pdf] PaymentPlanLeads persist failed:', (e as Error).message)
+  }
 
   // ── 5b. Privyr forward ──────────────────────────────────────
+  // Awaited so the request actually completes before the response is returned
+  // (a floating fetch can be dropped on container recycle). `fetch` only rejects
+  // on network errors, so we must also check `res.ok` — otherwise a 4xx from
+  // Privyr is silently swallowed. Neither case may block the buyer's PDF.
   const privyrUrl = process.env.PRIVYR_WEBHOOK_URL
   if (privyrUrl) {
-    fetch(privyrUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        phone,
-        sourceKind: 'payment-plan',
-        sourceName: project.title,
-        sourceSlug: project.slug,
-        placement: 'payment-plan-pdf',
-        projectName: project.title,
-        projectSlug: project.slug,
-        selectedUnitType: selectedUnit?.type ?? null,
-        selectedUnitName: selectedUnit?.name ?? null,
-        selectedUnitLabel: unitDisplayLabel,
-        loanIncluded,
-        loanAmount: loanIncluded ? unitLoanAmount : null,
-        totalPrice: plan.totals.effectivePrice,
-        downPaymentPct,
-        possessionPct,
-        downPaymentAmount: plan.totals.downPayment,
-        installmentFrequencies: plan.cadence.activeFrequencies,
-        activeMilestones: [
-          ...plan.resolved.activeGreyHeadNames,
-          ...plan.resolved.activeFinishingHeadNames,
-        ],
-        engineVersion: ENGINE_VERSION,
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch((e) => {
+    try {
+      const res = await fetch(privyrUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          sourceKind: 'payment-plan',
+          sourceName: project.title,
+          sourceSlug: project.slug,
+          placement: 'payment-plan-pdf',
+          projectName: project.title,
+          projectSlug: project.slug,
+          selectedUnitType: selectedUnit?.type ?? null,
+          selectedUnitName: selectedUnit?.name ?? null,
+          selectedUnitLabel: unitDisplayLabel,
+          loanIncluded,
+          loanAmount: loanIncluded ? unitLoanAmount : null,
+          totalPrice: plan.totals.effectivePrice,
+          downPaymentPct,
+          possessionPct,
+          downPaymentAmount: plan.totals.downPayment,
+          installmentFrequencies: plan.cadence.activeFrequencies,
+          activeMilestones: [
+            ...plan.resolved.activeGreyHeadNames,
+            ...plan.resolved.activeFinishingHeadNames,
+          ],
+          engineVersion: ENGINE_VERSION,
+          timestamp: new Date().toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        console.warn(
+          `[payment-plan/pdf] Privyr rejected lead: ${res.status} ${res.statusText}`,
+        )
+      }
+    } catch (e) {
       console.warn('[payment-plan/pdf] Privyr forward failed:', (e as Error).message)
-    })
+    }
   }
 
   // ── 6. Render PDF ───────────────────────────────────────────

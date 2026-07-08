@@ -97,10 +97,16 @@ export async function POST(req: Request) {
       }),
     })
     if (!res.ok) {
+      // Log the upstream status — without this a Privyr rejection is invisible
+      // in the logs and only surfaces as a generic error in the browser.
+      console.warn(
+        `[api/leads] Privyr rejected lead (${sourceKind}/${sourceSlug ?? '-'}): ${res.status} ${res.statusText}`,
+      )
       return NextResponse.json({ ok: false, error: 'Upstream rejected lead' }, { status: 502 })
     }
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (e) {
+    console.warn('[api/leads] Privyr forward failed:', (e as Error).message)
     return NextResponse.json({ ok: false, error: 'Network error' }, { status: 502 })
   }
 }
