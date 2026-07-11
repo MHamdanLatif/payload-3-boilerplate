@@ -31,6 +31,11 @@ const redirects = async () => {
       destination: '/projects/saima-elite-enclave',
       permanent: true,
     },
+    {
+      source: '/featured/saima-center-point',
+      destination: '/projects/saima-center-point',
+      permanent: true,
+    },
 
     // Retired project — no destination project page, send buyers to the listings
     { source: '/featured/saima-uptown', destination: '/properties', permanent: true },
@@ -79,6 +84,15 @@ const redirects = async () => {
       destination: '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal',
       permanent: true,
     },
+
+    // Old static blog URLs from the pre-relaunch site (indexed, now 404). The new
+    // blog lives at /blog (singular). Flat .html pages and the plural /blogs path
+    // forward to the index; deep /blogs/<slug> paths map to /blog/<slug>.
+    { source: '/blog.html', destination: '/blog', permanent: true },
+    { source: '/blog-post.html', destination: '/blog', permanent: true },
+    { source: '/blog-verify-ownership.html', destination: '/blog', permanent: true },
+    { source: '/blogs', destination: '/blog', permanent: true },
+    { source: '/blogs/:slug*', destination: '/blog/:slug*', permanent: true },
   ]
 
   // ── Canonicalize host: www → apex ─────────────────────────────────────────

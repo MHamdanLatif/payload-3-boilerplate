@@ -18,6 +18,39 @@ declare global {
   }
 }
 
+/**
+ * Ad-platform click-ID query params. Each unique value (e.g. a new `fbclid` on
+ * every ad click) otherwise splits one page into dozens of 1-session rows in
+ * GA4 and fragments `generate_lead` by URL. We strip these from the URL we hand
+ * to gtag only — NOT from the address bar (see cleanLocationForGA).
+ *
+ * `utm_*` params are deliberately NOT included — GA4 needs them for attribution.
+ */
+const CLICK_ID_PARAMS = [
+  'fbclid', 'gclid', 'gbraid', 'wbraid', 'dclid', 'msclkid', 'ttclid',
+  'twclid', 'yclid', 'igshid', 'mc_eid', 'mc_cid', '_gl', 'brid',
+]
+
+/**
+ * Return `raw` (or the current URL) with ad click-ID params removed, keeping
+ * everything else — including `utm_*`. SSR-safe and never throws: malformed
+ * URLs (e.g. a stray second `?`) fall back to the original string untouched.
+ *
+ * This only sanitises the STRING passed to gtag; it does not touch
+ * window.location/history, so the Meta Pixel can still read the real `fbclid`.
+ */
+export function cleanLocationForGA(raw?: string): string {
+  if (typeof window === 'undefined') return raw ?? ''
+  const input = raw ?? window.location.href
+  try {
+    const url = new URL(input)
+    CLICK_ID_PARAMS.forEach((p) => url.searchParams.delete(p))
+    return url.toString()
+  } catch {
+    return input
+  }
+}
+
 export type LeadParams = {
   /** Which form fired it, e.g. 'contact', 'project_enquiry', 'brochure_download'. */
   form_name: string
