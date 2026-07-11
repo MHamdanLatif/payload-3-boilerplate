@@ -156,7 +156,7 @@ export default async function ProjectLandingPage({
           sectionNumber="07 / ENQUIRE"
         />
       </main>
-      <WhatsAppFloatingCta projectTitle={project.title} />
+      <WhatsAppFloatingCta projectTitle={project.title} projectSlug={project.slug ?? undefined} />
     </>
   )
 }

@@ -1,4 +1,5 @@
 import { LeadForm, type LeadFormSourceKind } from '@/components/forms/LeadForm'
+import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
 type Props = {
   sourceName: string
@@ -42,14 +43,15 @@ export function FinalCTASection({
           </p>
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
             <p className="eyebrow text-gold">Prefer instant?</p>
-            <a
+            <WhatsAppLink
               href={`https://wa.me/923363528333?text=${encodeURIComponent(whatsappMessage)}`}
+              project={sourceSlug || 'global'}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-2 font-serif text-xl text-white transition-colors hover:text-gold"
             >
               WhatsApp +92-3363-LATEEF
-            </a>
+            </WhatsAppLink>
           </div>
         </div>
 

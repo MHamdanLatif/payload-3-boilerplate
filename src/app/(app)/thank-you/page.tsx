@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check, ArrowRight } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 import { META_PIXEL_ID } from '@/components/MetaPixel'
 
 type SearchParams = {
@@ -116,15 +117,16 @@ export default async function ThankYouPage({
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <a
+            <WhatsAppLink
               href={`https://wa.me/923363528333?text=${encodeURIComponent(whatsappText)}`}
+              project={parsed?.slug || 'global'}
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep shadow-gold transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover"
             >
               <WhatsAppIcon className="h-4 w-4" />
               WhatsApp us now
-            </a>
+            </WhatsAppLink>
             <Link
               href="/properties"
               className="inline-flex items-center gap-2 rounded-full border border-brand-deep/25 px-6 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep transition-all duration-300 hover:border-brand-deep hover:bg-brand-deep hover:text-white"

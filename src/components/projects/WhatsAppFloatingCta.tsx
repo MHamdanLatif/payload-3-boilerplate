@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
 /**
  * Floating WhatsApp CTA for project landing pages.
@@ -18,13 +19,15 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 
 type Props = {
   projectTitle: string
+  /** Project slug for GA4 lead segmentation. */
+  projectSlug?: string
   /** WhatsApp number in E.164 digits (no +). Defaults to the company line. */
   phone?: string
 }
 
 const DEFAULT_PHONE = '923363528333'
 
-export function WhatsAppFloatingCta({ projectTitle, phone = DEFAULT_PHONE }: Props) {
+export function WhatsAppFloatingCta({ projectTitle, projectSlug, phone = DEFAULT_PHONE }: Props) {
   const message =
     `Hi, I'm interested in ${projectTitle}. ` +
     `Please share details on availability, pricing, and a viewing slot.`
@@ -58,8 +61,9 @@ export function WhatsAppFloatingCta({ projectTitle, phone = DEFAULT_PHONE }: Pro
           }}
         />
 
-        <a
+        <WhatsAppLink
           href={href}
+          project={projectSlug || 'global'}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Message a Lateef Properties advisor on WhatsApp about ${projectTitle}`}
@@ -93,7 +97,7 @@ export function WhatsAppFloatingCta({ projectTitle, phone = DEFAULT_PHONE }: Pro
             className="hidden h-3.5 w-3.5 -translate-x-2 text-gold opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100 sm:block"
             strokeWidth={1.75}
           />
-        </a>
+        </WhatsAppLink>
       </div>
     </motion.div>
   )

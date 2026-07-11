@@ -2,6 +2,7 @@ import Link from 'next/link'
 import React from 'react'
 import { Instagram, Facebook, Phone, Mail, MapPin, ArrowUpRight } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
 const MAPS_URL = 'https://maps.app.goo.gl/RTVU2EMN8bzqwbQL9'
 const WHATSAPP_URL = 'https://wa.me/923363528333'
@@ -29,7 +30,7 @@ const PROJECTS = [
 const SOCIAL = [
   { icon: Instagram, href: 'https://instagram.com/lateefproperties', label: 'Instagram' },
   { icon: Facebook, href: 'https://facebook.com/lateefpropertiespk', label: 'Facebook' },
-  { icon: WhatsAppIcon, href: WHATSAPP_URL, label: 'WhatsApp' },
+  { icon: WhatsAppIcon, href: WHATSAPP_URL, label: 'WhatsApp', whatsapp: true },
 ]
 
 export function Footer() {
@@ -149,16 +150,21 @@ export function Footer() {
           </p>
 
           <div className="flex items-center gap-3">
-            {SOCIAL.map(({ icon: Icon, href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                aria-label={label}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-ivory/15 text-ivory/60 transition-all duration-300 hover:border-gold hover:text-gold"
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </Link>
-            ))}
+            {SOCIAL.map(({ icon: Icon, href, label, whatsapp }) => {
+              const cls =
+                'flex h-9 w-9 items-center justify-center rounded-full border border-ivory/15 text-ivory/60 transition-all duration-300 hover:border-gold hover:text-gold'
+              // WhatsApp taps count as leads (form_name: 'whatsapp'); other socials
+              // stay plain links. Behaviour is otherwise identical.
+              return whatsapp ? (
+                <WhatsAppLink key={label} href={href} project="global" aria-label={label} className={cls}>
+                  <Icon className="h-3.5 w-3.5" />
+                </WhatsAppLink>
+              ) : (
+                <Link key={label} href={href} aria-label={label} className={cls}>
+                  <Icon className="h-3.5 w-3.5" />
+                </Link>
+              )
+            })}
           </div>
         </div>
       </div>
