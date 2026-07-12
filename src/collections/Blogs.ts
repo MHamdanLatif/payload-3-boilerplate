@@ -25,6 +25,7 @@ import { slugField } from '@/fields/slug'
 import { autoFillBlogDefaults } from './Blogs/hooks/autoFillBlogDefaults'
 import { injectInternalLinks } from './Blogs/hooks/injectInternalLinks'
 import { populateSeoInternalLinks } from './Blogs/hooks/populateSeoInternalLinks'
+import { indexNowAfterChange } from '@/lib/indexnow'
 
 export const Blogs: CollectionConfig = {
   slug: 'blogs',
@@ -46,6 +47,14 @@ export const Blogs: CollectionConfig = {
     // populated content), then scan for entities + merge into seoInternalLinks,
     // then wrap the anchor texts as link nodes when status = published.
     beforeChange: [autoFillBlogDefaults, populateSeoInternalLinks, injectInternalLinks],
+    // Ping IndexNow (Bing/Yandex) only once a post is public.
+    afterChange: [
+      indexNowAfterChange((doc) =>
+        doc.status === 'published' && typeof doc.slug === 'string' && doc.slug
+          ? `/blog/${doc.slug}`
+          : null,
+      ),
+    ],
   },
   fields: [
     {

@@ -5,6 +5,7 @@ import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
 import { richDescriptionEditor } from '@/fields/richDescriptionEditor'
 import { seedPaymentHeads } from './FeaturedProjects/hooks/seedPaymentHeads'
+import { indexNowAfterChange } from '@/lib/indexnow'
 
 export const LOCATION_OPTIONS = [
   'Gulshan-e-Iqbal',
@@ -49,6 +50,12 @@ export const FeaturedProjects: CollectionConfig = {
   },
   hooks: {
     beforeChange: [seedPaymentHeads],
+    // Ping IndexNow (Bing/Yandex) so project pages are recrawled on change.
+    afterChange: [
+      indexNowAfterChange((doc) =>
+        typeof doc.slug === 'string' && doc.slug ? `/projects/${doc.slug}` : null,
+      ),
+    ],
   },
   fields: [
     {
