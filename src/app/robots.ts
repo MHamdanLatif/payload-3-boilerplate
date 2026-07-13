@@ -19,6 +19,8 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: ['Applebot', 'Applebot-Extended', 'Bingbot'], allow, disallow },
     ],
     sitemap: `${base}/sitemap.xml`,
-    host: base,
+    // NOTE: no `host` field — it emits a non-standard `Host:` line that Bing's
+    // robots.txt validator flags as a syntax error. Canonical host is enforced
+    // via the www→apex redirect (redirects.js) and per-page canonical tags.
   }
 }
