@@ -15,6 +15,7 @@ import { Blogs } from './collections/Blogs'
 import { BlogTopics } from './collections/BlogTopics'
 import { FeaturedProjects } from './collections/FeaturedProjects'
 import { PaymentPlanLeads } from './collections/PaymentPlanLeads'
+import { Leads } from './collections/Leads'
 import { PropertyListings } from './collections/PropertyListings'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
@@ -82,6 +83,7 @@ export default buildConfig({
     Blogs,
     BlogTopics,
     PaymentPlanLeads,
+    Leads,
   ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],

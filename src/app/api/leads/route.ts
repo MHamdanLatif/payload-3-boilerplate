@@ -1,14 +1,24 @@
 import { NextResponse } from 'next/server'
+import { getPayload } from 'payload'
+import config from '@payload-config'
+
+const PRIVYR_TIMEOUT_MS = 5000
 
 /**
- * Lead webhook proxy. All site forms POST to /api/leads with a shared core
- * shape, then this route forwards a normalised payload to PRIVYR_WEBHOOK_URL.
+ * Lead webhook proxy + backup.
+ *
+ * All site forms POST here. Every submission is (1) saved to the `leads`
+ * collection as a durable backup — visible in the admin, independent of the CRM
+ * — and (2) forwarded to PRIVYR_WEBHOOK_URL. The request succeeds if EITHER the
+ * backup was saved or Privyr accepted the lead, so a Privyr outage never loses
+ * a lead or shows the visitor an error. `privyrForwarded` on the saved row
+ * records whether the CRM accepted it, so the team can follow up on any misses.
  *
  * Core fields (every form sends these):
  *   - name       (required)
  *   - phone      (required)
  *   - email      (optional)
- *   - sourceKind (required) — one of: 'project' | 'listing' | 'location' | 'consultation' | 'zero-results'
+ *   - sourceKind (required) — 'project' | 'listing' | 'location' | 'consultation' | 'zero-results'
  *   - source     (string) — fine-grained tag like "project-landing:hero", "home:consultation"
  *
  * Optional context fields:
@@ -40,14 +50,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Email looks invalid' }, { status: 400 })
   }
 
-  const url = process.env.PRIVYR_WEBHOOK_URL
-  if (!url) {
-    return NextResponse.json(
-      { ok: false, error: 'Lead webhook not configured' },
-      { status: 503 },
-    )
-  }
-
   const sourceKindRaw = typeof body.sourceKind === 'string' ? body.sourceKind : null
   const validKinds = [
     'project',
@@ -63,50 +65,97 @@ export async function POST(req: Request) {
 
   const sourceName = typeof body.sourceName === 'string' ? body.sourceName : null
   const sourceSlug = typeof body.sourceSlug === 'string' ? body.sourceSlug : null
+  const placement = typeof body.placement === 'string' ? body.placement : null
+  const source = typeof body.source === 'string' ? body.source : 'website'
+  const notes = typeof body.notes === 'string' ? body.notes : null
+  const propertyType = typeof body.propertyType === 'string' ? body.propertyType : null
+  const budget = typeof body.budget === 'string' ? body.budget : null
+  const searchedParams =
+    body.searchedParams && typeof body.searchedParams === 'object'
+      ? (body.searchedParams as Record<string, unknown>)
+      : null
 
+  // ── 1. Forward to Privyr (bounded; capture the outcome for the backup row) ──
+  const url = process.env.PRIVYR_WEBHOOK_URL
+  let privyrOk = false
+  let privyrStatus = 'not-configured'
+  if (url) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), PRIVYR_TIMEOUT_MS)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          name,
+          phone,
+          email: email || null,
+          sourceKind,
+          source,
+          placement,
+          notes,
+          timestamp: new Date().toISOString(),
+          sourceName,
+          sourceSlug,
+          // CRM-friendly aliases so Privyr can show "Project/Listing Name" columns.
+          projectName: sourceKind === 'project' ? sourceName : null,
+          projectSlug: sourceKind === 'project' ? sourceSlug : null,
+          listingName: sourceKind === 'listing' ? sourceName : null,
+          listingSlug: sourceKind === 'listing' ? sourceSlug : null,
+          locationName: sourceKind === 'location' ? sourceName : null,
+          locationSlug: sourceKind === 'location' ? sourceSlug : null,
+          propertyType,
+          budget,
+          searchedParams,
+        }),
+      })
+      privyrOk = res.ok
+      privyrStatus = `${res.status} ${res.statusText}`.trim()
+      if (!res.ok) {
+        console.warn(`[api/leads] Privyr rejected (${sourceKind}/${sourceSlug ?? '-'}): ${privyrStatus}`)
+      }
+    } catch (e) {
+      privyrStatus = (e as Error).name === 'AbortError' ? 'timeout' : `error: ${(e as Error).message}`
+      console.warn('[api/leads] Privyr forward failed:', privyrStatus)
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  // ── 2. Always save a backup row (independent of Privyr) ─────────────────────
+  let backedUp = false
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        // ── Core (every form) ────────────────────────────────────────
+    const payload = await getPayload({ config })
+    await payload.create({
+      collection: 'leads',
+      data: {
         name,
         phone,
-        email: email || null,
+        email: email || undefined,
         sourceKind,
-        source: typeof body.source === 'string' ? body.source : 'website',
-        placement: typeof body.placement === 'string' ? body.placement : null,
-        notes: typeof body.notes === 'string' ? body.notes : null,
-        timestamp: new Date().toISOString(),
-        // ── Source identification ───────────────────────────────────
-        sourceName,
-        sourceSlug,
-        // CRM-friendly aliases so Privyr can display "Project Name" or
-        // "Listing Name" columns without parsing sourceKind.
-        projectName: sourceKind === 'project' ? sourceName : null,
-        projectSlug: sourceKind === 'project' ? sourceSlug : null,
-        listingName: sourceKind === 'listing' ? sourceName : null,
-        listingSlug: sourceKind === 'listing' ? sourceSlug : null,
-        locationName: sourceKind === 'location' ? sourceName : null,
-        locationSlug: sourceKind === 'location' ? sourceSlug : null,
-        // ── Home consultation form context ──────────────────────────
-        propertyType: typeof body.propertyType === 'string' ? body.propertyType : null,
-        budget: typeof body.budget === 'string' ? body.budget : null,
-        // ── Zero-results context ────────────────────────────────────
-        searchedParams: body.searchedParams ?? null,
-      }),
+        sourceName: sourceName ?? undefined,
+        sourceSlug: sourceSlug ?? undefined,
+        placement: placement ?? undefined,
+        source,
+        notes: notes ?? undefined,
+        propertyType: propertyType ?? undefined,
+        budget: budget ?? undefined,
+        searchedParams: searchedParams ?? undefined,
+        privyrForwarded: privyrOk,
+        privyrStatus,
+      },
+      overrideAccess: true,
     })
-    if (!res.ok) {
-      // Log the upstream status — without this a Privyr rejection is invisible
-      // in the logs and only surfaces as a generic error in the browser.
-      console.warn(
-        `[api/leads] Privyr rejected lead (${sourceKind}/${sourceSlug ?? '-'}): ${res.status} ${res.statusText}`,
-      )
-      return NextResponse.json({ ok: false, error: 'Upstream rejected lead' }, { status: 502 })
-    }
-    return NextResponse.json({ ok: true })
+    backedUp = true
   } catch (e) {
-    console.warn('[api/leads] Privyr forward failed:', (e as Error).message)
-    return NextResponse.json({ ok: false, error: 'Network error' }, { status: 502 })
+    console.warn('[api/leads] backup persist failed:', (e as Error).message)
   }
+
+  // Success if the lead landed anywhere. Only fail if BOTH the CRM and the
+  // backup failed — otherwise a Privyr outage would needlessly lose the lead.
+  if (!privyrOk && !backedUp) {
+    return NextResponse.json({ ok: false, error: 'Could not record lead' }, { status: 502 })
+  }
+  return NextResponse.json({ ok: true })
 }

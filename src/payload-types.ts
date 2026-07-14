@@ -78,6 +78,7 @@ export interface Config {
     blogs: Blog;
     'blog-topics': BlogTopic;
     'payment-plan-leads': PaymentPlanLead;
+    leads: Lead;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -100,6 +101,7 @@ export interface Config {
     blogs: BlogsSelect<false> | BlogsSelect<true>;
     'blog-topics': BlogTopicsSelect<false> | BlogTopicsSelect<true>;
     'payment-plan-leads': PaymentPlanLeadsSelect<false> | PaymentPlanLeadsSelect<true>;
+    leads: LeadsSelect<false> | LeadsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -1320,6 +1322,51 @@ export interface PaymentPlanLead {
   createdAt: string;
 }
 /**
+ * Automatic backup of every website lead, captured on submission independent of Privyr. If “Privyr forwarded” is unchecked, the CRM did not accept it — follow up manually.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leads".
+ */
+export interface Lead {
+  id: number;
+  name: string;
+  phone: string;
+  email?: string | null;
+  /**
+   * project | listing | location | payment-plan | consultation | zero-results | unknown
+   */
+  sourceKind?: string | null;
+  sourceName?: string | null;
+  sourceSlug?: string | null;
+  placement?: string | null;
+  source?: string | null;
+  notes?: string | null;
+  propertyType?: string | null;
+  budget?: string | null;
+  /**
+   * Filters from the /properties no-results form, when applicable.
+   */
+  searchedParams?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Did Privyr accept this lead? If unchecked, forward it manually.
+   */
+  privyrForwarded?: boolean | null;
+  /**
+   * Privyr response status or error, for diagnostics.
+   */
+  privyrStatus?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -1459,6 +1506,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'payment-plan-leads';
         value: number | PaymentPlanLead;
+      } | null)
+    | ({
+        relationTo: 'leads';
+        value: number | Lead;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2078,6 +2129,28 @@ export interface PaymentPlanLeadsSelect<T extends boolean = true> {
   engineVersion?: T;
   planSummary?: T;
   userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leads_select".
+ */
+export interface LeadsSelect<T extends boolean = true> {
+  name?: T;
+  phone?: T;
+  email?: T;
+  sourceKind?: T;
+  sourceName?: T;
+  sourceSlug?: T;
+  placement?: T;
+  source?: T;
+  notes?: T;
+  propertyType?: T;
+  budget?: T;
+  searchedParams?: T;
+  privyrForwarded?: T;
+  privyrStatus?: T;
   updatedAt?: T;
   createdAt?: T;
 }
