@@ -36,9 +36,21 @@ const redirects = async () => {
       destination: '/projects/saima-center-point',
       permanent: true,
     },
+    // Lateef Duplex Luxuria is a listing (not a project page) — point the old
+    // /featured URL at its listing rather than the generic /properties catch-all.
+    {
+      source: '/featured/lateef-duplex-luxuria',
+      destination: '/listings/4-bed-duplex-apartment-in-lateef-duplex-luxuria-scheme-33',
+      permanent: true,
+    },
 
     // Retired project — no destination project page, send buyers to the listings
     { source: '/featured/saima-uptown', destination: '/properties', permanent: true },
+
+    // Placeholder: /saima-uptown has no page yet. TEMPORARY (307) redirect to
+    // /properties until Saima Uptown is added as a listing — then repoint this
+    // to /listings/<slug> (keep it temporary, or drop it once the page exists).
+    { source: '/saima-uptown', destination: '/properties', permanent: false },
 
     // Anything else the old site exposed under /featured/* — funnel to listings
     { source: '/featured/:slug*', destination: '/properties', permanent: true },
