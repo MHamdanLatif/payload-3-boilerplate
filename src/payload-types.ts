@@ -1201,6 +1201,17 @@ export interface Blog {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.
+   */
+  featuredCards?:
+    | {
+        cardType: 'project' | 'listing';
+        targetProject?: (number | null) | FeaturedProject;
+        targetListing?: (number | null) | PropertyListing;
+        id?: string | null;
+      }[]
+    | null;
   generatedBy?: {
     topic?: (number | null) | BlogTopic;
     model?: string | null;
@@ -2065,6 +2076,14 @@ export interface BlogsSelect<T extends boolean = true> {
         targetProject?: T;
         targetLocationSlug?: T;
         injected?: T;
+        id?: T;
+      };
+  featuredCards?:
+    | T
+    | {
+        cardType?: T;
+        targetProject?: T;
+        targetListing?: T;
         id?: T;
       };
   generatedBy?:

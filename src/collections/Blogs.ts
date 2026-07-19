@@ -210,6 +210,41 @@ export const Blogs: CollectionConfig = {
       ],
     },
     {
+      name: 'featuredCards',
+      type: 'array',
+      label: 'Featured Project / Listing Cards',
+      labels: { singular: 'Card', plural: 'Cards' },
+      admin: {
+        description:
+          'Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.',
+        initCollapsed: false,
+      },
+      fields: [
+        {
+          name: 'cardType',
+          type: 'select',
+          required: true,
+          defaultValue: 'project',
+          options: [
+            { label: 'Project', value: 'project' },
+            { label: 'Listing', value: 'listing' },
+          ],
+        },
+        {
+          name: 'targetProject',
+          type: 'relationship',
+          relationTo: 'featured-projects',
+          admin: { condition: (_data, siblingData) => siblingData?.cardType === 'project' },
+        },
+        {
+          name: 'targetListing',
+          type: 'relationship',
+          relationTo: 'property-listings',
+          admin: { condition: (_data, siblingData) => siblingData?.cardType === 'listing' },
+        },
+      ],
+    },
+    {
       // `generatedBy` group from the old automation pipeline is hidden — the
       // DB columns (generated_by_topic_id, generated_by_model, generated_by_generated_at,
       // generated_by_placement_warnings) stay so historical rows aren't damaged.

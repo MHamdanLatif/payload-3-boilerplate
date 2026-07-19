@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { FeaturedProject, PropertyListing } from '@/payload-types'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,11 +10,15 @@ import config from '@payload-config'
 import {
   fetchBlogBySlug,
   fetchPublishedBlogSlugs,
+  fetchRelatedProjects,
+  fetchRelatedListings,
   blogImage,
   formatBlogDate,
 } from '@/lib/blogs'
 import { articleSchema, breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
+import { FeaturedProjectCard } from '@/components/landing/FeaturedProjectCard'
+import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
 import RichText from '@/components/RichText'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -87,6 +92,32 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
   const canonical = `${base}/blog/${blog.slug}`
   const hero = blogImage(blog)
 
+  // "Featured for you" cards at the end of the post. Editorial picks from the
+  // CMS (`featuredCards`) win; if none are set, auto-select by what the article
+  // is about (projects by name match, listings by topic match). Relationships
+  // are populated because the blog is fetched at depth 2.
+  const manualProjects = (blog.featuredCards ?? [])
+    .filter((c) => c.cardType === 'project' && c.targetProject && typeof c.targetProject === 'object')
+    .map((c) => c.targetProject as FeaturedProject)
+  const manualListings = (blog.featuredCards ?? [])
+    .filter((c) => c.cardType === 'listing' && c.targetListing && typeof c.targetListing === 'object')
+    .map((c) => c.targetListing as PropertyListing)
+
+  let projectCards: FeaturedProject[]
+  let listingCards: PropertyListing[]
+  if (manualProjects.length > 0 || manualListings.length > 0) {
+    projectCards = manualProjects
+    listingCards = manualListings
+  } else {
+    const [rp, rl] = await Promise.all([
+      fetchRelatedProjects(payload, blog, 2),
+      fetchRelatedListings(payload, blog, 2),
+    ])
+    projectCards = rp.slice(0, 2)
+    listingCards = rl.slice(0, Math.max(0, 3 - projectCards.length))
+  }
+  const hasCards = projectCards.length > 0 || listingCards.length > 0
+
   const schemas = [
     articleSchema(blog),
     breadcrumbListSchema([
@@ -149,6 +180,23 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
               enableProse={false}
             />
           </div>
+
+          {hasCards && (
+            <section className="mt-16">
+              <p className="eyebrow text-gold">Featured for you</p>
+              <h2 className="mt-3 font-serif text-2xl tracking-tight text-brand-deep md:text-3xl">
+                Properties mentioned in this guide.
+              </h2>
+              <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
+                {projectCards.map((p) => (
+                  <FeaturedProjectCard key={`project-${p.id}`} project={p} />
+                ))}
+                {listingCards.map((l) => (
+                  <PropertyListingCard key={`listing-${l.id}`} listing={l} />
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="mt-16 rounded-2xl border border-brand-deep/10 bg-white p-8 text-center shadow-luxe-sm md:p-10">
             <p className="eyebrow text-gold">Ready to act on this?</p>

@@ -1,5 +1,104 @@
 import type { Payload } from 'payload'
-import type { Blog, Media } from '@/payload-types'
+import type { Blog, FeaturedProject, PropertyListing, Media } from '@/payload-types'
+import { PROJECT_ENTITIES } from '@/lib/project-mapper'
+import { lexicalToPlainText } from '@/lib/lexical-to-text'
+
+// Generic real-estate words that shouldn't count as a match signal between a
+// blog and a listing (every post/listing shares these).
+const LISTING_MATCH_STOPWORDS = new Set([
+  'apartment', 'apartments', 'flat', 'flats', 'karachi', 'sale', 'buy', 'price',
+  'prices', 'plan', 'plans', 'payment', 'project', 'projects', 'property',
+  'properties', 'ready', 'move', 'moving', 'beds', 'bath', 'baths', 'room',
+  'rooms', 'home', 'homes', 'house', 'guide', 'best', 'launch', 'under', 'over',
+  'crore', 'sqft', 'area', 'with', 'from', 'your', 'that', 'this', 'pakistan',
+  'luxury', 'residential', 'lounge', 'drawing', 'possession', 'urgent', 'resale',
+])
+
+/** Distinctive lowercased word tokens (≥4 chars, excluding generic terms). */
+function distinctiveTokens(text: string): Set<string> {
+  const words: string[] = text.toLowerCase().match(/[a-z0-9]+/g) ?? []
+  return new Set(words.filter((w) => w.length >= 4 && !LISTING_MATCH_STOPWORDS.has(w)))
+}
+
+/**
+ * Live ready-to-move listings relevant to a blog — matched on distinctive token
+ * overlap between the blog (title + keywords) and the listing (title, society,
+ * unit type). So a "duplex" post surfaces duplex listings, and a post naming a
+ * building surfaces that building's unit. Best matches first, capped at `limit`.
+ */
+export async function fetchRelatedListings(
+  payload: Payload,
+  blog: Blog,
+  limit = 2,
+): Promise<PropertyListing[]> {
+  const blogTokens = distinctiveTokens(
+    [blog.title ?? '', ...(blog.keywords ?? []).map((k) => k.keyword ?? '')].join(' '),
+  )
+  if (!blogTokens.size) return []
+
+  const res = await payload.find({
+    collection: 'property-listings',
+    depth: 1,
+    limit: 250,
+    pagination: false,
+  })
+
+  return (res.docs as PropertyListing[])
+    .map((l) => {
+      const text = [l.title ?? '', l.societyName ?? '', l.unitType ?? ''].join(' ')
+      let score = 0
+      for (const t of distinctiveTokens(text)) if (blogTokens.has(t)) score++
+      return { l, score }
+    })
+    .filter((x) => x.score > 0 && Boolean(x.l.slug))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.l)
+}
+
+/**
+ * Projects a blog is about — detected by scanning its title, keywords and body
+ * for project names/aliases (the same dictionary the CMS auto-linker uses). Used
+ * to render a "featured development" card at the end of a post, which both
+ * strengthens internal links blog → project page and gives the reader a direct
+ * next step. Returns up to `limit` projects, ordered by the entity list.
+ */
+export async function fetchRelatedProjects(
+  payload: Payload,
+  blog: Blog,
+  limit = 2,
+): Promise<FeaturedProject[]> {
+  const hay = [
+    blog.title ?? '',
+    ...(blog.keywords ?? []).map((k) => k.keyword ?? ''),
+    lexicalToPlainText(blog.content) ?? '',
+  ].join(' ')
+
+  const slugs: string[] = []
+  for (const e of PROJECT_ENTITIES) {
+    if (slugs.length >= limit) break
+    if (slugs.includes(e.slug)) continue
+    const names = [e.canonical, ...e.aliases]
+    const hit = names.some((n) => {
+      const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(hay)
+    })
+    if (hit) slugs.push(e.slug)
+  }
+  if (!slugs.length) return []
+
+  const res = await payload.find({
+    collection: 'featured-projects',
+    where: { slug: { in: slugs } },
+    depth: 1,
+    limit,
+  })
+  // Preserve the entity-list order (so the most canonical match shows first).
+  const rank = new Map(slugs.map((s, i) => [s, i]))
+  return (res.docs as FeaturedProject[])
+    .filter((d) => Boolean(d.slug))
+    .sort((a, b) => (rank.get(a.slug ?? '') ?? 99) - (rank.get(b.slug ?? '') ?? 99))
+}
 
 /** Fetch all published blogs, newest first. */
 export async function fetchPublishedBlogs(
