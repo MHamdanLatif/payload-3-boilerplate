@@ -5,7 +5,9 @@ export default function robots(): MetadataRoute.Robots {
   const base = getServerSideURL().replace(/\/$/, '')
 
   // Shared policy: crawl all public content, keep admin/API/thank-you private.
-  const allow = ['/', '/properties', '/projects/', '/listings/', '/blog', '/blog/']
+  // `/api/media/` is explicitly allowed (media files referenced in the sitemap)
+  // — a longer, more specific rule wins over the `/api/` disallow.
+  const allow = ['/', '/properties', '/projects/', '/listings/', '/blog', '/blog/', '/api/media/']
   const disallow = ['/admin', '/api/', '/next/', '/thank-you']
 
   return {

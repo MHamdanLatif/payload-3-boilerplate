@@ -8,6 +8,21 @@ import { blogImage } from '@/lib/blogs'
 import { LOCATION_ENTITIES } from '@/lib/project-mapper'
 import type { FeaturedProject, PropertyListing, Blog } from '@/payload-types'
 
+/**
+ * Normalise a media URL for a sitemap `<image:loc>`: make it absolute and
+ * percent-encode it (Payload media paths are relative like
+ * `/api/media/file/My File.webp` — relative + spaces are invalid in a sitemap,
+ * which is what Search Console flags). Returns null if it can't be parsed.
+ */
+function sitemapImage(img: string | null | undefined, base: string): string | null {
+  if (!img) return null
+  try {
+    return new URL(img, base).href
+  } catch {
+    return null
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getServerSideURL().replace(/\/$/, '')
   const now = new Date()
@@ -54,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((d) => Boolean(d.slug))
       .map((d) => {
         const project = d as FeaturedProject
-        const img = heroImage(project)
+        const img = sitemapImage(heroImage(project), base)
         return {
           url: `${base}/projects/${project.slug}`,
           lastModified: project.updatedAt ? new Date(project.updatedAt) : now,
@@ -68,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((d) => Boolean(d.slug))
       .map((d) => {
         const listing = d as PropertyListing
-        const img = listingHeroImage(listing)
+        const img = sitemapImage(listingHeroImage(listing), base)
         return {
           url: `${base}/listings/${listing.slug}`,
           lastModified: listing.updatedAt ? new Date(listing.updatedAt) : now,
@@ -82,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((d) => Boolean(d.slug))
       .map((d) => {
         const blog = d as Blog
-        const img = blogImage(blog)
+        const img = sitemapImage(blogImage(blog), base)
         return {
           url: `${base}/blog/${blog.slug}`,
           lastModified: blog.updatedAt ? new Date(blog.updatedAt) : now,
