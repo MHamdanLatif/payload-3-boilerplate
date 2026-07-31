@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { FileText, MapPin, Download } from 'lucide-react'
+import { FileText, MapPin } from 'lucide-react'
 import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
 export type BrochureAssets = {
@@ -67,6 +67,43 @@ function useTrackInView(brochureId: string, asset: Asset) {
   return ref
 }
 
+/**
+ * Inline PDF preview — renders the brochure right on the page via Google's PDF
+ * viewer, which displays reliably on mobile (incl. Android, where a raw <iframe>
+ * to a PDF forces a download). No download button; the lead reads it in place.
+ * The media is already public (served from R2), so no new exposure. Engagement
+ * is tracked when the preview scrolls into view.
+ */
+function PdfPreview({
+  brochureId,
+  url,
+  label,
+  asset,
+}: {
+  brochureId: string
+  url: string
+  label: string
+  asset: Asset
+}) {
+  const ref = useTrackInView(brochureId, asset)
+  const src = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`
+  return (
+    <div ref={ref}>
+      <h2 className="flex items-center gap-2 font-serif text-2xl tracking-tight text-brand-deep">
+        <FileText className="h-5 w-5 text-gold" /> {label}
+      </h2>
+      <div className="mt-4 h-[72vh] overflow-hidden rounded-2xl border border-brand-deep/10 bg-white shadow-luxe">
+        <iframe src={src} title={label} loading="lazy" className="h-full w-full" />
+      </div>
+      <p className="mt-2 text-center text-xs text-brand-deep/45">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
+          Open full screen ↗
+        </a>
+      </p>
+    </div>
+  )
+}
+
 export function BrochureView({ brochureId, assets }: { brochureId: string; assets: BrochureAssets }) {
   // Log the page open once on mount.
   useEffect(() => {
@@ -91,33 +128,22 @@ export function BrochureView({ brochureId, assets }: { brochureId: string; asset
           </p>
         )}
 
-        {/* PDFs */}
+        {/* PDFs — previewed inline (no download needed) */}
         {(assets.pdf1 || assets.pdf2) && (
-          <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <section className="mt-10 space-y-10">
             {[
               { url: assets.pdf1, label: 'Project Brochure', asset: 'pdf1' as const },
-              { url: assets.pdf2, label: 'Payment Plan / Details', asset: 'pdf2' as const },
+              { url: assets.pdf2, label: 'Payment Plan & Details', asset: 'pdf2' as const },
             ]
               .filter((p) => p.url)
               .map((p) => (
-                <a
+                <PdfPreview
                   key={p.asset}
-                  href={p.url as string}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track(brochureId, p.asset)}
-                  className="group flex items-center gap-4 rounded-2xl border border-brand-deep/10 bg-white p-5 shadow-luxe-sm transition-all hover:-translate-y-0.5 hover:shadow-luxe"
-                >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
-                    <FileText className="h-5 w-5" />
-                  </span>
-                  <span className="flex-1">
-                    <span className="block font-serif text-lg text-brand-deep">{p.label}</span>
-                    <span className="mt-0.5 inline-flex items-center gap-1 text-xs uppercase tracking-[0.2em] text-brand-deep/55">
-                      <Download className="h-3 w-3" /> View / download
-                    </span>
-                  </span>
-                </a>
+                  brochureId={brochureId}
+                  url={p.url as string}
+                  label={p.label}
+                  asset={p.asset}
+                />
               ))}
           </section>
         )}

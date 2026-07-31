@@ -14,7 +14,7 @@ import { sendCapiEvent } from '@/lib/meta-capi'
  * Every outbound call is best-effort; results are logged onto the lead. The
  * `skipLeadHooks` context flag prevents the log write-back from re-triggering us.
  */
-export const leadAfterChange: CollectionAfterChangeHook<Lead> = async ({
+export const leadAfterChange: CollectionAfterChangeHook<Lead> = ({
   doc,
   previousDoc,
   operation,
@@ -22,15 +22,24 @@ export const leadAfterChange: CollectionAfterChangeHook<Lead> = async ({
   context,
 }) => {
   if (context?.skipLeadHooks) return doc
-  try {
-    if (operation === 'create') {
-      await onCreate(doc, req.payload)
-    } else if (operation === 'update') {
-      await onStatusChange(doc, previousDoc, req.payload)
+
+  // Detach all outbound work (Meta CAPI, ntfy) from the save. afterChange runs
+  // inside the save request, so awaiting a slow network call here makes the
+  // admin "Save" spin for seconds (e.g. qualifying a lead waited on the CAPI
+  // POST). On our long-running Railway server the detached promise finishes
+  // after the response; the lead's log fields update a moment later.
+  void (async () => {
+    try {
+      if (operation === 'create') {
+        await onCreate(doc, req.payload)
+      } else if (operation === 'update') {
+        await onStatusChange(doc, previousDoc, req.payload)
+      }
+    } catch (e) {
+      req.payload.logger?.warn?.(`[leads] afterChange error: ${(e as Error).message}`)
     }
-  } catch (e) {
-    req.payload.logger?.warn?.(`[leads] afterChange error: ${(e as Error).message}`)
-  }
+  })()
+
   return doc
 }
 
