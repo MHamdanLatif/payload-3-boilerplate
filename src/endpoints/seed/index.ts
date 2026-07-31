@@ -24,7 +24,11 @@ const collections: CollectionSlug[] = [
   'form-submissions',
   'search'
 ]
-const globals: GlobalSlug[] = ['header', 'footer']
+// `as const` narrows the element type to 'header' | 'footer' (both have
+// navItems) so the reset below type-checks. A plain GlobalSlug[] widens to
+// every global — including field-less ones like crm-settings — which don't
+// accept navItems.
+const globals = ['header', 'footer'] as const satisfies readonly GlobalSlug[]
 
 const seedDirectory = path.dirname(fileURLToPath(import.meta.url))
 

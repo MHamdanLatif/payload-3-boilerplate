@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
 const PRIVYR_TIMEOUT_MS = 5000
+
+/** Parse a Cookie header into a name→value map. */
+function parseCookies(header: string | null): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!header) return out
+  for (const part of header.split(';')) {
+    const i = part.indexOf('=')
+    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim())
+  }
+  return out
+}
 
 /**
  * Lead webhook proxy + backup.
@@ -75,6 +87,27 @@ export async function POST(req: Request) {
       ? (body.searchedParams as Record<string, unknown>)
       : null
 
+  // ── Meta attribution — captured now, reused for the CAPI event on qualify.
+  // The Pixel sets _fbc / _fbp as first-party cookies, sent with this same-origin
+  // POST, so we read them server-side (plus IP/UA from headers) without touching
+  // the form components. _fbc embeds the original fbclid.
+  const cookies = parseCookies(req.headers.get('cookie'))
+  const fbc = cookies['_fbc'] || (typeof body.fbc === 'string' ? body.fbc : null)
+  const fbp = cookies['_fbp'] || (typeof body.fbp === 'string' ? body.fbp : null)
+  const fbclid =
+    (typeof body.fbclid === 'string' && body.fbclid) ||
+    (fbc ? fbc.split('.').slice(3).join('.') || null : null)
+  const clientIp =
+    (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    null
+  const userAgent = req.headers.get('user-agent') || null
+  // Reuse a client-supplied event id if present (dedup with the browser Pixel),
+  // else mint one so the lead always has a stable id for CAPI.
+  const eventId =
+    (typeof body.eventId === 'string' && body.eventId) || crypto.randomUUID()
+  const metaAdName = typeof body.metaAdName === 'string' ? body.metaAdName : null
+
   // ── 1. Forward to Privyr (bounded; capture the outcome for the backup row) ──
   const url = process.env.PRIVYR_WEBHOOK_URL
   let privyrOk = false
@@ -142,6 +175,14 @@ export async function POST(req: Request) {
         propertyType: propertyType ?? undefined,
         budget: budget ?? undefined,
         searchedParams: searchedParams ?? undefined,
+        // Meta attribution (for the CAPI event when the lead is later qualified)
+        eventId,
+        fbc: fbc ?? undefined,
+        fbp: fbp ?? undefined,
+        fbclid: fbclid ?? undefined,
+        clientIp: clientIp ?? undefined,
+        userAgent: userAgent ?? undefined,
+        metaAdName: metaAdName ?? undefined,
         privyrForwarded: privyrOk,
         privyrStatus,
       },

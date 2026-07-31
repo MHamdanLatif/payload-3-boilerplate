@@ -4,6 +4,9 @@ import * as migration_20260222_003500_payload_3_77_compat from './20260222_00350
 import * as migration_20260630_000000_add_listing_unit_type from './20260630_000000_add_listing_unit_type';
 import * as migration_20260714_000000_add_leads from './20260714_000000_add_leads';
 import * as migration_20260715_000000_add_blog_featured_cards from './20260715_000000_add_blog_featured_cards';
+import * as migration_20260716_000000_leads_crm_fields from './20260716_000000_leads_crm_fields';
+import * as migration_20260716_000001_link_opens from './20260716_000001_link_opens';
+import * as migration_20260717_000000_send_file from './20260717_000000_send_file';
 
 export const migrations = [
   {
@@ -35,5 +38,20 @@ export const migrations = [
     up: migration_20260715_000000_add_blog_featured_cards.up,
     down: migration_20260715_000000_add_blog_featured_cards.down,
     name: '20260715_000000_add_blog_featured_cards',
+  },
+  {
+    up: migration_20260716_000000_leads_crm_fields.up,
+    down: migration_20260716_000000_leads_crm_fields.down,
+    name: '20260716_000000_leads_crm_fields',
+  },
+  {
+    up: migration_20260716_000001_link_opens.up,
+    down: migration_20260716_000001_link_opens.down,
+    name: '20260716_000001_link_opens',
+  },
+  {
+    up: migration_20260717_000000_send_file.up,
+    down: migration_20260717_000000_send_file.down,
+    name: '20260717_000000_send_file',
   },
 ];

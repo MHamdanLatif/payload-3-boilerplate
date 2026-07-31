@@ -1,0 +1,169 @@
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { headers as nextHeaders } from 'next/headers'
+import { getPayload } from 'payload'
+import type { Where } from 'payload'
+import config from '@payload-config'
+import type { Lead } from '@/payload-types'
+
+export const metadata: Metadata = {
+  title: 'Leads Dashboard | Lateef Properties',
+  robots: { index: false, follow: false },
+}
+export const dynamic = 'force-dynamic'
+
+type SP = { from?: string; to?: string; status?: string; source?: string }
+
+const STATUSES = ['unqualified', 'contacted', 'qualified', 'junk'] as const
+const fmtDate = (d: string | null | undefined) =>
+  d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
+const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
+
+export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
+  const payload = await getPayload({ config })
+  const h = await nextHeaders()
+  const { user } = await payload.auth({ headers: h })
+  if (!user) redirect('/admin/login?redirect=/leads-dashboard')
+
+  const sp = await searchParams
+  const and: Where[] = []
+  if (sp.from) and.push({ createdAt: { greater_than_equal: new Date(sp.from).toISOString() } })
+  if (sp.to) {
+    const to = new Date(sp.to)
+    to.setHours(23, 59, 59, 999)
+    and.push({ createdAt: { less_than_equal: to.toISOString() } })
+  }
+  if (sp.status && (STATUSES as readonly string[]).includes(sp.status)) {
+    and.push({ status: { equals: sp.status } })
+  }
+  const where: Where = and.length ? { and } : {}
+
+  const [leadsRes, opensRes] = await Promise.all([
+    payload.find({ collection: 'leads', where, depth: 0, limit: 1000, pagination: false, sort: '-createdAt' }),
+    payload.find({ collection: 'link-opens', where: { asset: { equals: 'page' } }, depth: 0, limit: 5000, pagination: false }),
+  ])
+  let leads = leadsRes.docs as Lead[]
+  if (sp.source) leads = leads.filter((l) => sourceOf(l) === sp.source)
+
+  // opens per brochureId
+  const opensByBrochure = new Map<string, number>()
+  for (const o of opensRes.docs as { brochureId?: string | null }[]) {
+    if (o.brochureId) opensByBrochure.set(o.brochureId, (opensByBrochure.get(o.brochureId) ?? 0) + 1)
+  }
+  const openedCount = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId)).length
+
+  const total = leads.length
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]))
+  const contacted = total - byStatus.unqualified // anyone past unqualified
+  const qualified = byStatus.qualified
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0)
+
+  // source breakdown
+  const bySource = new Map<string, { total: number; contacted: number; qualified: number }>()
+  for (const l of leads) {
+    const s = sourceOf(l)
+    const row = bySource.get(s) ?? { total: 0, contacted: 0, qualified: 0 }
+    row.total++
+    if (l.status !== 'unqualified') row.contacted++
+    if (l.status === 'qualified') row.qualified++
+    bySource.set(s, row)
+  }
+  const sources = [...bySource.entries()].sort((a, b) => b[1].total - a[1].total)
+  const allSources = [...new Set((leadsRes.docs as Lead[]).map(sourceOf))].sort()
+
+  const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
+  const td = 'px-3 py-2.5 text-sm text-brand-deep'
+  const badge: Record<string, string> = {
+    unqualified: 'bg-brand-deep/10 text-brand-deep/70',
+    contacted: 'bg-blue-100 text-blue-700',
+    qualified: 'bg-green-100 text-green-700',
+    junk: 'bg-red-100 text-red-600',
+  }
+
+  return (
+    <main className="min-h-screen bg-ivory px-4 py-10 md:px-8">
+      <div className="mx-auto max-w-6xl">
+        <h1 className="font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">Leads Dashboard</h1>
+        <p className="mt-1 text-sm text-brand-deep/60">Native CRM reporting — leads, sources, qualification funnel & brochure opens.</p>
+
+        {/* Filters */}
+        <form method="get" className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-deep/10 bg-white p-4">
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">From
+            <input type="date" name="from" defaultValue={sp.from} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">To
+            <input type="date" name="to" defaultValue={sp.to} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Status
+            <select name="status" defaultValue={sp.status ?? ''} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm">
+              <option value="">All</option>
+              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Source
+            <select name="source" defaultValue={sp.source ?? ''} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm">
+              <option value="">All</option>
+              {allSources.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <button type="submit" className="rounded-full bg-brand-deep px-5 py-2 text-xs font-medium uppercase tracking-[0.15em] text-white">Apply</button>
+          <a href="/leads-dashboard" className="text-xs text-brand-deep/55 underline">Reset</a>
+        </form>
+
+        {/* KPIs */}
+        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+          {[
+            { label: 'Total leads', value: total },
+            { label: 'Contacted', value: `${contacted} (${pct(contacted, total)}%)` },
+            { label: 'Qualified', value: `${qualified} (${pct(qualified, total)}%)` },
+            { label: 'Junk', value: byStatus.junk },
+            { label: 'Opened brochure', value: `${openedCount} (${pct(openedCount, total)}%)` },
+          ].map((k) => (
+            <div key={k.label} className="rounded-xl border border-brand-deep/10 bg-white p-4">
+              <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/50">{k.label}</p>
+              <p className="mt-1 font-serif text-2xl text-brand-deep">{k.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Source funnel */}
+        <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
+          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Source / campaign funnel</p>
+          <table className="mt-2 w-full min-w-[520px]">
+            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Source</th><th className={th}>Leads</th><th className={th}>Contacted</th><th className={th}>Qualified</th><th className={th}>Qualify rate</th></tr></thead>
+            <tbody>
+              {sources.map(([s, r]) => (
+                <tr key={s} className="border-b border-brand-deep/5">
+                  <td className={td}>{s}</td><td className={td}>{r.total}</td><td className={td}>{r.contacted}</td><td className={td}>{r.qualified}</td>
+                  <td className={td}>{pct(r.qualified, r.total)}%</td>
+                </tr>
+              ))}
+              {!sources.length && <tr><td className={td} colSpan={5}>No leads in range.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+
+        {/* Recent leads */}
+        <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
+          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Leads ({total})</p>
+          <table className="mt-2 w-full min-w-[720px]">
+            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Name</th><th className={th}>Phone</th><th className={th}>Source</th><th className={th}>Status</th><th className={th}>Opens</th><th className={th}>Created</th><th className={th}></th></tr></thead>
+            <tbody>
+              {leads.slice(0, 200).map((l) => (
+                <tr key={l.id} className="border-b border-brand-deep/5">
+                  <td className={td}>{l.name}</td>
+                  <td className={td}>{l.phone}</td>
+                  <td className={td}>{sourceOf(l)}</td>
+                  <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{l.status}</span></td>
+                  <td className={td}>{l.brochureId ? opensByBrochure.get(l.brochureId) ?? 0 : 0}</td>
+                  <td className={td}>{fmtDate(l.createdAt)}</td>
+                  <td className={td}><a className="text-gold underline" href={`/admin/collections/leads/${l.id}`}>Edit</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  )
+}

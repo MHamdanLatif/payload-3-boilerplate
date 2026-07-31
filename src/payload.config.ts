@@ -16,10 +16,12 @@ import { BlogTopics } from './collections/BlogTopics'
 import { FeaturedProjects } from './collections/FeaturedProjects'
 import { PaymentPlanLeads } from './collections/PaymentPlanLeads'
 import { Leads } from './collections/Leads'
+import { LinkOpens } from './collections/LinkOpens'
 import { PropertyListings } from './collections/PropertyListings'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
+import { CrmSettings } from './globals/CrmSettings'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
@@ -84,9 +86,10 @@ export default buildConfig({
     BlogTopics,
     PaymentPlanLeads,
     Leads,
+    LinkOpens,
   ],
   cors: [getServerSideURL()].filter(Boolean),
-  globals: [Header, Footer],
+  globals: [Header, Footer, CrmSettings],
   plugins: [
     ...plugins,
     // Cloudflare R2 (S3-compatible) — persistent object storage for the Media

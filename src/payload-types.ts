@@ -79,6 +79,7 @@ export interface Config {
     'blog-topics': BlogTopic;
     'payment-plan-leads': PaymentPlanLead;
     leads: Lead;
+    'link-opens': LinkOpen;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -102,6 +103,7 @@ export interface Config {
     'blog-topics': BlogTopicsSelect<false> | BlogTopicsSelect<true>;
     'payment-plan-leads': PaymentPlanLeadsSelect<false> | PaymentPlanLeadsSelect<true>;
     leads: LeadsSelect<false> | LeadsSelect<true>;
+    'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -118,10 +120,12 @@ export interface Config {
   globals: {
     header: Header;
     footer: Footer;
+    'crm-settings': CrmSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    'crm-settings': CrmSettingsSelect<false> | CrmSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -1333,18 +1337,26 @@ export interface PaymentPlanLead {
   createdAt: string;
 }
 /**
- * Automatic backup of every website lead, captured on submission independent of Privyr. If “Privyr forwarded” is unchecked, the CRM did not accept it — follow up manually.
+ * Every website & Meta lead. Set “Status” after calling — qualified/junk feeds Meta CAPI. The trackable brochure link and WhatsApp alerts fire automatically on new leads.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "leads".
  */
 export interface Lead {
   id: number;
+  /**
+   * Set after calling. “Qualified” or “Junk” sends a Meta CAPI event.
+   */
+  status?: ('unqualified' | 'contacted' | 'qualified' | 'junk') | null;
+  /**
+   * Auto-generated. The trackable link is /brochure/<this id>.
+   */
+  brochureId?: string | null;
   name: string;
   phone: string;
   email?: string | null;
   /**
-   * project | listing | location | payment-plan | consultation | zero-results | unknown
+   * project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown
    */
   sourceKind?: string | null;
   sourceName?: string | null;
@@ -1367,13 +1379,74 @@ export interface Lead {
     | boolean
     | null;
   /**
-   * Did Privyr accept this lead? If unchecked, forward it manually.
+   * Dedup key shared with the browser Pixel Lead event.
+   */
+  eventId?: string | null;
+  fbclid?: string | null;
+  /**
+   * _fbc cookie value.
+   */
+  fbc?: string | null;
+  /**
+   * _fbp cookie value.
+   */
+  fbp?: string | null;
+  clientIp?: string | null;
+  userAgent?: string | null;
+  /**
+   * Ad / campaign name, for leads synced from a Meta Instant Form.
+   */
+  metaAdName?: string | null;
+  brochureHeadline?: string | null;
+  brochurePdfPrimary?: (number | null) | Media;
+  brochurePdfSecondary?: (number | null) | Media;
+  /**
+   * The `src` from a Google Maps “Embed a map” iframe.
+   */
+  brochureMapEmbed?: string | null;
+  brochureVideoUrl?: string | null;
+  ownerNotifiedAt?: string | null;
+  ownerNotifyStatus?: string | null;
+  brochureSentAt?: string | null;
+  brochureSendStatus?: string | null;
+  /**
+   * Read receipt — when the lead first opened their brochure link.
+   */
+  brochureOpenedAt?: string | null;
+  capiEventName?: string | null;
+  capiSentAt?: string | null;
+  capiStatus?: string | null;
+  /**
+   * Did Privyr accept this lead? (Legacy — being replaced by native CRM.)
    */
   privyrForwarded?: boolean | null;
   /**
    * Privyr response status or error, for diagnostics.
    */
   privyrStatus?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Brochure link opens & asset engagement, logged automatically.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "link-opens".
+ */
+export interface LinkOpen {
+  id: number;
+  lead?: (number | null) | Lead;
+  /**
+   * The brochure link id that was opened.
+   */
+  brochureId?: string | null;
+  /**
+   * What was engaged: the page itself, or a specific asset.
+   */
+  asset?: ('page' | 'pdf1' | 'pdf2' | 'map' | 'video') | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  referrer?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1521,6 +1594,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'leads';
         value: number | Lead;
+      } | null)
+    | ({
+        relationTo: 'link-opens';
+        value: number | LinkOpen;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2156,6 +2233,8 @@ export interface PaymentPlanLeadsSelect<T extends boolean = true> {
  * via the `definition` "leads_select".
  */
 export interface LeadsSelect<T extends boolean = true> {
+  status?: T;
+  brochureId?: T;
   name?: T;
   phone?: T;
   email?: T;
@@ -2168,8 +2247,42 @@ export interface LeadsSelect<T extends boolean = true> {
   propertyType?: T;
   budget?: T;
   searchedParams?: T;
+  eventId?: T;
+  fbclid?: T;
+  fbc?: T;
+  fbp?: T;
+  clientIp?: T;
+  userAgent?: T;
+  metaAdName?: T;
+  brochureHeadline?: T;
+  brochurePdfPrimary?: T;
+  brochurePdfSecondary?: T;
+  brochureMapEmbed?: T;
+  brochureVideoUrl?: T;
+  ownerNotifiedAt?: T;
+  ownerNotifyStatus?: T;
+  brochureSentAt?: T;
+  brochureSendStatus?: T;
+  brochureOpenedAt?: T;
+  capiEventName?: T;
+  capiSentAt?: T;
+  capiStatus?: T;
   privyrForwarded?: T;
   privyrStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "link-opens_select".
+ */
+export interface LinkOpensSelect<T extends boolean = true> {
+  lead?: T;
+  brochureId?: T;
+  asset?: T;
+  ip?: T;
+  userAgent?: T;
+  referrer?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2453,6 +2566,21 @@ export interface Footer {
   createdAt?: string | null;
 }
 /**
+ * Settings for the native CRM — the WhatsApp brochure message template.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-settings".
+ */
+export interface CrmSetting {
+  id: number;
+  /**
+   * Sent via the “Send File” button. Placeholders: {name}, {project}, {link}. The lead reviews and taps send in WhatsApp themselves.
+   */
+  whatsappMessageTemplate?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
@@ -2494,6 +2622,16 @@ export interface FooterSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-settings_select".
+ */
+export interface CrmSettingsSelect<T extends boolean = true> {
+  whatsappMessageTemplate?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
