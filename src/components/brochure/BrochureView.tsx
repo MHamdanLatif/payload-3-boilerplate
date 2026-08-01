@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { FileText, MapPin } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { FileText, MapPin, Loader2 } from 'lucide-react'
 import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
 export type BrochureAssets = {
@@ -71,8 +71,11 @@ function useTrackInView(brochureId: string, asset: Asset) {
  * Inline PDF preview — renders the brochure right on the page via Google's PDF
  * viewer, which displays reliably on mobile (incl. Android, where a raw <iframe>
  * to a PDF forces a download). No download button; the lead reads it in place.
- * The media is already public (served from R2), so no new exposure. Engagement
- * is tracked when the preview scrolls into view.
+ * The media is already public (served from R2), so no new exposure.
+ *
+ * The heavy viewer only mounts once the section nears the viewport (so it never
+ * competes with initial page render), and a branded loader shows until it's
+ * ready. Engagement is tracked when the section first comes into view.
  */
 function PdfPreview({
   brochureId,
@@ -85,15 +88,55 @@ function PdfPreview({
   label: string
   asset: Asset
 }) {
-  const ref = useTrackInView(brochureId, asset)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [show, setShow] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setShow(true) // mount the viewer a bit before it's on screen
+            track(brochureId, asset) // engagement
+            io.disconnect()
+            break
+          }
+        }
+      },
+      { rootMargin: '500px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [brochureId, asset])
+
   const src = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`
   return (
-    <div ref={ref}>
+    <div>
       <h2 className="flex items-center gap-2 font-serif text-2xl tracking-tight text-brand-deep">
         <FileText className="h-5 w-5 text-gold" /> {label}
       </h2>
-      <div className="mt-4 h-[72vh] overflow-hidden rounded-2xl border border-brand-deep/10 bg-white shadow-luxe">
-        <iframe src={src} title={label} loading="lazy" className="h-full w-full" />
+      <div
+        ref={wrapRef}
+        className="relative mt-4 h-[72vh] overflow-hidden rounded-2xl border border-brand-deep/10 bg-white shadow-luxe"
+      >
+        {show && (
+          <iframe
+            src={src}
+            title={label}
+            onLoad={() => setLoaded(true)}
+            className={`h-full w-full transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        )}
+        {(!show || !loaded) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <Loader2 className="h-7 w-7 animate-spin text-gold" />
+            <p className="text-sm text-brand-deep/65">Loading brochure…</p>
+            <p className="text-xs text-brand-deep/40">This can take a few seconds on mobile.</p>
+          </div>
+        )}
       </div>
       <p className="mt-2 text-center text-xs text-brand-deep/45">
         <a href={url} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
@@ -105,11 +148,8 @@ function PdfPreview({
 }
 
 export function BrochureView({ brochureId, assets }: { brochureId: string; assets: BrochureAssets }) {
-  // Log the page open once on mount.
-  useEffect(() => {
-    track(brochureId, 'page')
-  }, [brochureId])
-
+  // The page-open event is logged server-side on render (reliable on iOS, where
+  // client beacons are not). Only asset engagement is tracked from the client.
   const mapRef = useTrackInView(brochureId, 'map')
   const videoRef = useTrackInView(brochureId, 'video')
   const embed = assets.videoUrl ? toEmbed(assets.videoUrl) : null

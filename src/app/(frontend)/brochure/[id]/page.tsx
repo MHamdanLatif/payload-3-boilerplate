@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
+import { headers } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Lead, Media } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 import { BrochureView } from '@/components/brochure/BrochureView'
+import { logBrochureOpen, isCrawler } from '@/lib/brochure-open'
 
 export const metadata: Metadata = {
   title: 'Your brochure | Lateef Properties',
@@ -34,6 +37,17 @@ export default async function BrochurePage({ params }: { params: Promise<{ id: s
   })
   const lead = res.docs[0] as Lead | undefined
   if (!lead) notFound()
+
+  // Log the page open server-side (reliable on iOS, where the client beacon is
+  // not), after the response is sent so it never delays render. Skip link-preview
+  // crawlers so WhatsApp generating the chat card doesn't fire a false "opened".
+  const h = await headers()
+  const ua = h.get('user-agent')
+  if (!isCrawler(ua)) {
+    const ip = (h.get('x-forwarded-for') || '').split(',')[0].trim() || null
+    const referrer = h.get('referer')
+    after(() => logBrochureOpen({ brochureId: id, asset: 'page', ip, userAgent: ua, referrer }))
+  }
 
   const base = getServerSideURL().replace(/\/$/, '')
 
