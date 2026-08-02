@@ -6,6 +6,7 @@ import { Check, Phone, Mail, MapPin, ArrowRight, RotateCcw } from 'lucide-react'
 import { SectionRule } from './SectionRule'
 import { fadeUp, staggerContainer, viewportOnce } from './_motion'
 import { trackLead } from '@/lib/analytics'
+import { isValidPhoneNumber } from 'libphonenumber-js'
 
 type FormValues = {
   fullName: string
@@ -37,8 +38,6 @@ const PROJECTS = [
   'No preference — show me everything',
 ]
 
-const WHATSAPP_RE = /^(\+92|0)3\d{9}$/
-
 function validate(values: FormValues): FormErrors {
   const errs: FormErrors = {}
   if (!values.fullName.trim() || values.fullName.trim().length < 2) {
@@ -46,8 +45,10 @@ function validate(values: FormValues): FormErrors {
   }
   if (!values.whatsapp.trim()) {
     errs.whatsapp = 'A WhatsApp number is required.'
-  } else if (!WHATSAPP_RE.test(values.whatsapp.replace(/\s|-/g, ''))) {
-    errs.whatsapp = 'Use +92 3XXXXXXXXX or 03XXXXXXXXX.'
+    // Defaults to Pakistan for bare local numbers, but any +country-code number
+    // (US, UK, etc.) validates against its own country.
+  } else if (!isValidPhoneNumber(values.whatsapp.trim(), 'PK')) {
+    errs.whatsapp = 'Please enter a valid phone number.'
   }
   if (!values.propertyType) errs.propertyType = 'Choose a property type.'
   if (!values.budget) errs.budget = 'Choose a budget range.'

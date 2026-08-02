@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { isValidPhoneNumber } from 'libphonenumber-js'
 
 const PRIVYR_TIMEOUT_MS = 5000
 
@@ -57,6 +58,12 @@ export async function POST(req: Request) {
   }
   if (!phone) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 400 })
+  }
+  // Server-side guard against malformed / junk numbers (the client validates too,
+  // but a script or JS-off browser can post anything). Defaults to Pakistan for
+  // bare local numbers; any +country-code number validates against its country.
+  if (!isValidPhoneNumber(phone, 'PK')) {
+    return NextResponse.json({ ok: false, error: 'Please enter a valid phone number' }, { status: 400 })
   }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ ok: false, error: 'Email looks invalid' }, { status: 400 })

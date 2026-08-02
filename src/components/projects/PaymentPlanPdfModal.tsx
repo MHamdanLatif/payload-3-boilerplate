@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
-import { isPossiblePhoneNumber } from 'react-phone-number-input'
+import { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
 import { Check, Loader2, X } from 'lucide-react'
@@ -85,7 +85,7 @@ export function PaymentPlanPdfModal({
     e.preventDefault()
     const next: typeof errors = {}
     if (!name.trim() || name.trim().length < 2) next.name = 'Please enter your name'
-    if (!phone || !isPossiblePhoneNumber(phone))
+    if (!phone || !isValidPhoneNumber(phone))
       next.phone = 'Please enter a valid phone number'
     setErrors(next)
     if (Object.keys(next).length > 0) return

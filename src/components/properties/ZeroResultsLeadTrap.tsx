@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Check, RotateCcw } from 'lucide-react'
 import type { ParsedSearchParams } from '@/lib/property-search'
 import { trackLead } from '@/lib/analytics'
-
-const WHATSAPP_RE = /^(\+92|0)3\d{9}$/
+import { isValidPhoneNumber } from 'libphonenumber-js'
 
 export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: ParsedSearchParams }) {
   const [name, setName] = useState('')
@@ -34,8 +33,10 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
     const errs: typeof errors = {}
     if (!name.trim() || name.trim().length < 2) errs.name = 'Please share your name.'
     if (!phone.trim()) errs.phone = 'A phone number is required.'
-    else if (!WHATSAPP_RE.test(phone.replace(/\s|-/g, '')))
-      errs.phone = 'Use +92 3XXXXXXXXX or 03XXXXXXXXX.'
+    // Defaults to Pakistan for bare local numbers (03XX…), but any number with a
+    // +country code (e.g. a US or UK lead) validates against its own country.
+    else if (!isValidPhoneNumber(phone.trim(), 'PK'))
+      errs.phone = 'Please enter a valid phone number.'
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
 

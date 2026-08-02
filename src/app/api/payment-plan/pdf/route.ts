@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { isValidPhoneNumber } from 'libphonenumber-js'
 import type { FeaturedProject, Media } from '@/payload-types'
 import { smallestUnit } from '@/lib/featured-projects'
 import {
@@ -83,6 +84,9 @@ export async function POST(req: Request) {
   }
   if (!phone) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 400 })
+  }
+  if (!isValidPhoneNumber(phone, 'PK')) {
+    return NextResponse.json({ ok: false, error: 'Please enter a valid phone number' }, { status: 400 })
   }
   if (!projectSlug) {
     return NextResponse.json({ ok: false, error: 'projectSlug is required' }, { status: 400 })

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 // Validation helper is tiny — keep static so submit can validate without
 // waiting for the dynamic component chunk to load.
-import { isPossiblePhoneNumber } from 'react-phone-number-input'
+import { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
 import { ArrowRight, Loader2 } from 'lucide-react'
@@ -76,7 +76,7 @@ export function LeadForm({
     const errs: typeof errors = {}
     if (!name.trim() || name.trim().length < 2) errs.name = 'Please share your full name.'
     if (!phone) errs.phone = 'Phone number is required.'
-    else if (!isPossiblePhoneNumber(phone)) errs.phone = 'Phone number looks incomplete.'
+    else if (!isValidPhoneNumber(phone)) errs.phone = 'Please enter a valid phone number.'
     if (email && !EMAIL_RE.test(email)) errs.email = 'Email looks invalid.'
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
