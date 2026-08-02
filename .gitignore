@@ -14,3 +14,9 @@ public/media/
 # TypeScript incremental build cache (machine-specific, regenerated every build)
 tsconfig.tsbuildinfo
 lateef-blog-batch.md
+
+# Local MCP server config — holds a machine-specific credentials path; never commit
+.mcp.json
+# Google service-account keys (analytics-mcp etc.)
+*-mcp.json
+gcp-*.json
