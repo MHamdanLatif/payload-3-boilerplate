@@ -31,9 +31,19 @@ const redirects = async () => {
       destination: '/projects/saima-elite-enclave',
       permanent: true,
     },
+    // Saima Center Point is sold out — the FeaturedProject doc was deleted, so
+    // /projects/saima-center-point now 404s. Both the old /featured URL and the
+    // (still-ranking) /projects URL forward to the home-page Featured Projects
+    // grid so search traffic lands on live inventory instead of a dead page.
+    // Pointed straight at the final destination — no /featured -> /projects hop.
     {
       source: '/featured/saima-center-point',
-      destination: '/projects/saima-center-point',
+      destination: '/#listings',
+      permanent: true,
+    },
+    {
+      source: '/projects/saima-center-point',
+      destination: '/#listings',
       permanent: true,
     },
     // Lateef Duplex Luxuria is a listing (not a project page) — point the old

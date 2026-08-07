@@ -20,3 +20,6 @@ lateef-blog-batch.md
 # Google service-account keys (analytics-mcp etc.)
 *-mcp.json
 gcp-*.json
+# Google OAuth client secrets
+client_secret*.json
+*.apps.googleusercontent.com.json

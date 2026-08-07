@@ -41,13 +41,12 @@ export const PROJECT_ENTITIES: EntityEntry[] = [
     slug: 'tulip-comfort',
     url: projectUrl,
   },
-  {
-    kind: 'project',
-    canonical: 'Saima Center Point',
-    aliases: ['Center Point', 'Saima Centerpoint'],
-    slug: 'saima-center-point',
-    url: projectUrl,
-  },
+  // Saima Center Point was removed here deliberately — the project sold out, its
+  // FeaturedProject doc is deleted and /projects/saima-center-point now 308s to
+  // the home-page grid (see redirects.js). Leaving the entry in would have the
+  // scanner keep flagging it as an un-resolvable gap on every new post. Do not
+  // re-add it. Other Saima Builders projects are expected — add those as their
+  // own entries once each has a live FeaturedProject doc.
   {
     kind: 'project',
     canonical: 'Saima Uptown',
