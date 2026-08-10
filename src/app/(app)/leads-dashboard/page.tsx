@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Lead } from '@/payload-types'
+import { fmtDuration } from '@/lib/engagement'
 
 export const metadata: Metadata = {
   title: 'Leads Dashboard | Lateef Properties',
@@ -18,14 +19,6 @@ const STATUSES = ['unqualified', 'contacted', 'qualified', 'junk'] as const
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
-
-/** ms -> "3m 07s" / "42s". Blank dash when we have no reading at all. */
-const fmtDuration = (ms: number) => {
-  if (!ms) return '—'
-  const s = Math.round(ms / 1000)
-  if (s < 60) return `${s}s`
-  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
-}
 
 export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
   const payload = await getPayload({ config })
@@ -171,12 +164,19 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
         {/* Recent leads */}
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
           <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Leads ({total})</p>
+          <p className="px-4 pt-1 text-xs text-brand-deep/50">
+            Time on page is the total across every visit — click a name for the per-visit breakdown.
+          </p>
           <table className="mt-2 w-full min-w-[820px]">
             <thead><tr className="border-b border-brand-deep/10"><th className={th}>Name</th><th className={th}>Phone</th><th className={th}>Source</th><th className={th}>Status</th><th className={th}>Opens</th><th className={th}>Time on page</th><th className={th}>Created</th><th className={th}></th></tr></thead>
             <tbody>
               {leads.slice(0, 200).map((l) => (
                 <tr key={l.id} className="border-b border-brand-deep/5">
-                  <td className={td}>{l.name}</td>
+                  <td className={td}>
+                    <a className="underline decoration-brand-deep/25 underline-offset-2 hover:text-gold" href={`/leads-dashboard/${l.id}`}>
+                      {l.name}
+                    </a>
+                  </td>
                   <td className={td}>{l.phone}</td>
                   <td className={td}>{sourceOf(l)}</td>
                   <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{l.status}</span></td>
