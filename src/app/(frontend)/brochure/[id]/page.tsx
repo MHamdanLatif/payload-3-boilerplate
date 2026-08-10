@@ -41,12 +41,19 @@ export default async function BrochurePage({ params }: { params: Promise<{ id: s
   // Log the page open server-side (reliable on iOS, where the client beacon is
   // not), after the response is sent so it never delays render. Skip link-preview
   // crawlers so WhatsApp generating the chat card doesn't fire a false "opened".
+  // A per-render id ties this page view to the row logged below, so the client's
+  // time-on-page beacon updates that exact open rather than guessing at the
+  // latest one. Minted here (not in `after`) so it can be handed to the client.
   const h = await headers()
   const ua = h.get('user-agent')
-  if (!isCrawler(ua)) {
+  const crawler = isCrawler(ua)
+  const visitId = crypto.randomUUID()
+  if (!crawler) {
     const ip = (h.get('x-forwarded-for') || '').split(',')[0].trim() || null
     const referrer = h.get('referer')
-    after(() => logBrochureOpen({ brochureId: id, asset: 'page', ip, userAgent: ua, referrer }))
+    after(() =>
+      logBrochureOpen({ brochureId: id, asset: 'page', ip, userAgent: ua, referrer, visitId }),
+    )
   }
 
   const base = getServerSideURL().replace(/\/$/, '')
@@ -54,6 +61,7 @@ export default async function BrochurePage({ params }: { params: Promise<{ id: s
   return (
     <BrochureView
       brochureId={id}
+      visitId={crawler ? null : visitId}
       assets={{
         headline: lead.brochureHeadline,
         name: lead.name,

@@ -16,18 +16,73 @@ export type BrochureAssets = {
 
 type Asset = 'page' | 'pdf1' | 'pdf2' | 'map' | 'video'
 
-function track(brochureId: string, asset: Asset) {
+/** POST a tracking payload in a way that survives the page going away. */
+function beacon(url: string, payload: unknown) {
   try {
-    const body = JSON.stringify({ asset })
+    const body = JSON.stringify(payload)
     // sendBeacon survives navigation; fall back to keepalive fetch.
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(`/api/brochure/${brochureId}/open`, new Blob([body], { type: 'application/json' }))
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))
     } else {
-      void fetch(`/api/brochure/${brochureId}/open`, { method: 'POST', body, keepalive: true, headers: { 'Content-Type': 'application/json' } })
+      void fetch(url, { method: 'POST', body, keepalive: true, headers: { 'Content-Type': 'application/json' } })
     }
   } catch {
     /* tracking must never break the page */
   }
+}
+
+function track(brochureId: string, asset: Asset) {
+  beacon(`/api/brochure/${brochureId}/open`, { asset })
+}
+
+/**
+ * Measures how long the brochure is actually in front of the lead.
+ *
+ * Counts foreground time only — visibilitychange pauses the clock, so a tab
+ * left open in the background never reads as engagement. Reports the running
+ * total on a heartbeat as well as on hide/unload, because mobile browsers
+ * routinely discard a page without firing a final unload; the server keeps the
+ * largest value it receives, so the repeat sends are harmless.
+ */
+function useDwellTracking(brochureId: string, visitId: string | null) {
+  useEffect(() => {
+    if (!visitId) return
+
+    let visibleMs = 0
+    let since = Date.now()
+    let reported = 0
+
+    const settle = () => {
+      const now = Date.now()
+      if (document.visibilityState === 'visible') visibleMs += now - since
+      since = now
+    }
+
+    const report = () => {
+      settle()
+      const ms = Math.round(visibleMs)
+      // Only send real growth — keeps the heartbeat silent on a hidden tab.
+      if (ms < 1000 || ms <= reported) return
+      reported = ms
+      beacon(`/api/brochure/${brochureId}/dwell`, { visitId, ms })
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') report()
+      else since = Date.now()
+    }
+
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', report)
+    const heartbeat = window.setInterval(report, 15_000)
+
+    return () => {
+      window.clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', report)
+      report()
+    }
+  }, [brochureId, visitId])
 }
 
 /** Convert a YouTube/Vimeo watch URL to an embeddable src. */
@@ -147,9 +202,19 @@ function PdfPreview({
   )
 }
 
-export function BrochureView({ brochureId, assets }: { brochureId: string; assets: BrochureAssets }) {
+export function BrochureView({
+  brochureId,
+  visitId = null,
+  assets,
+}: {
+  brochureId: string
+  visitId?: string | null
+  assets: BrochureAssets
+}) {
   // The page-open event is logged server-side on render (reliable on iOS, where
-  // client beacons are not). Only asset engagement is tracked from the client.
+  // client beacons are not). Only asset engagement and time-on-page are tracked
+  // from the client — visitId ties the latter back to that server-logged open.
+  useDwellTracking(brochureId, visitId)
   const mapRef = useTrackInView(brochureId, 'map')
   const videoRef = useTrackInView(brochureId, 'video')
   const embed = assets.videoUrl ? toEmbed(assets.videoUrl) : null

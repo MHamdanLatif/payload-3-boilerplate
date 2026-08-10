@@ -1444,6 +1444,14 @@ export interface LinkOpen {
    * What was engaged: the page itself, or a specific asset.
    */
   asset?: ('page' | 'pdf1' | 'pdf2' | 'map' | 'video') | null;
+  /**
+   * Per-render id for a page open. The dwell beacon echoes it so time-on-page updates land on the right row.
+   */
+  visitId?: string | null;
+  /**
+   * How long the lead had this page in the foreground. Counts visible time only (a backgrounded tab is not reading), and is capped at 30 minutes.
+   */
+  dwellMs?: number | null;
   ip?: string | null;
   userAgent?: string | null;
   referrer?: string | null;
@@ -2280,6 +2288,8 @@ export interface LinkOpensSelect<T extends boolean = true> {
   lead?: T;
   brochureId?: T;
   asset?: T;
+  visitId?: T;
+  dwellMs?: T;
   ip?: T;
   userAgent?: T;
   referrer?: T;

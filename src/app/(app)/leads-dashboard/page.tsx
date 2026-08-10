@@ -19,6 +19,14 @@ const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
 
+/** ms -> "3m 07s" / "42s". Blank dash when we have no reading at all. */
+const fmtDuration = (ms: number) => {
+  if (!ms) return '—'
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
+}
+
 export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
   const payload = await getPayload({ config })
   const h = await nextHeaders()
@@ -45,12 +53,28 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   let leads = leadsRes.docs as Lead[]
   if (sp.source) leads = leads.filter((l) => sourceOf(l) === sp.source)
 
-  // opens per brochureId
+  // opens + total time on page per brochureId. Dwell is summed across visits,
+  // so the column answers "how long has this lead spent with the brochure", not
+  // "how long was one sitting". Opens with no beacon (bounced instantly, or the
+  // browser killed the page before the first heartbeat) contribute 0.
   const opensByBrochure = new Map<string, number>()
-  for (const o of opensRes.docs as { brochureId?: string | null }[]) {
-    if (o.brochureId) opensByBrochure.set(o.brochureId, (opensByBrochure.get(o.brochureId) ?? 0) + 1)
+  const dwellByBrochure = new Map<string, number>()
+  for (const o of opensRes.docs as { brochureId?: string | null; dwellMs?: number | null }[]) {
+    if (!o.brochureId) continue
+    opensByBrochure.set(o.brochureId, (opensByBrochure.get(o.brochureId) ?? 0) + 1)
+    if (o.dwellMs) dwellByBrochure.set(o.brochureId, (dwellByBrochure.get(o.brochureId) ?? 0) + o.dwellMs)
   }
-  const openedCount = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId)).length
+  const openedLeads = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId))
+  const openedCount = openedLeads.length
+
+  // Average across leads we actually have a reading for — averaging over every
+  // opener would silently drag the number down with un-measurable visits.
+  const dwellSamples = openedLeads
+    .map((l) => (l.brochureId ? (dwellByBrochure.get(l.brochureId) ?? 0) : 0))
+    .filter((ms) => ms > 0)
+  const avgDwell = dwellSamples.length
+    ? Math.round(dwellSamples.reduce((a, b) => a + b, 0) / dwellSamples.length)
+    : 0
 
   const total = leads.length
   const byStatus = Object.fromEntries(STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]))
@@ -111,13 +135,14 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
         </form>
 
         {/* KPIs */}
-        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-6">
           {[
             { label: 'Total leads', value: total },
             { label: 'Contacted', value: `${contacted} (${pct(contacted, total)}%)` },
             { label: 'Qualified', value: `${qualified} (${pct(qualified, total)}%)` },
             { label: 'Junk', value: byStatus.junk },
             { label: 'Opened brochure', value: `${openedCount} (${pct(openedCount, total)}%)` },
+            { label: 'Avg time on page', value: fmtDuration(avgDwell) },
           ].map((k) => (
             <div key={k.label} className="rounded-xl border border-brand-deep/10 bg-white p-4">
               <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/50">{k.label}</p>
@@ -146,8 +171,8 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
         {/* Recent leads */}
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
           <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Leads ({total})</p>
-          <table className="mt-2 w-full min-w-[720px]">
-            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Name</th><th className={th}>Phone</th><th className={th}>Source</th><th className={th}>Status</th><th className={th}>Opens</th><th className={th}>Created</th><th className={th}></th></tr></thead>
+          <table className="mt-2 w-full min-w-[820px]">
+            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Name</th><th className={th}>Phone</th><th className={th}>Source</th><th className={th}>Status</th><th className={th}>Opens</th><th className={th}>Time on page</th><th className={th}>Created</th><th className={th}></th></tr></thead>
             <tbody>
               {leads.slice(0, 200).map((l) => (
                 <tr key={l.id} className="border-b border-brand-deep/5">
@@ -156,6 +181,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
                   <td className={td}>{sourceOf(l)}</td>
                   <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{l.status}</span></td>
                   <td className={td}>{l.brochureId ? opensByBrochure.get(l.brochureId) ?? 0 : 0}</td>
+                  <td className={td}>{fmtDuration(l.brochureId ? dwellByBrochure.get(l.brochureId) ?? 0 : 0)}</td>
                   <td className={td}>{fmtDate(l.createdAt)}</td>
                   <td className={td}><a className="text-gold underline" href={`/admin/collections/leads/${l.id}`}>Edit</a></td>
                 </tr>

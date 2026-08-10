@@ -17,7 +17,7 @@ export const LinkOpens: CollectionConfig = {
   admin: {
     useAsTitle: 'brochureId',
     group: 'CRM',
-    defaultColumns: ['brochureId', 'asset', 'lead', 'createdAt'],
+    defaultColumns: ['brochureId', 'asset', 'lead', 'dwellMs', 'createdAt'],
     description: 'Brochure link opens & asset engagement, logged automatically.',
   },
   fields: [
@@ -40,6 +40,26 @@ export const LinkOpens: CollectionConfig = {
         { label: 'Video', value: 'video' },
       ],
       admin: { description: 'What was engaged: the page itself, or a specific asset.' },
+    },
+    {
+      name: 'visitId',
+      type: 'text',
+      index: true,
+      admin: {
+        readOnly: true,
+        description:
+          'Per-render id for a page open. The dwell beacon echoes it so time-on-page updates land on the right row.',
+      },
+    },
+    {
+      name: 'dwellMs',
+      type: 'number',
+      label: 'Time on page (ms)',
+      admin: {
+        readOnly: true,
+        description:
+          'How long the lead had this page in the foreground. Counts visible time only (a backgrounded tab is not reading), and is capped at 30 minutes.',
+      },
     },
     { name: 'ip', type: 'text', admin: { readOnly: true } },
     { name: 'userAgent', type: 'text', admin: { readOnly: true } },

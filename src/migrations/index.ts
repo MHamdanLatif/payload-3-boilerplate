@@ -7,6 +7,7 @@ import * as migration_20260715_000000_add_blog_featured_cards from './20260715_0
 import * as migration_20260716_000000_leads_crm_fields from './20260716_000000_leads_crm_fields';
 import * as migration_20260716_000001_link_opens from './20260716_000001_link_opens';
 import * as migration_20260717_000000_send_file from './20260717_000000_send_file';
+import * as migration_20260807_000000_brochure_dwell from './20260807_000000_brochure_dwell';
 
 export const migrations = [
   {
@@ -53,5 +54,10 @@ export const migrations = [
     up: migration_20260717_000000_send_file.up,
     down: migration_20260717_000000_send_file.down,
     name: '20260717_000000_send_file',
+  },
+  {
+    up: migration_20260807_000000_brochure_dwell.up,
+    down: migration_20260807_000000_brochure_dwell.down,
+    name: '20260807_000000_brochure_dwell',
   },
 ];
