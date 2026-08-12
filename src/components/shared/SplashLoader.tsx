@@ -1,5 +1,29 @@
 'use client'
 
+/**
+ * UNMOUNTED. Kept for reference — do not re-mount as-is.
+ *
+ * This was rendered from both root layouts and was the site's Largest
+ * Contentful Paint element on first visit: it returns null on the server, then
+ * paints a full-viewport `fixed inset-0` gradient once React and framer-motion
+ * have hydrated. That put a hydration-gated, full-screen paint in front of
+ * every page for 1500ms, and the `overflow: hidden` on documentElement below
+ * locked scrolling for the same window.
+ *
+ * If the brand splash is ever wanted back, do NOT restore this implementation.
+ * Build it so it cannot become the LCP element:
+ *   - render the overlay as plain server HTML in the layout (no 'use client',
+ *     no framer-motion), hidden by default via `visibility: hidden`
+ *   - flip it on from a tiny inline <script> in <head> that reads
+ *     sessionStorage BEFORE first paint, rather than after hydration
+ *   - animate it out with a CSS @keyframes ending in
+ *     `opacity: 0; visibility: hidden; pointer-events: none`
+ *   - drop the duration to ~600ms and honour `prefers-reduced-motion`
+ *   - use `overscroll-behavior` on the overlay instead of mutating
+ *     documentElement.style.overflow
+ * Even then it remains an LCP candidate — measure before shipping.
+ */
+
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 

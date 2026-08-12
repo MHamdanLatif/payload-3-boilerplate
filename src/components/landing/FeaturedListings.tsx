@@ -11,7 +11,9 @@ export async function FeaturedListings() {
   let projects = [] as Awaited<ReturnType<typeof fetchPublishedProjects>>
   try {
     const payload = await getPayload({ config })
-    projects = await fetchPublishedProjects(payload)
+    // Bounded: every card below is a client component with its own modal, so an
+    // unbounded grid scales hydration cost with the project count.
+    projects = await fetchPublishedProjects(payload, { limit: 12 })
   } catch {
     projects = []
   }

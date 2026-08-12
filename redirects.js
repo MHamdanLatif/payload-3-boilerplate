@@ -32,18 +32,22 @@ const redirects = async () => {
       permanent: true,
     },
     // Saima Center Point is sold out — the FeaturedProject doc was deleted, so
-    // /projects/saima-center-point now 404s. Both the old /featured URL and the
-    // (still-ranking) /projects URL forward to the home-page Featured Projects
-    // grid so search traffic lands on live inventory instead of a dead page.
-    // Pointed straight at the final destination — no /featured -> /projects hop.
+    // /projects/saima-center-point would otherwise 404. Both the old /featured
+    // URL and the (still-ranking) /projects URL forward to the listings hub.
+    //
+    // Deliberately NOT '/#listings': Google discards the fragment, so that
+    // resolved to the bare home page — a specific product URL redirecting to the
+    // site root is the textbook soft-404 signal, which costs crawl budget and
+    // drags on sitewide quality. /properties is a real equivalent inventory
+    // page, matching how /featured/saima-uptown is retired below.
     {
       source: '/featured/saima-center-point',
-      destination: '/#listings',
+      destination: '/properties',
       permanent: true,
     },
     {
       source: '/projects/saima-center-point',
-      destination: '/#listings',
+      destination: '/properties',
       permanent: true,
     },
     // Lateef Duplex Luxuria is a listing (not a project page) — point the old

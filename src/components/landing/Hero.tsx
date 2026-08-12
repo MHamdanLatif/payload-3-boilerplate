@@ -46,8 +46,25 @@ export function Hero() {
             <span className="h-px w-10 bg-gold" />
           </motion.div>
 
+          {/*
+            Everything from here down is deliberately NOT wrapped in framer-motion.
+
+            `fadeUp.hidden` is `{ opacity: 0 }`, and `initial="hidden"` writes
+            that opacity straight into the server-rendered HTML. Chrome does not
+            count an element at opacity 0 as painted, so wrapping these made the
+            Largest Contentful Paint wait for React to hydrate and framer-motion
+            to run its first frame — on mobile (81% of our traffic) that is the
+            difference between a fast LCP and a failing one. The decorative
+            eyebrow and scroll cue above/below keep their animations because
+            neither is ever the LCP element.
+
+            Any entrance animation added here must animate `transform` only and
+            start from `opacity: 1`. Do not "fix" this by editing `_motion.ts` —
+            `fadeUp` is shared by ~10 components.
+          */}
+
           {/* Logo */}
-          <motion.div variants={fadeUp} className="mb-8">
+          <div className="mb-8">
             <Image
               src="/brand/lateef-logo.png"
               alt="Lateef Properties"
@@ -56,37 +73,30 @@ export function Hero() {
               priority
               className="h-auto w-[140px] transition-transform duration-500 hover:scale-105 md:w-[180px] lg:w-[200px]"
             />
-          </motion.div>
+          </div>
 
-          {/* H1 */}
-          <motion.h1
-            variants={fadeUp}
-            className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-[5rem]"
-          >
-            Lateef Properties
-          </motion.h1>
+          {/* H1 — the commercial phrase, not the brand name. The brand is
+              carried by the logo directly above and the site-wide Organization
+              schema; an <h1> of "Lateef Properties" told Google nothing about
+              what this page sells. */}
+          <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-[5rem]">
+            Property for Sale in Karachi
+          </h1>
 
           {/* Subtext */}
-          <motion.p
-            variants={fadeUp}
-            className="mt-6 max-w-xl text-lg leading-relaxed text-white/95 md:text-xl"
-          >
-            Karachi apartments, plots and commercial property.
-          </motion.p>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/95 md:text-xl">
+            Apartments, plots and commercial property — pre-launch, under
+            construction and ready to move.
+          </p>
 
           {/* Authority line */}
-          <motion.p
-            variants={fadeUp}
-            className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 md:text-base"
-          >
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 md:text-base">
             Authorised marketing agency for Karachi&rsquo;s leading developers.
-          </motion.p>
+          </p>
 
-          {/* CTAs */}
-          <motion.div
-            variants={fadeUp}
-            className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4"
-          >
+          {/* CTAs — also un-wrapped: this is the primary conversion path and
+              should not wait on hydration to become visible. */}
+          <div className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
             <a
               href="#listings"
               className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gold px-8 py-4 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep shadow-gold transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover hover:shadow-luxe"
@@ -105,7 +115,7 @@ export function Hero() {
               Talk to an Expert
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </a>
-          </motion.div>
+          </div>
         </motion.div>
 
       </div>

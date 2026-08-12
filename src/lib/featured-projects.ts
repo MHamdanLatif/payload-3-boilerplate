@@ -53,8 +53,22 @@ const HIGHLIGHT_TAG_RANK: Record<string, number> = {
 }
 const HIGHLIGHT_TAG_RANK_DEFAULT = 99
 
-/** Fetch all featured projects in display order — tagged first, then -updatedAt. */
-export async function fetchPublishedProjects(payload: Payload): Promise<FeaturedProject[]> {
+/**
+ * Fetch featured projects in display order — tagged first, then -updatedAt.
+ *
+ * `limit` caps how many are RETURNED, applied after the ranking sort — not as a
+ * query limit. The highlight-tag ranking is computed in JS over the whole set,
+ * so limiting the query instead would silently drop a "hot selling" project
+ * just because it hadn't been edited recently.
+ *
+ * Callers that render a grid of client-side cards should pass a limit: each
+ * card is a client component carrying its own modal, so an unbounded grid grows
+ * the hydration cost linearly.
+ */
+export async function fetchPublishedProjects(
+  payload: Payload,
+  opts?: { limit?: number },
+): Promise<FeaturedProject[]> {
   const res = await payload.find({
     collection: 'featured-projects',
     depth: 2,
@@ -63,11 +77,12 @@ export async function fetchPublishedProjects(payload: Payload): Promise<Featured
   })
   // Stable sort by (tag rank ASC). `Array.prototype.sort` is stable since ES2019,
   // so ties (incl. all untagged projects) keep the -updatedAt order from Postgres.
-  return (res.docs as FeaturedProject[]).slice().sort((a, b) => {
+  const ranked = (res.docs as FeaturedProject[]).slice().sort((a, b) => {
     const rankA = HIGHLIGHT_TAG_RANK[a.highlightTag ?? ''] ?? HIGHLIGHT_TAG_RANK_DEFAULT
     const rankB = HIGHLIGHT_TAG_RANK[b.highlightTag ?? ''] ?? HIGHLIGHT_TAG_RANK_DEFAULT
     return rankA - rankB
   })
+  return typeof opts?.limit === 'number' ? ranked.slice(0, opts.limit) : ranked
 }
 
 /** Fetch a single project by slug. */

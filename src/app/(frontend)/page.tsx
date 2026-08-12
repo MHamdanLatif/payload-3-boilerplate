@@ -41,12 +41,17 @@ export default function HomePage() {
   )
 }
 
+// Title and description are length-budgeted for the SERP: Google truncates
+// titles past ~60 chars and descriptions past ~155, and the previous values
+// (97 / 253) were cut mid-phrase — the old description lost its entire location
+// list. Front-loads "Property for Sale in Karachi", the commercial phrase the
+// home page already ranks for (926 impressions at position 8.66, 1.73% CTR).
 export const metadata: Metadata = {
-  title: 'Lateef Properties | Karachi Apartments, Plots & Commercial Property | Authorised Marketing Agency',
+  title: 'Property for Sale in Karachi | Apartments, Plots & Shops',
   description:
-    'Karachi apartments, plots, offices and shops for sale in Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch, under-construction and ready-for-possession projects with flexible payment plans.',
+    'Verified apartments, plots and commercial property for sale across Karachi. Pre-launch, under construction and ready to move, on flexible payment plans.',
   openGraph: mergeOpenGraph({
-    title: 'Lateef Properties | Karachi Apartments, Plots & Commercial Property | Authorised Marketing Agency',
+    title: 'Property for Sale in Karachi | Lateef Properties',
     description:
       'Pre-launch apartments, ready-to-move flats, plots, offices and shops across Karachi. Authorised marketing agency for Karachi’s leading developers.',
     url: `${base}/`,

@@ -15,7 +15,7 @@ import { MetaPixelRouteTracker } from '@/components/MetaPixelRouteTracker'
 import { GoogleAnalytics } from '@/components/GoogleAnalytics'
 import { GoogleAnalyticsRouteTracker } from '@/components/GoogleAnalyticsRouteTracker'
 import { Providers } from '@/providers'
-import { SplashLoader } from '@/components/shared/SplashLoader'
+// SplashLoader is intentionally NOT mounted — see the note at its usage site below.
 import { JsonLd } from '@/components/shared/JsonLd'
 import { organizationSchema } from '@/lib/seo-jsonld'
 import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
@@ -65,7 +65,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <GoogleAnalytics />
         <GoogleAnalyticsRouteTracker />
         <Providers>
-          <SplashLoader />
+          {/*
+            <SplashLoader /> was mounted here and is deliberately removed.
+
+            It rendered null on the server, then on hydration painted a
+            full-viewport `fixed inset-0` gradient for 1500ms. A full-viewport
+            element is by definition the Largest Contentful Paint candidate, and
+            it could not paint until React and framer-motion had mounted — so it
+            set the LCP clock for every first-time visitor on every page,
+            including the three project pages that earn 74% of our organic
+            clicks. It also set documentElement.style.overflow = 'hidden',
+            locking scroll for 1.5s, which hurt INP too.
+
+            Search Console showed 24 mobile URLs "needs improvement" and zero
+            "good" while this was mounted. The component file is kept — restore
+            by re-adding the import and this line, but read SplashLoader's own
+            header comment first for the CSS-only approach.
+          */}
           <AdminBar
             adminBarProps={{
               preview: isEnabled,

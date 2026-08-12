@@ -33,7 +33,9 @@ export function ProjectOverview({ project }: { project: FeaturedProject }) {
     },
     small && {
       icon: 'smallest' as const,
-      label: 'Starting From',
+      // Was also "Starting From", which rendered two identically-labelled rows
+      // (one a price, one a unit type) in the same list.
+      label: 'Smallest Unit',
       value: small.type,
     },
   ].filter(Boolean) as { icon: keyof typeof FACT_ICON; label: string; value: string }[]

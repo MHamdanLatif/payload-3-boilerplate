@@ -15,7 +15,7 @@ import { MetaPixelRouteTracker } from '@/components/MetaPixelRouteTracker'
 import { GoogleAnalytics } from '@/components/GoogleAnalytics'
 import { GoogleAnalyticsRouteTracker } from '@/components/GoogleAnalyticsRouteTracker'
 import { Providers } from '@/providers'
-import { SplashLoader } from '@/components/shared/SplashLoader'
+// SplashLoader intentionally not imported — see the note in (frontend)/layout.tsx
 import { JsonLd } from '@/components/shared/JsonLd'
 import { organizationSchema } from '@/lib/seo-jsonld'
 import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
@@ -65,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <GoogleAnalytics />
         <GoogleAnalyticsRouteTracker />
         <Providers>
-          <SplashLoader />
+          {/* <SplashLoader /> removed for Core Web Vitals — see (frontend)/layout.tsx */}
           <AdminBar adminBarProps={{ preview: isEnabled }} />
           <LivePreviewListener />
           <Header />
