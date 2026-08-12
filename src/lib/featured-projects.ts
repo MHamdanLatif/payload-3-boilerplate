@@ -29,6 +29,72 @@ export function smallestUnit(project: FeaturedProject): SmallestUnit | null {
   return { type: u.type, rooms: u.rooms, price: u.price }
 }
 
+export type ProjectUnit = NonNullable<FeaturedProject['unitTypes']>[number]
+
+/**
+ * Identity of a unit row, used as the calculator's selection key and as the
+ * `?unit=` deep-link value from the units table. Defined once so the table's
+ * links and the calculator's lookup cannot drift apart.
+ */
+export function unitKey(u: Pick<ProjectUnit, 'type' | 'rooms' | 'price'>): string {
+  return `${u.type}::${u.rooms}::${u.price}`
+}
+
+/** Units sorted for display: fewest rooms first, cheapest first within a tie. */
+export function sortedUnits(project: FeaturedProject): ProjectUnit[] {
+  return [...(project.unitTypes ?? [])].sort((a, b) => {
+    if (a.rooms !== b.rooms) return a.rooms - b.rooms
+    return a.price - b.price
+  })
+}
+
+export type UnitSummary = {
+  count: number
+  types: string[]
+  minPrice: number
+  maxPrice: number
+  minArea: number | null
+  maxArea: number | null
+}
+
+/**
+ * Derived commercial facts about a project's unit mix, for the crawlable
+ * summary sentence, the hero availability line and the meta-description
+ * fallback. Returns null when the project has no unit rows.
+ *
+ * Areas are optional per unit, so min/max area are null unless at least one row
+ * carries `areaSqFt` — callers must not print "0 sq ft".
+ */
+export function unitSummary(project: FeaturedProject): UnitSummary | null {
+  const units = sortedUnits(project)
+  if (!units.length) return null
+
+  const prices = units.map((u) => u.price).filter((p): p is number => typeof p === 'number')
+  const areas = units
+    .map((u) => u.areaSqFt)
+    .filter((a): a is number => typeof a === 'number' && a > 0)
+
+  // Distinct type labels, preserving the room-ascending order above.
+  const types = [...new Set(units.map((u) => u.type).filter(Boolean))] as string[]
+
+  return {
+    count: units.length,
+    types,
+    minPrice: Math.min(...prices),
+    maxPrice: Math.max(...prices),
+    minArea: areas.length ? Math.min(...areas) : null,
+    maxArea: areas.length ? Math.max(...areas) : null,
+  }
+}
+
+/** "1,050–2,300 sq ft", or null when no unit carries an area. */
+export function areaRangeLabel(s: UnitSummary): string | null {
+  if (s.minArea == null || s.maxArea == null) return null
+  return s.minArea === s.maxArea
+    ? `${s.minArea.toLocaleString()} sq ft`
+    : `${s.minArea.toLocaleString()}–${s.maxArea.toLocaleString()} sq ft`
+}
+
 /** Format a PKR amount as "PKR 2.45 Cr" / "PKR 95 Lac" / "PKR 50,000". */
 export function formatPkr(n: number | null | undefined): string {
   if (n == null) return 'On Request'

@@ -2,11 +2,23 @@ import Image from 'next/image'
 import { MapPin } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import { LeadForm } from '@/components/forms/LeadForm'
-import { heroImage, imageAlt, formatPkr } from '@/lib/featured-projects'
+import {
+  heroImage,
+  imageAlt,
+  formatPkr,
+  unitSummary,
+  areaRangeLabel,
+} from '@/lib/featured-projects'
 
 export function ProjectHero({ project }: { project: FeaturedProject }) {
   const bg = heroImage(project)
   const alt = imageAlt(project.elevationImages?.[0]?.image, project.title)
+
+  // e.g. "2 Bed DD, 3 Bed Lounge · 1,050–2,300 sq ft"
+  const summary = unitSummary(project)
+  const availability = summary
+    ? [summary.types.join(', '), areaRangeLabel(summary)].filter(Boolean).join(' · ')
+    : null
 
   return (
     <section className="relative isolate min-h-[88vh] overflow-hidden bg-brand-deep text-white">
@@ -67,6 +79,17 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
               </span>
               <span className="font-serif text-2xl text-gold">{formatPkr(project.startingPrice)}</span>
             </div>
+          )}
+
+          {/* Availability, above the fold and fully derived from unitTypes — no
+              CMS input. Until now the only crawlable commercial text this high
+              on the page was the single price chip above, while the queries
+              landing here ask which configurations and sizes are available. */}
+          {availability && (
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70">
+              <span className="text-white/50">Available: </span>
+              {availability}
+            </p>
           )}
         </div>
 

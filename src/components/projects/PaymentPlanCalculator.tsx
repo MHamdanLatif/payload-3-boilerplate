@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileDown, Lock, Unlock } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
-import { formatPkr, smallestUnit } from '@/lib/featured-projects'
+import { formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
 import {
   computePlan,
   type ComputeInput,
@@ -89,17 +89,27 @@ export function PaymentPlanCalculator({
   const unitTypes = project.unitTypes ?? []
   const [selectedUnitKey, setSelectedUnitKey] = useState<string>(() => {
     const sm = smallestUnit(project)
-    if (sm) return `${sm.type}::${sm.rooms}::${sm.price}`
+    if (sm) return unitKey(sm)
     return ''
   })
 
+  // Preselect from `?unit=` so the "Payment plan" links in UnitTypesTable land
+  // here with that row already chosen.
+  //
+  // Reads window.location directly rather than useSearchParams(): this route is
+  // statically rendered with `revalidate = 60`, and useSearchParams in a client
+  // component forces a client-side bail-out that would discard that. Running
+  // after hydration costs nothing here — the calculator isn't usable before it.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !unitTypes.length) return
+    const requested = new URLSearchParams(window.location.search).get('unit')
+    if (!requested) return
+    if (unitTypes.some((u) => unitKey(u) === requested)) setSelectedUnitKey(requested)
+  }, [unitTypes])
+
   const selectedUnit = useMemo(() => {
     if (!selectedUnitKey || !unitTypes.length) return null
-    return (
-      unitTypes.find(
-        (u) => `${u.type}::${u.rooms}::${u.price}` === selectedUnitKey,
-      ) ?? null
-    )
+    return unitTypes.find((u) => unitKey(u) === selectedUnitKey) ?? null
   }, [selectedUnitKey, unitTypes])
 
   const unitPrice =
@@ -312,8 +322,10 @@ export function PaymentPlanCalculator({
 
   if (!enabled) return null
   if (!unitPrice || unitPrice <= 0) {
+    // Same #payment-plan anchor as the enabled branch below, so the "Payment
+    // plan" links in UnitTypesTable still resolve when no plan is configured.
     return (
-      <section className="bg-ivory py-16 md:py-20">
+      <section id="payment-plan" className="bg-ivory py-16 md:py-20">
         <div className="container max-w-3xl">
           <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
             {sectionNumber}
@@ -372,15 +384,20 @@ export function PaymentPlanCalculator({
                     onChange={(e) => setSelectedUnitKey(e.target.value)}
                     className="mt-2 w-full rounded-lg border border-brand-deep/15 bg-white px-4 py-3 text-base text-brand-deep focus:border-gold focus:outline-none"
                   >
+                    {/* Name + configuration only. Price and area used to be
+                        appended here, but UnitTypesTable now server-renders both
+                        directly above — repeating them made the same figures
+                        appear twice in the page text, and the shorter label is
+                        far easier to read in a mobile <select>. The selected
+                        unit's price is still shown in the readout below. */}
                     {unitTypes.map((u) => {
                       const label = u.name ? `${u.name} — ${u.type}` : u.type
                       return (
                         <option
                           key={`${u.name ?? ''}-${u.type}-${u.rooms}-${u.price}`}
-                          value={`${u.type}::${u.rooms}::${u.price}`}
+                          value={unitKey(u)}
                         >
-                          {label} · {formatPkr(u.price)}
-                          {u.areaSqFt ? ` · ${u.areaSqFt} sq ft` : ''}
+                          {label}
                         </option>
                       )
                     })}

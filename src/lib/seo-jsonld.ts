@@ -1,5 +1,13 @@
 import type { FeaturedProject, PropertyListing, Blog, Media } from '@/payload-types'
-import { heroImage, formatPkr, richTextExcerpt, imageUrl, smallestUnit } from './featured-projects'
+import {
+  heroImage,
+  formatPkr,
+  richTextExcerpt,
+  imageUrl,
+  smallestUnit,
+  sortedUnits,
+  unitSummary,
+} from './featured-projects'
 import { listingHeroImage, getSocietyOrProject } from './property-listings'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -73,15 +81,31 @@ export function realEstateListingSchema(project: FeaturedProject) {
     richTextExcerpt(project.description, 200) ||
     `${project.title} — ${project.propertyType} in ${project.location}.`
 
-  const offers = project.startingPrice
-    ? {
-        '@type': 'Offer',
-        priceCurrency: 'PKR',
-        price: project.startingPrice,
-        availability: 'https://schema.org/InStock',
-        url,
-      }
-    : undefined
+  // With more than one unit type, AggregateOffer describes the real price band
+  // instead of a single "starting from" figure. AggregateOffer inside
+  // RealEstateListing is not a Google rich-result type, so unlike Product (see
+  // the note above) it carries no required review/aggregateRating fields.
+  const summary = unitSummary(project)
+  const offers =
+    summary && summary.count > 1
+      ? {
+          '@type': 'AggregateOffer',
+          priceCurrency: 'PKR',
+          lowPrice: summary.minPrice,
+          highPrice: summary.maxPrice,
+          offerCount: summary.count,
+          availability: 'https://schema.org/InStock',
+          url,
+        }
+      : project.startingPrice
+        ? {
+            '@type': 'Offer',
+            priceCurrency: 'PKR',
+            price: project.startingPrice,
+            availability: 'https://schema.org/InStock',
+            url,
+          }
+        : undefined
 
   const small = smallestUnit(project)
   const geo = geoCoordinates(project.googleMapsEmbedUrl)
@@ -132,6 +156,66 @@ export function realEstateListingSchema(project: FeaturedProject) {
         value: small.type,
       },
     ].filter(Boolean),
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Project schema — ApartmentComplex                                          */
+/*                                                                             */
+/* Emitted alongside RealEstateListing and linked to it by @id. The listing    */
+/* describes the sales offer; this describes the building and the actual mix   */
+/* of units in it, which is what the price/size/configuration queries reaching */
+/* these pages are really asking about.                                        */
+/*                                                                             */
+/* Like AggregateOffer above, ApartmentComplex is not a Google rich-result     */
+/* type, so it demands no review/aggregateRating fields — it will not repeat   */
+/* the Search Console problem that got Product removed.                        */
+/* -------------------------------------------------------------------------- */
+
+export function apartmentComplexSchema(project: FeaturedProject) {
+  const units = sortedUnits(project)
+  if (!units.length) return null
+
+  const url = `${getServerSideURL()}/projects/${project.slug}`
+  const geo = geoCoordinates(project.googleMapsEmbedUrl)
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ApartmentComplex',
+    '@id': `${url}#complex`,
+    name: project.title,
+    url,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    address: postalAddress(project.addressLine, project.location),
+    ...(geo && { geo }),
+    numberOfAvailableAccommodationUnits: units.length,
+    ...(project.amenities?.length && {
+      amenityFeature: project.amenities
+        .map((a) => a.name)
+        .filter(Boolean)
+        .map((name) => ({ '@type': 'LocationFeatureSpecification', name })),
+    }),
+    containsPlace: units.map((u) => ({
+      '@type': 'Apartment',
+      name: u.name || u.type,
+      numberOfRooms: u.rooms,
+      ...(u.areaSqFt && {
+        floorSize: {
+          '@type': 'QuantitativeValue',
+          value: u.areaSqFt,
+          unitCode: 'FTK', // UN/CEFACT code for square foot
+        },
+      }),
+      ...(u.price && {
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'PKR',
+          price: u.price,
+          availability: 'https://schema.org/InStock',
+          url,
+        },
+      }),
+    })),
   }
 }
 

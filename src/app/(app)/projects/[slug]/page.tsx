@@ -4,13 +4,17 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import {
+  areaRangeLabel,
   fetchProjectBySlug,
   fetchPublishedProjectSlugs,
+  formatPkr,
   heroImage,
   richTextExcerpt,
+  unitSummary,
 } from '@/lib/featured-projects'
 import {
   realEstateListingSchema,
+  apartmentComplexSchema,
   breadcrumbListSchema,
   faqPageSchema,
 } from '@/lib/seo-jsonld'
@@ -19,6 +23,7 @@ import { findEntityByProjectSlug } from '@/lib/project-mapper'
 import { deriveProjectKeywords } from '@/lib/seo-keywords'
 import { ProjectHero } from '@/components/projects/ProjectHero'
 import { ProjectOverview } from '@/components/projects/ProjectOverview'
+import { UnitTypesTable } from '@/components/projects/UnitTypesTable'
 import { PaymentPlanCalculator } from '@/components/projects/PaymentPlanCalculator'
 import { NightElevationCard } from '@/components/projects/NightElevationCard'
 import { AmenitiesSection } from '@/components/shared/AmenitiesSection'
@@ -54,10 +59,26 @@ export async function generateMetadata({
   if (!project) return { title: 'Project not found | Lateef Properties' }
 
   const seoTitle = project.meta?.title ?? `${project.title} | Lateef Properties`
-  const seoDescription =
-    project.meta?.description ??
-    project.summary ??
-    richTextExcerpt(project.description, 160)
+
+  // When no description is authored, enrich the fallback with derived unit
+  // facts rather than shipping bare prose: these pages rank for price, size and
+  // payment-plan queries, so those figures are what earns the click. An
+  // explicitly authored meta.description always wins.
+  const seoDescription = (() => {
+    if (project.meta?.description) return project.meta.description
+    const base = project.summary ?? richTextExcerpt(project.description, 160) ?? ''
+    const s = unitSummary(project)
+    if (!s) return base
+    const facts = [
+      `${s.count} unit ${s.count === 1 ? 'type' : 'types'}`,
+      areaRangeLabel(s),
+      `from ${formatPkr(s.minPrice)}`,
+    ]
+      .filter(Boolean)
+      .join(', ')
+    const merged = `${base ? `${base.replace(/\s*[.·]\s*$/, '')}. ` : ''}${facts}. Installment plans available.`
+    return merged.length > 155 ? `${merged.slice(0, 152).trimEnd()}…` : merged
+  })()
   const ogImage =
     (typeof project.meta?.image === 'object' && project.meta?.image?.url) ||
     heroImage(project) ||
@@ -113,6 +134,8 @@ export default async function ProjectLandingPage({
 
   const schemas = [
     realEstateListingSchema(project),
+    // Null when the project has no unitTypes rows; JsonLd filters nulls.
+    apartmentComplexSchema(project),
     breadcrumbListSchema([
       { name: 'Home', url: `${base}/` },
       { name: 'Properties', url: `${base}/properties` },
@@ -127,21 +150,27 @@ export default async function ProjectLandingPage({
       <main>
         <ProjectHero project={project} />
         <ProjectOverview project={project} />
-        <PaymentPlanCalculator project={project} sectionNumber="02 / PAYMENT PLAN" />
+        {/* Units sit directly after the overview and BEFORE the calculator:
+            prices/sizes/availability are what the search queries reaching this
+            page actually ask for, and this is server-rendered text whereas the
+            calculator below is a client component. Renders nothing when the
+            project has no unitTypes rows. */}
+        <UnitTypesTable project={project} sectionNumber="02 / AVAILABLE UNITS" />
+        <PaymentPlanCalculator project={project} sectionNumber="03 / PAYMENT PLAN" />
         <NightElevationCard project={project} />
-        <AmenitiesSection amenities={project.amenities} sectionNumber="03 / AMENITIES" />
+        <AmenitiesSection amenities={project.amenities} sectionNumber="04 / AMENITIES" />
         <PhotoGallerySection
           photos={project.photoGallery}
           itemTitle={project.title}
-          sectionNumber="04 / GALLERY"
+          sectionNumber="05 / GALLERY"
         />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="05 / LOCATION"
+          sectionNumber="06 / LOCATION"
         />
-        <FaqSection faqs={project.faqs} sectionNumber="06 / FAQ" />
+        <FaqSection faqs={project.faqs} sectionNumber="07 / FAQ" />
         <InsightsSection
           blogs={relatedBlogs}
           eyebrow="FURTHER READING"
@@ -153,7 +182,7 @@ export default async function ProjectLandingPage({
           sourceName={project.title}
           sourceSlug={project.slug ?? ''}
           sourceKind="project"
-          sectionNumber="07 / ENQUIRE"
+          sectionNumber="08 / ENQUIRE"
         />
       </main>
       <WhatsAppFloatingCta projectTitle={project.title} projectSlug={project.slug ?? undefined} />
