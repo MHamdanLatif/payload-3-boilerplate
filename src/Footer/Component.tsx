@@ -122,8 +122,10 @@ export function Footer() {
             <FooterLink href="/locations/dha">DHA</FooterLink>
             <FooterLink href="/locations/clifton">Clifton</FooterLink>
             <FooterLink href="/locations/jinnah-avenue">Jinnah Avenue</FooterLink>
-            <FooterLink href="/locations/ma-jinnah-road">M.A. Jinnah Road</FooterLink>
             <FooterLink href="/locations/malir">Malir</FooterLink>
+            {/* Every area, including ones without a footer slot — the hub is
+                what stops any location page being orphaned. */}
+            <FooterLink href="/locations">All areas</FooterLink>
           </FooterCol>
         </div>
 

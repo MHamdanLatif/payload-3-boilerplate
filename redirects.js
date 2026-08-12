@@ -61,6 +61,13 @@ const redirects = async () => {
     // Retired project — no destination project page, send buyers to the listings
     { source: '/featured/saima-uptown', destination: '/properties', permanent: true },
 
+    // Retired location silo. M.A. Jinnah Road only ever earned search traffic
+    // via Saima Center Point, which sold out; with no inventory on that corridor
+    // the page had nothing to rank for. A redirect rather than a 404 so the
+    // residual signals land on real inventory. Reverse this and restore the
+    // entry in project-mapper.ts if commercial stock there returns.
+    { source: '/locations/ma-jinnah-road', destination: '/properties', permanent: true },
+
     // Placeholder: /saima-uptown has no page yet. TEMPORARY (307) redirect to
     // /properties until Saima Uptown is added as a listing — then repoint this
     // to /listings/<slug> (keep it temporary, or drop it once the page exists).

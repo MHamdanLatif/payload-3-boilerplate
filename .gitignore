@@ -23,3 +23,11 @@ gcp-*.json
 # Google OAuth client secrets
 client_secret*.json
 *.apps.googleusercontent.com.json
+
+# Working reference material, not source: SEO/GSC audit exports and the brochure
+# masters kept loose in the project root. Large binaries, and the exports carry
+# Search Console data. Scoped deliberately rather than a blanket *.pdf — the
+# old-website/ archive has six PDFs that ARE tracked, and a global rule would
+# also silently swallow any genuine asset added under public/.
+pdfs for seo/
+/*.pdf

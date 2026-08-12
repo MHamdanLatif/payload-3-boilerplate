@@ -115,13 +115,13 @@ export const LOCATION_ENTITIES: EntityEntry[] = [
     slug: 'jinnah-avenue',
     url: locationUrl,
   },
-  {
-    kind: 'location',
-    canonical: 'M.A. Jinnah Road',
-    aliases: ['M.A Jinnah', 'MA Jinnah Road', 'M.A. Jinnah'],
-    slug: 'ma-jinnah-road',
-    url: locationUrl,
-  },
+  // M.A. Jinnah Road was removed as a location silo. Its Search Console traffic
+  // (2 clicks / 95 impressions) came from Saima Center Point, which sat on that
+  // road and has since sold out and been retired — so the demand behind those
+  // clicks no longer exists as inventory. /locations/ma-jinnah-road now 308s to
+  // /properties (see redirects.js); "M.A. Jinnah Road" remains a valid value in
+  // FeaturedProjects' LOCATION_OPTIONS, so re-add this entry (and drop the
+  // redirect) if commercial inventory on that corridor ever returns.
   {
     kind: 'location',
     canonical: 'Model Colony',
