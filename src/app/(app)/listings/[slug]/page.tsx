@@ -3,12 +3,18 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import Link from 'next/link'
 import {
   fetchListingBySlug,
+  fetchListingsByLocation,
   fetchPublishedListingSlugs,
   listingHeroImage,
 } from '@/lib/property-listings'
 import { richTextExcerpt } from '@/lib/featured-projects'
+import { fetchRelatedBlogs } from '@/lib/blogs'
+import { findLocationSlugByCanonicalName } from '@/lib/project-mapper'
+import { InsightsSection } from '@/components/blog/InsightsSection'
+import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
 import {
   propertyListingSchema,
   breadcrumbListSchema,
@@ -93,6 +99,24 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const base = getServerSideURL().replace(/\/$/, '')
   const canonical = `${base}/listings/${listing.slug}`
 
+  // Listing pages had NO outbound internal links — every other template has a
+  // related-reading strip, so these were link sinks: crawl equity arrived and
+  // stopped. Related guides plus siblings in the same area give the listing
+  // cluster some internal structure. Best-effort; both degrade to nothing.
+  const [relatedBlogs, sameArea] = await Promise.all([
+    fetchRelatedBlogs(
+      payload,
+      [listing.title, listing.location, listing.unitType].filter(Boolean) as string[],
+      3,
+    ).catch((): Awaited<ReturnType<typeof fetchRelatedBlogs>> => []),
+    (listing.location
+      ? fetchListingsByLocation(payload, listing.location)
+      : Promise.resolve([])
+    ).catch((): Awaited<ReturnType<typeof fetchListingsByLocation>> => []),
+  ])
+  const otherInArea = sameArea.filter((l) => l.id !== listing.id).slice(0, 3)
+  const areaSlug = listing.location ? findLocationSlugByCanonicalName(listing.location) : null
+
   const schemas = [
     propertyListingSchema(listing),
     breadcrumbListSchema([
@@ -126,11 +150,51 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
           sectionNumber="05 / LOCATION"
         />
         <FaqSection faqs={listing.faqs} sectionNumber="06 / FAQ" />
+
+        {otherInArea.length > 0 && (
+          <section className="bg-white py-20 md:py-28">
+            <div className="container">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
+                  07 / MORE IN {listing.location?.toUpperCase()}
+                </span>
+                <span className="h-px w-10 bg-gold" />
+              </div>
+              <h2 className="mt-6 font-serif text-3xl leading-tight tracking-tight text-brand-deep md:text-4xl">
+                More property in {listing.location}.
+              </h2>
+              <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {otherInArea.map((l) => (
+                  <PropertyListingCard key={l.id} listing={l} />
+                ))}
+              </div>
+              {areaSlug && (
+                <p className="mt-10">
+                  <Link
+                    className="text-sm text-gold underline underline-offset-4 hover:text-brand-deep"
+                    href={`/locations/${areaSlug}`}
+                  >
+                    See everything for sale in {listing.location} →
+                  </Link>
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        <InsightsSection
+          blogs={relatedBlogs}
+          eyebrow="FURTHER READING"
+          heading="Before you decide."
+          intro={`Buyer guides covering ${listing.location ?? 'Karachi'} and this kind of property.`}
+          bg="bg-cream"
+        />
+
         <FinalCTASection
           sourceName={listing.title}
           sourceSlug={listing.slug ?? ''}
           sourceKind="listing"
-          sectionNumber="07 / ENQUIRE"
+          sectionNumber="08 / ENQUIRE"
           intro="Share your details — a senior advisor typically reaches you within 15 minutes to schedule a viewing and answer questions on title, possession, or financing."
         />
       </main>

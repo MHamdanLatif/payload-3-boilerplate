@@ -31,9 +31,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/`, lastModified: now, changeFrequency: 'weekly', priority: 1 },
     { url: `${base}/properties`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${base}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/locations`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
   ]
 
-  const locationEntries: MetadataRoute.Sitemap = LOCATION_ENTITIES.map((e) => ({
+  // Location entries are computed inside the try block below, because a
+  // location with no inventory is noindexed (see locations/[slug]/page.tsx) and
+  // a sitemap should only advertise indexable URLs. The catch fallback lists
+  // them all — a degraded sitemap is better than an empty one.
+  const allLocationEntries: MetadataRoute.Sitemap = LOCATION_ENTITIES.map((e) => ({
     url: `${base}/locations/${e.slug}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,
@@ -107,6 +112,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       })
 
+    // Keep only locations that have at least one project or listing tagged to
+    // them — the rest are noindexed, and listing a noindexed URL in the sitemap
+    // is a contradictory signal. Matches on the canonical name, exactly as the
+    // location page's own queries do.
+    const populatedLocations = new Set<string>()
+    for (const d of projects.docs) {
+      if ((d as FeaturedProject).location) populatedLocations.add((d as FeaturedProject).location!)
+    }
+    for (const d of listings.docs) {
+      if ((d as PropertyListing).location) populatedLocations.add((d as PropertyListing).location!)
+    }
+    const locationEntries = allLocationEntries.filter((entry) => {
+      const slug = entry.url.split('/locations/')[1]
+      const match = LOCATION_ENTITIES.find((e) => e.slug === slug)
+      return match ? populatedLocations.has(match.canonical) : false
+    })
+
     return [
       ...staticEntries,
       ...locationEntries,
@@ -115,6 +137,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...blogEntries,
     ]
   } catch {
-    return [...staticEntries, ...locationEntries]
+    return [...staticEntries, ...allLocationEntries]
   }
 }

@@ -160,6 +160,32 @@ export function realEstateListingSchema(project: FeaturedProject) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* ItemList — a page that lists other pages                                   */
+/*                                                                             */
+/* Used by the location silo, whose pages previously emitted only a breadcrumb */
+/* and a bare Place — nothing describing the inventory actually shown. Returns */
+/* null for an empty list so callers can pass results straight through.        */
+/* -------------------------------------------------------------------------- */
+
+export function itemListSchema(items: { name: string; url: string }[], name?: string) {
+  const clean = items.filter((i) => i?.name && i?.url)
+  if (!clean.length) return null
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    ...(name && { name }),
+    numberOfItems: clean.length,
+    itemListElement: clean.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+    })),
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Project schema — ApartmentComplex                                          */
 /*                                                                             */
 /* Emitted alongside RealEstateListing and linked to it by @id. The listing    */

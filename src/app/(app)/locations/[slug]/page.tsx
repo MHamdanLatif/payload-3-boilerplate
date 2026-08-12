@@ -7,8 +7,10 @@ import { fetchProjectsByLocation } from '@/lib/featured-projects'
 import { fetchListingsByLocation } from '@/lib/property-listings'
 import { fetchRelatedBlogs } from '@/lib/blogs'
 import { LOCATION_ENTITIES, findEntityByLocationSlug } from '@/lib/project-mapper'
-import { breadcrumbListSchema } from '@/lib/seo-jsonld'
+import { locationContent } from '@/lib/location-content'
+import { breadcrumbListSchema, faqPageSchema, itemListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
+import { FaqSection } from '@/components/shared/FaqSection'
 import { SectionRule } from '@/components/landing/SectionRule'
 import { FeaturedProjectCard } from '@/components/landing/FeaturedProjectCard'
 import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
@@ -20,6 +22,25 @@ type Params = { slug: string }
 
 export async function generateStaticParams() {
   return LOCATION_ENTITIES.map((e) => ({ slug: e.slug }))
+}
+
+/**
+ * Does this location have anything to show? Drives the noindex gate in
+ * generateMetadata. Counts only — the page body does its own full fetches, and
+ * Next dedupes within a request.
+ */
+async function locationHasInventory(canonical: string): Promise<boolean> {
+  try {
+    const payload = await getPayload({ config })
+    const [projects, listings] = await Promise.all([
+      payload.count({ collection: 'featured-projects', where: { location: { equals: canonical } } }),
+      payload.count({ collection: 'property-listings', where: { location: { equals: canonical } } }),
+    ])
+    return (projects?.totalDocs ?? 0) + (listings?.totalDocs ?? 0) > 0
+  } catch {
+    // On a DB hiccup, prefer indexable over accidentally noindexing a good page.
+    return true
+  }
 }
 
 export const dynamicParams = true
@@ -35,14 +56,28 @@ export async function generateMetadata({
   if (!entry) return { title: 'Location not found | Lateef Properties' }
 
   const canonical = `${getServerSideURL()}/locations/${entry.slug}`
-  const title = `${entry.canonical} Properties — Verified Karachi Real Estate | Lateef Properties`
+  const authored = locationContent(entry.slug)
+
+  const title =
+    authored?.metaTitle ??
+    `${entry.canonical} Properties — Verified Karachi Real Estate | Lateef Properties`
   const description =
+    authored?.metaDescription ??
     `Featured developments and ready-to-move properties in ${entry.canonical}, Karachi. ` +
-    `Pre-launch allocations and curated resale inventory reviewed by Lateef Properties advisors.`
+      `Pre-launch allocations and curated resale inventory reviewed by Lateef Properties advisors.`
+
+  // A location with no projects AND no listings has nothing to offer a searcher
+  // beyond a placeholder — nine such pages sharing near-identical boilerplate is
+  // a thin-content cluster that drags on sitewide quality. Noindex them until
+  // inventory exists; `follow: true` so equity still flows out through the CTA
+  // and related-reading links. This reverses itself automatically the moment a
+  // project or listing is tagged to the location — nothing to remember later.
+  const hasInventory = await locationHasInventory(entry.canonical)
 
   return {
     title,
     description,
+    ...(hasInventory ? {} : { robots: { index: false, follow: true } }),
     alternates: { canonical },
     openGraph: {
       title,
@@ -90,6 +125,8 @@ export default async function LocationLandingPage({
   const base = getServerSideURL().replace(/\/$/, '')
   const canonical = `${base}/locations/${entry.slug}`
 
+  const authored = locationContent(entry.slug)
+
   const schemas = [
     breadcrumbListSchema([
       { name: 'Home', url: `${base}/` },
@@ -108,6 +145,23 @@ export default async function LocationLandingPage({
       },
       url: canonical,
     },
+    // Tells Google these pages hold real inventory rather than being another
+    // thin area page — previously only a breadcrumb and a bare Place were
+    // emitted, which said nothing about what is actually for sale here.
+    itemListSchema(
+      [
+        ...projects.map((p) => ({
+          name: p.title,
+          url: `${base}/projects/${p.slug}`,
+        })),
+        ...listings.map((l) => ({
+          name: l.title,
+          url: `${base}/listings/${l.slug}`,
+        })),
+      ],
+      `Property for sale in ${entry.canonical}, Karachi`,
+    ),
+    faqPageSchema(authored?.faqs ?? [], canonical),
   ]
 
   return (
@@ -121,15 +175,26 @@ export default async function LocationLandingPage({
             <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
               LOCATION · KARACHI
             </span>
+            {/* Keyword-qualified H1. Was the bare area name ("DHA"), which told
+                Google nothing about what the page offers. */}
             <h1 className="mt-5 font-serif text-5xl leading-[1.05] tracking-tight text-balance md:text-6xl lg:text-7xl">
-              {entry.canonical}
+              {authored?.h1 ?? `Property for Sale in ${entry.canonical}, Karachi`}
             </h1>
             <SectionRule className="mt-7" />
             <p className="mt-7 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
-              Verified developments and ready-to-move inventory in {entry.canonical}, curated by
-              Lateef Properties advisors. Pre-launch allocations on partnered builder projects, and
-              off-market resale opportunities, reviewed before recommendation.
+              {authored?.intro ?? (
+                <>
+                  Verified developments and ready-to-move inventory in {entry.canonical}, curated by
+                  Lateef Properties advisors. Pre-launch allocations on partnered builder projects,
+                  and off-market resale opportunities, reviewed before recommendation.
+                </>
+              )}
             </p>
+            {authored?.detail && (
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/70 md:text-lg">
+                {authored.detail}
+              </p>
+            )}
           </div>
         </section>
 
@@ -193,6 +258,10 @@ export default async function LocationLandingPage({
             </div>
           </section>
         )}
+
+        {/* Authored FAQs — also emitted as FAQPage structured data above, so
+            these can surface as rich results for the area's question queries. */}
+        <FaqSection faqs={authored?.faqs} sectionNumber="03 / QUESTIONS" />
 
         <InsightsSection
           blogs={relatedBlogs}
