@@ -5,6 +5,7 @@ import config from '@payload-config'
 import { SearchFilter } from '@/components/properties/SearchFilter'
 import { PropertyResultsGrid } from '@/components/properties/PropertyResultsGrid'
 import { ZeroResultsLeadTrap } from '@/components/properties/ZeroResultsLeadTrap'
+import { CategoryHub } from '@/components/properties/CategoryHub'
 import { fetchUnified, parseSearchParams, type RawSearchParams } from '@/lib/property-search'
 import { breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
@@ -14,7 +15,29 @@ export const dynamic = 'force-dynamic'
 
 const base = getServerSideURL().replace(/\/$/, '')
 
-export const metadata: Metadata = {
+/**
+ * Filtered views (?location=…&unitType=…) are noindexed but followed.
+ *
+ * Faceted navigation generates effectively unlimited URL permutations; left
+ * indexable they compete with /properties itself and spread crawl budget across
+ * near-identical result sets. `follow` keeps the links inside them live, so the
+ * project and listing pages they point at still receive the equity.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}): Promise<Metadata> {
+  const sp = await searchParams
+  const isFiltered = Object.values(sp ?? {}).some((v) => v != null && v !== '')
+
+  return {
+    ...metadata,
+    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+  }
+}
+
+const metadata: Metadata = {
   title: 'Properties for Sale in Karachi | Flats, Plots, Offices, Shops | Lateef Properties',
   description:
     'Browse pre-launch allocations, ready-for-possession flats, plots, offices and shops across Karachi. Filter by location, type, status and budget. Curated, hand-picked inventory.',
@@ -52,6 +75,7 @@ export default async function PropertiesPage({
 }) {
   const sp = await searchParams
   const parsed = parseSearchParams(sp)
+  const isFiltered = Object.values(sp ?? {}).some((v) => v != null && v !== '')
 
   const payload = await getPayload({ config })
   const items = await fetchUnified(payload, parsed)
@@ -99,6 +123,11 @@ export default async function PropertiesPage({
           ) : (
             <ZeroResultsLeadTrap searchedParams={parsed} />
           )}
+
+          {/* Crawlable category links + inventory summary. Rendered on the
+              unfiltered hub only — on a filtered view it would repeat the same
+              block across every permutation. */}
+          {!isFiltered && <CategoryHub payload={payload} />}
         </div>
       </main>
     </>
