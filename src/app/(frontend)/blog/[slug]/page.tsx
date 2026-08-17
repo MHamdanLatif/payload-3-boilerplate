@@ -173,6 +173,60 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             </div>
           )}
 
+          {/*
+            Inventory route ABOVE the article body.
+
+            The card grid at the foot of the page sits after the full guide, so
+            a visitor arriving from search has to read to the end to find any
+            property. These posts rank at positions 6-9 for transactional
+            queries ("duplex", "scheme 33") and convert at 0.5-0.7% — the reader
+            wants inventory, not an essay, and was being made to earn it.
+
+            Deliberately a compact text strip rather than a second card grid:
+            it must not push the article itself below the fold, and it reuses
+            the already-resolved cards so there is no extra query.
+          */}
+          {hasCards && (
+            <div className="mt-10 rounded-xl border border-gold/30 bg-gold/[0.06] px-5 py-4">
+              <p className="text-[0.7rem] uppercase tracking-[0.2em] text-brand-deep/55">
+                Available now
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-brand-deep/80">
+                {'Looking to buy rather than read? '}
+                {[
+                  ...projectCards.map((p) => ({
+                    key: `project-${p.id}`,
+                    href: `/projects/${p.slug}`,
+                    title: p.title,
+                  })),
+                  ...listingCards.map((l) => ({
+                    key: `listing-${l.id}`,
+                    href: `/listings/${l.slug}`,
+                    title: l.title,
+                  })),
+                ].map((item, i, arr) => (
+                  <span key={item.key}>
+                    <Link
+                      href={item.href}
+                      className="font-medium text-gold underline underline-offset-4 hover:text-brand-deep"
+                    >
+                      {item.title}
+                    </Link>
+                    {i < arr.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+                {' — or '}
+                <Link
+                  href="/properties"
+                  className="text-gold underline underline-offset-4 hover:text-brand-deep"
+                >
+                  browse all Karachi inventory
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+
           <div className="prose prose-lg mt-12 max-w-none text-brand-deep/85 [&_h2]:font-serif [&_h2]:text-brand-deep [&_h2]:tracking-tight [&_h2]:mt-12 [&_h3]:font-serif [&_h3]:text-brand-deep [&_h3]:mt-8 [&_a]:text-gold [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-gold-hover [&_strong]:text-brand-deep">
             <RichText
               content={blog.content as Record<string, unknown>}
