@@ -8,6 +8,7 @@ import * as migration_20260716_000000_leads_crm_fields from './20260716_000000_l
 import * as migration_20260716_000001_link_opens from './20260716_000001_link_opens';
 import * as migration_20260717_000000_send_file from './20260717_000000_send_file';
 import * as migration_20260807_000000_brochure_dwell from './20260807_000000_brochure_dwell';
+import * as migration_20260817_000000_is_duplex from './20260817_000000_is_duplex';
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20260807_000000_brochure_dwell.up,
     down: migration_20260807_000000_brochure_dwell.down,
     name: '20260807_000000_brochure_dwell',
+  },
+  {
+    up: migration_20260817_000000_is_duplex.up,
+    down: migration_20260817_000000_is_duplex.down,
+    name: '20260817_000000_is_duplex',
   },
 ];

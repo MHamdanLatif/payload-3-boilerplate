@@ -282,6 +282,16 @@ export const FeaturedProjects: CollectionConfig = {
           options: UNIT_TYPE_OPTIONS.map((v) => ({ label: v, value: v })),
         },
         {
+          name: 'isDuplex',
+          type: 'checkbox',
+          label: 'Duplex (two-level)',
+          defaultValue: false,
+          admin: {
+            description:
+              'Tick if this unit is a two-level duplex. Kept separate from Unit Type on purpose: "duplex" is the layout, "3 Bed Drawing" is the configuration, and buyers search for both together ("4 bed duplex Karachi"). Collapsing them into one field would lose the bed count. A project can mix duplex and flat units.',
+          },
+        },
+        {
           name: 'rooms',
           type: 'number',
           required: true,

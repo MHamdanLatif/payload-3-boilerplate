@@ -55,6 +55,15 @@ export type UnitSummary = {
   maxPrice: number
   minArea: number | null
   maxArea: number | null
+  /** How many of the units are two-level duplexes. */
+  duplexCount: number
+  /** Configuration labels that are available as a duplex, e.g. ["3 Bed Drawing"]. */
+  duplexTypes: string[]
+}
+
+/** Configuration + layout, e.g. "4 Bed Drawing · Duplex". */
+export function unitLabel(u: Pick<ProjectUnit, 'type' | 'isDuplex'>): string {
+  return u.isDuplex ? `${u.type} · Duplex` : String(u.type)
 }
 
 /**
@@ -76,6 +85,8 @@ export function unitSummary(project: FeaturedProject): UnitSummary | null {
 
   // Distinct type labels, preserving the room-ascending order above.
   const types = [...new Set(units.map((u) => u.type).filter(Boolean))] as string[]
+  const duplexes = units.filter((u) => u.isDuplex)
+  const duplexTypes = [...new Set(duplexes.map((u) => u.type).filter(Boolean))] as string[]
 
   return {
     count: units.length,
@@ -84,6 +95,8 @@ export function unitSummary(project: FeaturedProject): UnitSummary | null {
     maxPrice: Math.max(...prices),
     minArea: areas.length ? Math.min(...areas) : null,
     maxArea: areas.length ? Math.max(...areas) : null,
+    duplexCount: duplexes.length,
+    duplexTypes,
   }
 }
 

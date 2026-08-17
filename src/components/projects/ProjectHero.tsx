@@ -14,10 +14,18 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
   const bg = heroImage(project)
   const alt = imageAlt(project.elevationImages?.[0]?.image, project.title)
 
-  // e.g. "2 Bed DD, 3 Bed Lounge · 1,050–2,300 sq ft"
+  // e.g. "2 Bed DD, 3 Bed Drawing (duplex) · 1,050–2,300 sq ft"
+  // Duplex is called out here because it is the highest-volume query cluster
+  // reaching the site, and this is the only crawlable text above the fold.
   const summary = unitSummary(project)
   const availability = summary
-    ? [summary.types.join(', '), areaRangeLabel(summary)].filter(Boolean).join(' · ')
+    ? [
+        summary.types.join(', '),
+        summary.duplexCount ? `${summary.duplexCount} duplex` : null,
+        areaRangeLabel(summary),
+      ]
+        .filter(Boolean)
+        .join(' · ')
     : null
 
   return (

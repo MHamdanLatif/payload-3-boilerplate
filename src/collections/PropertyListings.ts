@@ -61,6 +61,16 @@ export const PropertyListings: CollectionConfig = {
       },
     },
     {
+      name: 'isDuplex',
+      type: 'checkbox',
+      label: 'Duplex (two-level)',
+      defaultValue: false,
+      admin: {
+        description:
+          'Tick if this is a two-level duplex. Deliberately separate from Unit Type: "duplex" is the layout, "4 Bed Drawing" is the configuration, and buyers search for the combination ("4 bed duplex Karachi"). Feeds the Duplex category on /properties and the duplex wording on the listing page.',
+      },
+    },
+    {
       name: 'price',
       type: 'number',
       required: true,

@@ -56,15 +56,21 @@ export type RawSearchParams = {
   propertyType?: string
   status?: string
   unitType?: string
+  /** Layout, orthogonal to unitType. Currently only 'duplex'. */
+  layout?: string
   minPrice?: string
   maxPrice?: string
 }
+
+export const VALID_LAYOUTS = ['duplex'] as const
+export type Layout = (typeof VALID_LAYOUTS)[number]
 
 export type ParsedSearchParams = {
   location?: FilterLocation
   propertyType?: PropertyType
   status?: FilterStatus
   unitType?: UnitType
+  layout?: Layout
   minPrice?: number
   maxPrice?: number
 }
@@ -97,6 +103,9 @@ export function parseSearchParams(sp: RawSearchParams): ParsedSearchParams {
   }
   if (sp.unitType && (VALID_UNIT_TYPES as readonly string[]).includes(sp.unitType)) {
     out.unitType = sp.unitType as UnitType
+  }
+  if (sp.layout && (VALID_LAYOUTS as readonly string[]).includes(sp.layout)) {
+    out.layout = sp.layout as Layout
   }
   const min = Number(sp.minPrice)
   if (sp.minPrice && Number.isFinite(min) && min >= 0) out.minPrice = min
@@ -165,6 +174,17 @@ export async function fetchUnified(payload: Payload, sp: ParsedSearchParams): Pr
       ],
     })
   }
+  // Layout filter (currently duplex only). Deliberately separate from unitType:
+  // a duplex still has a bed configuration, so the two combine — ?unitType=4
+  // Bed Drawing&layout=duplex is a valid, and very commercial, query.
+  //   • FeaturedProjects: match if ANY unit row is a duplex. A project can mix
+  //     duplex and flat units (Tulip Comfort does), so this is per-unit.
+  //   • PropertyListings: the flag sits on the listing itself.
+  if (sp.layout === 'duplex') {
+    pushIf(sharedProjectWhere.and as Where[], { 'unitTypes.isDuplex': { equals: true } })
+    pushIf(sharedListingWhere.and as Where[], { isDuplex: { equals: true } })
+  }
+
   pushIf(sharedListingWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'price'))
   pushIf(sharedProjectWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'startingPrice'))
 

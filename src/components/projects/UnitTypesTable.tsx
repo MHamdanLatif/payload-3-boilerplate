@@ -52,6 +52,18 @@ export function UnitTypesTable({
     project.location ? ` in ${project.location}, Karachi.` : '.',
   ].join('')
 
+  // Duplex gets its own sentence rather than being buried in the list above.
+  // "duplex" is the single highest-volume query cluster reaching this site
+  // (~753 impressions/quarter) and it currently lands on blog posts, because no
+  // commercial page states in text which units are actually duplexes.
+  const duplexProse = summary.duplexCount
+    ? `${summary.duplexCount} of them ${summary.duplexCount === 1 ? 'is a' : 'are'} two-level duplex ${
+        summary.duplexCount === 1 ? 'apartment' : 'apartments'
+      }${summary.duplexTypes.length ? ` (${summary.duplexTypes.join(', ')})` : ''}${
+        project.location ? ` — duplex apartments in ${project.location}, Karachi` : ''
+      }.`
+    : null
+
   const th =
     'px-4 py-3 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55 font-medium'
   const td = 'px-4 py-3.5 text-sm text-brand-deep'
@@ -70,7 +82,10 @@ export function UnitTypesTable({
         </h2>
         <SectionRule className="mt-6" />
 
-        <p className="mt-6 max-w-3xl text-base leading-relaxed text-brand-deep/75">{prose}</p>
+        <p className="mt-6 max-w-3xl text-base leading-relaxed text-brand-deep/75">
+          {prose}
+          {duplexProse ? ` ${duplexProse}` : ''}
+        </p>
 
         <div className="mt-10 overflow-x-auto rounded-xl border border-brand-deep/10">
           <table className="w-full border-collapse">
@@ -116,6 +131,11 @@ export function UnitTypesTable({
                     data-label="Configuration"
                   >
                     {u.type}
+                    {u.isDuplex && (
+                      <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-brand-deep">
+                        Duplex
+                      </span>
+                    )}
                   </td>
                   <td
                     className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}

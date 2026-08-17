@@ -71,6 +71,8 @@ export async function generateMetadata({
     if (!s) return base
     const facts = [
       `${s.count} unit ${s.count === 1 ? 'type' : 'types'}`,
+      // Duplex ahead of area: it is the query cluster these pages need to win.
+      s.duplexCount ? `${s.duplexCount} duplex` : null,
       areaRangeLabel(s),
       `from ${formatPkr(s.minPrice)}`,
     ]

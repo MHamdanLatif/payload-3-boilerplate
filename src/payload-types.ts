@@ -864,6 +864,10 @@ export interface FeaturedProject {
           | '4 Bed Drawing'
           | '4+ Rooms';
         /**
+         * Tick if this unit is a two-level duplex. Kept separate from Unit Type on purpose: "duplex" is the layout, "3 Bed Drawing" is the configuration, and buyers search for both together ("4 bed duplex Karachi"). Collapsing them into one field would lose the bed count. A project can mix duplex and flat units.
+         */
+        isDuplex?: boolean | null;
+        /**
          * Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).
          */
         rooms: number;
@@ -1020,6 +1024,10 @@ export interface PropertyListing {
         | '4+ Rooms'
       )
     | null;
+  /**
+   * Tick if this is a two-level duplex. Deliberately separate from Unit Type: "duplex" is the layout, "4 Bed Drawing" is the configuration, and buyers search for the combination ("4 bed duplex Karachi"). Feeds the Duplex category on /properties and the duplex wording on the listing page.
+   */
+  isDuplex?: boolean | null;
   price: number;
   location:
     | 'Gulshan-e-Iqbal'
@@ -2024,6 +2032,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
     | {
         name?: T;
         type?: T;
+        isDuplex?: T;
         rooms?: T;
         price?: T;
         areaSqFt?: T;
@@ -2089,6 +2098,7 @@ export interface PropertyListingsSelect<T extends boolean = true> {
   slugLock?: T;
   propertyType?: T;
   unitType?: T;
+  isDuplex?: T;
   price?: T;
   location?: T;
   rooms?: T;

@@ -41,6 +41,10 @@ type InventoryItem = {
   price?: number | null
   startingPrice?: number | null
   title?: string | null
+  /** Listings only — a project's duplex status lives on its unit rows. */
+  isDuplex?: boolean | null
+  /** Projects only. */
+  unitTypes?: { isDuplex?: boolean | null }[] | null
 }
 
 /**
@@ -152,6 +156,25 @@ export async function CategoryHub({ payload }: { payload: Payload }) {
     VALID_FILTER_STATUSES,
   )
 
+  // Duplex is the site's biggest zero-click query cluster (~753 impressions a
+  // quarter landing on blog posts). This gives it a commercial destination.
+  // A listing carries the flag directly; a project qualifies if any of its unit
+  // rows is a duplex, since a project can mix duplex and flat units.
+  const duplexCount = items.filter(
+    (i) => i.isDuplex || (i.unitTypes ?? []).some((u) => u?.isDuplex),
+  ).length
+
+  const layoutRows: Row[] = duplexCount
+    ? [
+        {
+          label: 'Duplex apartments in Karachi',
+          href: '/properties?layout=duplex',
+          count: duplexCount,
+          minPrice: null,
+        },
+      ]
+    : []
+
   // One crawlable sentence stating what this page actually holds. The category
   // links above are navigation; this is the text that can match a query.
   const locationNames = byLocation.slice(0, 6).map((r) => r.label.replace('Property for sale in ', ''))
@@ -175,6 +198,7 @@ export async function CategoryHub({ payload }: { payload: Payload }) {
 
       <CategoryGrid heading="By area" rows={byLocation} />
       <CategoryGrid heading="By property type" rows={byType} />
+      <CategoryGrid heading="By layout" rows={layoutRows} />
       <CategoryGrid heading="By apartment configuration" rows={byUnit} />
       <CategoryGrid heading="By availability" rows={byStatus} />
 
