@@ -55,7 +55,7 @@ export const Leads: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description:
-          'Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. “Qualified” and “Junk” send a Meta CAPI event; “Site Visit” and “Closed Won” only do so if their env vars are set — see leadAfterChange.',
+          'Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. Each stage sends its own Meta CAPI event — Qualified, Site Visit (Schedule), Closed Won (Purchase) and Junk — so the ad account learns what a real buyer looks like, not just what a lead looks like. See leadAfterChange to rename or disable any of them.',
       },
     },
     {

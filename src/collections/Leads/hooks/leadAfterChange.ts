@@ -78,24 +78,30 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
 /**
  * Which Meta CAPI event, if any, a status change should send.
  *
- * "qualified" and "junk" have always fired and keep their behaviour. The later
- * funnel stages are OPT-IN: firing a Purchase event the moment "Closed Won"
- * existed would have silently changed what the ad account optimises for, so
- * they stay off until their env var is set.
+ * All four funnel outcomes now report. "Closed Won" maps to Purchase — the
+ * strongest signal available, because it teaches Meta what an actual BUYER
+ * looks like rather than merely what a lead looks like. "Site Visit" maps to
+ * Schedule, the standard event for a booked appointment.
  *
- * Suggested values if you do want them:
- *   META_CAPI_SITE_VISIT_EVENT=Schedule
- *   META_CAPI_CLOSED_WON_EVENT=Purchase   (the strongest signal you can send)
+ * Every mapping is overridable, and setting a var to an empty string disables
+ * that status outright — so any of these can be renamed or switched off from
+ * Railway without a deploy:
+ *   META_CAPI_QUALIFIED_EVENT, META_CAPI_JUNK_EVENT,
+ *   META_CAPI_SITE_VISIT_EVENT, META_CAPI_CLOSED_WON_EVENT
  *
- * Setting a var to an empty string disables that status explicitly — which is
- * how "qualified" or "junk" can be turned off without a code change.
+ * KNOWN GAP: Purchase is sent without value/currency, because nothing in the
+ * Leads collection records what a deal actually closed for. `budget` is what
+ * the buyer said they'd spend, not what they paid, so using it would put a
+ * fabricated revenue figure into Meta's reporting. Meta accepts a valueless
+ * Purchase and will still optimise toward it; adding a real "sale value" field
+ * later would make it considerably more powerful.
  */
 function capiEventForStatus(status: Lead['status']): string | null {
   const configured: Record<string, { env: string; fallback: string | null }> = {
     qualified: { env: 'META_CAPI_QUALIFIED_EVENT', fallback: 'QualifiedLead' },
     junk: { env: 'META_CAPI_JUNK_EVENT', fallback: 'DisqualifiedLead' },
-    'site-visit': { env: 'META_CAPI_SITE_VISIT_EVENT', fallback: null },
-    'closed-won': { env: 'META_CAPI_CLOSED_WON_EVENT', fallback: null },
+    'site-visit': { env: 'META_CAPI_SITE_VISIT_EVENT', fallback: 'Schedule' },
+    'closed-won': { env: 'META_CAPI_CLOSED_WON_EVENT', fallback: 'Purchase' },
   }
   const entry = status ? configured[status] : undefined
   if (!entry) return null
