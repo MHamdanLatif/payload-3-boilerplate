@@ -1353,9 +1353,9 @@ export interface PaymentPlanLead {
 export interface Lead {
   id: number;
   /**
-   * Set after calling. “Qualified” or “Junk” sends a Meta CAPI event.
+   * Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. “Qualified” and “Junk” send a Meta CAPI event; “Site Visit” and “Closed Won” only do so if their env vars are set — see leadAfterChange.
    */
-  status?: ('unqualified' | 'contacted' | 'qualified' | 'junk') | null;
+  status?: ('unqualified' | 'contacted' | 'qualified' | 'site-visit' | 'closed-won' | 'junk') | null;
   /**
    * Auto-generated. The trackable link is /brochure/<this id>.
    */

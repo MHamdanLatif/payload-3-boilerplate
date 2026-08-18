@@ -75,6 +75,35 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
   })
 }
 
+/**
+ * Which Meta CAPI event, if any, a status change should send.
+ *
+ * "qualified" and "junk" have always fired and keep their behaviour. The later
+ * funnel stages are OPT-IN: firing a Purchase event the moment "Closed Won"
+ * existed would have silently changed what the ad account optimises for, so
+ * they stay off until their env var is set.
+ *
+ * Suggested values if you do want them:
+ *   META_CAPI_SITE_VISIT_EVENT=Schedule
+ *   META_CAPI_CLOSED_WON_EVENT=Purchase   (the strongest signal you can send)
+ *
+ * Setting a var to an empty string disables that status explicitly — which is
+ * how "qualified" or "junk" can be turned off without a code change.
+ */
+function capiEventForStatus(status: Lead['status']): string | null {
+  const configured: Record<string, { env: string; fallback: string | null }> = {
+    qualified: { env: 'META_CAPI_QUALIFIED_EVENT', fallback: 'QualifiedLead' },
+    junk: { env: 'META_CAPI_JUNK_EVENT', fallback: 'DisqualifiedLead' },
+    'site-visit': { env: 'META_CAPI_SITE_VISIT_EVENT', fallback: null },
+    'closed-won': { env: 'META_CAPI_CLOSED_WON_EVENT', fallback: null },
+  }
+  const entry = status ? configured[status] : undefined
+  if (!entry) return null
+  const override = process.env[entry.env]
+  if (override === '') return null
+  return override || entry.fallback
+}
+
 async function onStatusChange(
   doc: Lead,
   previousDoc: Lead | undefined,
@@ -83,12 +112,8 @@ async function onStatusChange(
   const now = doc.status
   const prev = previousDoc?.status
   if (now === prev) return
-  if (now !== 'qualified' && now !== 'junk') return
-
-  const eventName =
-    now === 'qualified'
-      ? process.env.META_CAPI_QUALIFIED_EVENT || 'QualifiedLead'
-      : process.env.META_CAPI_JUNK_EVENT || 'DisqualifiedLead'
+  const eventName = capiEventForStatus(now)
+  if (!eventName) return
 
   const res = await sendCapiEvent({
     eventName,

@@ -15,7 +15,29 @@ export const dynamic = 'force-dynamic'
 
 type SP = { from?: string; to?: string; status?: string; source?: string }
 
-const STATUSES = ['unqualified', 'contacted', 'qualified', 'junk'] as const
+const STATUSES = [
+  'unqualified',
+  'contacted',
+  'qualified',
+  'site-visit',
+  'closed-won',
+  'junk',
+] as const
+
+// Funnel stages a lead passes THROUGH, in order. 'junk' is excluded on purpose:
+// it is a terminal outcome, not a stage, so it must not count as progress.
+const FUNNEL: readonly string[] = ['contacted', 'qualified', 'site-visit', 'closed-won']
+
+/**
+ * Counting is cumulative, which matters now that the funnel is longer than one
+ * step: a lead marked "Closed Won" has self-evidently been qualified, so a
+ * strict `status === 'qualified'` check would quietly shrink the qualified
+ * count every time a deal progressed.
+ */
+const atLeast = (status: string | null | undefined, stage: string) => {
+  const i = FUNNEL.indexOf(status ?? '')
+  return i >= 0 && i >= FUNNEL.indexOf(stage)
+}
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
@@ -72,7 +94,9 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   const total = leads.length
   const byStatus = Object.fromEntries(STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]))
   const contacted = total - byStatus.unqualified // anyone past unqualified
-  const qualified = byStatus.qualified
+  const qualified = leads.filter((l) => atLeast(l.status, 'qualified')).length
+  const siteVisits = leads.filter((l) => atLeast(l.status, 'site-visit')).length
+  const closedWon = byStatus['closed-won']
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0)
 
   // source breakdown
@@ -81,12 +105,18 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
     const s = sourceOf(l)
     const row = bySource.get(s) ?? { total: 0, contacted: 0, qualified: 0 }
     row.total++
-    if (l.status !== 'unqualified') row.contacted++
-    if (l.status === 'qualified') row.qualified++
+    if (atLeast(l.status, 'contacted') || l.status === 'junk') row.contacted++
+    if (atLeast(l.status, 'qualified')) row.qualified++
     bySource.set(s, row)
   }
   const sources = [...bySource.entries()].sort((a, b) => b[1].total - a[1].total)
   const allSources = [...new Set((leadsRes.docs as Lead[]).map(sourceOf))].sort()
+
+  const exportQuery = new URLSearchParams(
+    Object.entries({ from: sp.from, to: sp.to, status: sp.status, source: sp.source }).filter(
+      (e): e is [string, string] => Boolean(e[1]),
+    ),
+  ).toString()
 
   const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
   const td = 'px-3 py-2.5 text-sm text-brand-deep'
@@ -94,6 +124,8 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
     unqualified: 'bg-brand-deep/10 text-brand-deep/70',
     contacted: 'bg-blue-100 text-blue-700',
     qualified: 'bg-green-100 text-green-700',
+    'site-visit': 'bg-amber-100 text-amber-700',
+    'closed-won': 'bg-emerald-600 text-white',
     junk: 'bg-red-100 text-red-600',
   }
 
@@ -125,14 +157,24 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           </label>
           <button type="submit" className="rounded-full bg-brand-deep px-5 py-2 text-xs font-medium uppercase tracking-[0.15em] text-white">Apply</button>
           <a href="/leads-dashboard" className="text-xs text-brand-deep/55 underline">Reset</a>
+          {/* Same params as the view above, so you export exactly what you filtered
+              to rather than a full dump you then clean up in a spreadsheet. */}
+          <a
+            href={`/leads-dashboard/export${exportQuery ? `?${exportQuery}` : ''}`}
+            className="ml-auto rounded-full border border-brand-deep/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] text-brand-deep transition-colors hover:border-gold hover:text-gold"
+          >
+            Download CSV
+          </a>
         </form>
 
         {/* KPIs */}
-        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-6">
+        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
             { label: 'Total leads', value: total },
             { label: 'Contacted', value: `${contacted} (${pct(contacted, total)}%)` },
             { label: 'Qualified', value: `${qualified} (${pct(qualified, total)}%)` },
+            { label: 'Site visits', value: siteVisits },
+            { label: 'Closed won', value: `${closedWon} (${pct(closedWon, total)}%)` },
             { label: 'Junk', value: byStatus.junk },
             { label: 'Opened brochure', value: `${openedCount} (${pct(openedCount, total)}%)` },
             { label: 'Avg time on page', value: fmtDuration(avgDwell) },

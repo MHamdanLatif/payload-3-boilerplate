@@ -9,6 +9,7 @@ import * as migration_20260716_000001_link_opens from './20260716_000001_link_op
 import * as migration_20260717_000000_send_file from './20260717_000000_send_file';
 import * as migration_20260807_000000_brochure_dwell from './20260807_000000_brochure_dwell';
 import * as migration_20260817_000000_is_duplex from './20260817_000000_is_duplex';
+import * as migration_20260818_000000_lead_status_site_visit_closed_won from './20260818_000000_lead_status_site_visit_closed_won';
 
 export const migrations = [
   {
@@ -65,5 +66,10 @@ export const migrations = [
     up: migration_20260817_000000_is_duplex.up,
     down: migration_20260817_000000_is_duplex.down,
     name: '20260817_000000_is_duplex',
+  },
+  {
+    up: migration_20260818_000000_lead_status_site_visit_closed_won.up,
+    down: migration_20260818_000000_lead_status_site_visit_closed_won.down,
+    name: '20260818_000000_lead_status_site_visit_closed_won',
   },
 ];

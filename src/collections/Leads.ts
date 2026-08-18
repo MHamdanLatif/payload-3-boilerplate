@@ -48,11 +48,14 @@ export const Leads: CollectionConfig = {
         { label: 'Unqualified', value: 'unqualified' },
         { label: 'Contacted', value: 'contacted' },
         { label: 'Qualified', value: 'qualified' },
+        { label: 'Site Visit', value: 'site-visit' },
+        { label: 'Closed Won', value: 'closed-won' },
         { label: 'Junk', value: 'junk' },
       ],
       admin: {
         position: 'sidebar',
-        description: 'Set after calling. “Qualified” or “Junk” sends a Meta CAPI event.',
+        description:
+          'Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. “Qualified” and “Junk” send a Meta CAPI event; “Site Visit” and “Closed Won” only do so if their env vars are set — see leadAfterChange.',
       },
     },
     {
