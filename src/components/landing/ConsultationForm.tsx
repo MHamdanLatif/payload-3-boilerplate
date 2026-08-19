@@ -84,7 +84,7 @@ export function ConsultationForm() {
       const composedNotes = projectPref
         ? `[Preference: ${projectPref}]${buyerNotes ? '\n' + buyerNotes : ''}`
         : buyerNotes || null
-      const res = await fetch('/api/leads', {
+      const res = await fetch('/api/lead-capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
