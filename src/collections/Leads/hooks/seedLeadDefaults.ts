@@ -50,7 +50,16 @@ export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
   }
 
   const needsAssets = !next.brochurePdfPrimary || !next.brochureMapEmbed || !next.brochureHeadline
-  if (next.sourceKind === 'project' && typeof next.sourceSlug === 'string' && next.sourceSlug && needsAssets) {
+  // Attribution is looked up even when the brochure assets are already present.
+  // Gating the whole lookup on needsAssets would silently skip acquiredProject
+  // for any lead created with its assets pre-filled.
+  const needsAttribution = !next.acquiredProject || !next.currentInterestedProject
+  if (
+    next.sourceKind === 'project' &&
+    typeof next.sourceSlug === 'string' &&
+    next.sourceSlug &&
+    (needsAssets || needsAttribution)
+  ) {
     try {
       const res = await req.payload.find({
         collection: 'featured-projects',
@@ -60,7 +69,12 @@ export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
       })
       const project = res.docs[0] as FeaturedProject | undefined
       if (project) {
-        if (!next.brochureHeadline) next.brochureHeadline = project.title
+        // Project attribution. Both are set on create and then diverge:
+        // acquiredProject is frozen by the guard above, while
+        // currentInterestedProject follows the buyer as sales cross-sells.
+        if (!next.acquiredProject) next.acquiredProject = project.id
+        if (!next.currentInterestedProject) next.currentInterestedProject = project.id
+        if (needsAssets && !next.brochureHeadline) next.brochureHeadline = project.title
         if (!next.brochurePdfPrimary && project.brochure) next.brochurePdfPrimary = project.brochure
         if (!next.brochureMapEmbed && project.googleMapsEmbedUrl) {
           next.brochureMapEmbed = project.googleMapsEmbedUrl

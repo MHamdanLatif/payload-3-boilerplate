@@ -1355,7 +1355,40 @@ export interface Lead {
   /**
    * Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. Each stage sends its own Meta CAPI event — Qualified, Site Visit (Schedule), Closed Won (Purchase) and Junk — so the ad account learns what a real buyer looks like, not just what a lead looks like. See leadAfterChange to rename or disable any of them.
    */
-  status?: ('unqualified' | 'contacted' | 'qualified' | 'site-visit' | 'closed-won' | 'junk') | null;
+  status?:
+    | (
+        | 'unqualified'
+        | 'details-sent'
+        | 'engaged'
+        | 'contacted'
+        | 'qualified'
+        | 'site-visit'
+        | 'negotiation'
+        | 'booking-pending'
+        | 'closed-won'
+        | 'unresponsive'
+        | 'nurture'
+        | 'not-a-fit'
+        | 'lost'
+        | 'junk'
+      )
+    | null;
+  /**
+   * Why this lead is not moving forward - covers Not a Fit, Lost, Unresponsive and Invalid/Junk. Optional, and never required: a blocked save is worse than a missing note.
+   */
+  unqualifiedReason?: string | null;
+  /**
+   * The project whose marketing brought this buyer in. Write-once - enforced in beforeChange, not just here - because this is what project-level ad spend is judged against.
+   */
+  acquiredProject?: (number | null) | FeaturedProject;
+  /**
+   * What they are actually considering now. Changes freely as sales cross-sells.
+   */
+  currentInterestedProject?: (number | null) | FeaturedProject;
+  /**
+   * What they actually bought. May differ from the project that acquired them.
+   */
+  closedProject?: (number | null) | FeaturedProject;
   /**
    * Auto-generated. The trackable link is /brochure/<this id>.
    */
@@ -2305,6 +2338,10 @@ export interface PaymentPlanLeadsSelect<T extends boolean = true> {
  */
 export interface LeadsSelect<T extends boolean = true> {
   status?: T;
+  unqualifiedReason?: T;
+  acquiredProject?: T;
+  currentInterestedProject?: T;
+  closedProject?: T;
   brochureId?: T;
   name?: T;
   phone?: T;

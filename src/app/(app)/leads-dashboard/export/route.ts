@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Lead, LinkOpen } from '@/payload-types'
+import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
 
 /**
  * CSV export of the leads pipeline.
@@ -20,7 +21,7 @@ import type { Lead, LinkOpen } from '@/payload-types'
  * spreadsheet. What is here is what someone actually works a pipeline from.
  */
 
-const STATUSES = ['unqualified', 'contacted', 'qualified', 'site-visit', 'closed-won', 'junk']
+const STATUSES: readonly string[] = LEAD_STATUSES
 
 /** RFC 4180: wrap in quotes, double any internal quote. Guards commas, newlines and quotes in notes. */
 function csvCell(value: unknown): string {
@@ -93,13 +94,17 @@ export async function GET(req: Request) {
   }
 
   const header = [
-    'Name', 'Phone', 'Email', 'Status', 'Source', 'Project',
+    'Name', 'Phone', 'Email', 'Status', 'Reason', 'Acquisition Source',
+    'Conversion Surface', 'First Touch Campaign', 'First Touch Content',
+    'Latest Touch Source', 'Legacy Source Tag', 'Project',
     'Property Type', 'Budget', 'Created', 'Brochure Sent',
     'Brochure Opened', 'Opens', 'Time on Page', 'Notes',
   ]
 
   const rows = leads.map((l) => [
-    l.name, l.phone, l.email, l.status, sourceOf(l), l.sourceName,
+    l.name, l.phone, l.email, statusLabel(l.status), l.unqualifiedReason,
+    l.acquisitionSource, l.conversionSurface, l.firstTouchCampaign, l.firstTouchContent,
+    l.latestTouchSource, sourceOf(l), l.sourceName,
     l.propertyType, l.budget, fmtDateTime(l.createdAt), fmtDateTime(l.brochureSentAt),
     fmtDateTime(l.brochureOpenedAt),
     l.brochureId ? (opens.get(l.brochureId) ?? 0) : 0,

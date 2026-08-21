@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { authenticated } from '../access/authenticated'
 import { attributionFields } from './Leads/attributionFields'
+import { statusOptions } from '@/lib/lead-status'
 import { leadAfterChange } from './Leads/hooks/leadAfterChange'
 import { seedLeadDefaults } from './Leads/hooks/seedLeadDefaults'
 
@@ -45,18 +46,61 @@ export const Leads: CollectionConfig = {
       // Not `required` at the type level so server creates needn't pass it — the
       // defaultValue + NOT NULL DEFAULT column guarantee it's always set.
       defaultValue: 'unqualified',
-      options: [
-        { label: 'Unqualified', value: 'unqualified' },
-        { label: 'Contacted', value: 'contacted' },
-        { label: 'Qualified', value: 'qualified' },
-        { label: 'Site Visit', value: 'site-visit' },
-        { label: 'Closed Won', value: 'closed-won' },
-        { label: 'Junk', value: 'junk' },
-      ],
+      // Defined once in src/lib/lead-status.ts and shared with the dashboard and
+      // the CSV export, which previously each printed the raw database value.
+      options: statusOptions,
       admin: {
         position: 'sidebar',
         description:
           'Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. Each stage sends its own Meta CAPI event — Qualified, Site Visit (Schedule), Closed Won (Purchase) and Junk — so the ad account learns what a real buyer looks like, not just what a lead looks like. See leadAfterChange to rename or disable any of them.',
+      },
+    },
+    {
+      name: 'unqualifiedReason',
+      type: 'textarea',
+      label: 'Reason not proceeding',
+      admin: {
+        position: 'sidebar',
+        description:
+          'Why this lead is not moving forward - covers Not a Fit, Lost, Unresponsive and Invalid/Junk. Optional, and never required: a blocked save is worse than a missing note.',
+      },
+    },
+
+    // ── Project attribution ────────────────────────────────────────────────
+    // Three concepts, not one mutable field. A buyer enters through Saima Elite,
+    // dislikes it, is shown Tulip Comfort and buys Tulip: the acquisition is
+    // still Saima Elite, and collapsing that into one field would destroy the
+    // record of which project's advertising actually produced the sale.
+    {
+      name: 'acquiredProject',
+      type: 'relationship',
+      relationTo: 'featured-projects',
+      label: 'Acquired through project',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description:
+          'The project whose marketing brought this buyer in. Write-once - enforced in beforeChange, not just here - because this is what project-level ad spend is judged against.',
+      },
+    },
+    {
+      name: 'currentInterestedProject',
+      type: 'relationship',
+      relationTo: 'featured-projects',
+      label: 'Currently interested in',
+      admin: {
+        position: 'sidebar',
+        description: 'What they are actually considering now. Changes freely as sales cross-sells.',
+      },
+    },
+    {
+      name: 'closedProject',
+      type: 'relationship',
+      relationTo: 'featured-projects',
+      label: 'Closed on project',
+      admin: {
+        position: 'sidebar',
+        description: 'What they actually bought. May differ from the project that acquired them.',
       },
     },
     {

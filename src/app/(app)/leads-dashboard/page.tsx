@@ -6,6 +6,7 @@ import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Lead } from '@/payload-types'
 import { fmtDuration } from '@/lib/engagement'
+import { LEAD_STATUSES, atLeast, statusLabel } from '@/lib/lead-status'
 
 export const metadata: Metadata = {
   title: 'Leads Dashboard | Lateef Properties',
@@ -15,29 +16,8 @@ export const dynamic = 'force-dynamic'
 
 type SP = { from?: string; to?: string; status?: string; source?: string }
 
-const STATUSES = [
-  'unqualified',
-  'contacted',
-  'qualified',
-  'site-visit',
-  'closed-won',
-  'junk',
-] as const
+const STATUSES = LEAD_STATUSES
 
-// Funnel stages a lead passes THROUGH, in order. 'junk' is excluded on purpose:
-// it is a terminal outcome, not a stage, so it must not count as progress.
-const FUNNEL: readonly string[] = ['contacted', 'qualified', 'site-visit', 'closed-won']
-
-/**
- * Counting is cumulative, which matters now that the funnel is longer than one
- * step: a lead marked "Closed Won" has self-evidently been qualified, so a
- * strict `status === 'qualified'` check would quietly shrink the qualified
- * count every time a deal progressed.
- */
-const atLeast = (status: string | null | undefined, stage: string) => {
-  const i = FUNNEL.indexOf(status ?? '')
-  return i >= 0 && i >= FUNNEL.indexOf(stage)
-}
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
@@ -121,6 +101,14 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
   const td = 'px-3 py-2.5 text-sm text-brand-deep'
   const badge: Record<string, string> = {
+    'details-sent': 'bg-sky-100 text-sky-700',
+    engaged: 'bg-indigo-100 text-indigo-700',
+    negotiation: 'bg-purple-100 text-purple-700',
+    'booking-pending': 'bg-orange-100 text-orange-700',
+    unresponsive: 'bg-stone-200 text-stone-600',
+    nurture: 'bg-teal-100 text-teal-700',
+    'not-a-fit': 'bg-rose-100 text-rose-600',
+    lost: 'bg-red-200 text-red-800',
     unqualified: 'bg-brand-deep/10 text-brand-deep/70',
     contacted: 'bg-blue-100 text-blue-700',
     qualified: 'bg-green-100 text-green-700',
@@ -146,7 +134,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Status
             <select name="status" defaultValue={sp.status ?? ''} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm">
               <option value="">All</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Source
@@ -221,7 +209,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
                   </td>
                   <td className={td}>{l.phone}</td>
                   <td className={td}>{sourceOf(l)}</td>
-                  <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{l.status}</span></td>
+                  <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{statusLabel(l.status)}</span></td>
                   <td className={td}>{l.brochureId ? opensByBrochure.get(l.brochureId) ?? 0 : 0}</td>
                   <td className={td}>{fmtDuration(l.brochureId ? dwellByBrochure.get(l.brochureId) ?? 0 : 0)}</td>
                   <td className={td}>{fmtDate(l.createdAt)}</td>
