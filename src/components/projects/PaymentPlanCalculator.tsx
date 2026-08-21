@@ -29,6 +29,9 @@ type Props = {
 
 type ProjectHead = NonNullable<NonNullable<FeaturedProject['paymentPlan']>['paymentHeads']>[number]
 
+/** Commercial booking minimum, and therefore the calculator's opening scenario. */
+const DEFAULT_DOWN_PAYMENT_PCT = 20
+
 const FREQUENCY_LABEL: Record<InstallmentFrequencyKind, string> = {
   Monthly: 'Monthly',
   Quarterly: 'Quarterly',
@@ -130,8 +133,13 @@ export function PaymentPlanCalculator({
   const possessionCap = Math.min(5, config?.possessionPct ?? 5)
   const totalDuration = config?.totalDurationMonths ?? 36
 
+  // Booking starts at 20% — that is the commercial minimum, and the number the
+  // calculator should open on. It previously opened on the midpoint of the
+  // configured min/max, which for Tulip (10–50%) landed on 30% and made a 30%
+  // down payment look like the requirement rather than one scenario among many.
+  // Clamped so a project configured with a higher floor is still respected.
   const [downPaymentPct, setDownPaymentPct] = useState<number>(
-    Math.round((minDown + maxDown) / 2),
+    Math.min(maxDown, Math.max(minDown, DEFAULT_DOWN_PAYMENT_PCT)),
   )
   const [possessionPct, setPossessionPct] = useState<number>(
     possessionAdminEnabled ? possessionCap : 0,

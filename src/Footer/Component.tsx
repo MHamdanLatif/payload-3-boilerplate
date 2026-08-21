@@ -4,9 +4,9 @@ import { Instagram, Facebook, Phone, Mail, MapPin, ArrowUpRight } from 'lucide-r
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { WhatsAppLink } from '@/components/shared/WhatsAppLink'
 
+import { EMAIL, WHATSAPP_URL } from '@/lib/contact'
+
 const MAPS_URL = 'https://maps.app.goo.gl/RTVU2EMN8bzqwbQL9'
-const WHATSAPP_URL = 'https://wa.me/923363528333'
-const EMAIL = 'info.lateefproperties@gmail.com'
 
 type FooterLinkItem = { label: string; href: string; external?: boolean }
 

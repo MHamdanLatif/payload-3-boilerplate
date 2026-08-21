@@ -98,19 +98,13 @@ export function BrochureDownloadModal({
         return
       }
 
-      // Trigger the brochure download.
-      const a = document.createElement('a')
-      a.href = brochureUrl
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      a.download = `Lateef-${projectSlug}-Brochure.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
+        // Deliberately no client-side download. The brochure now goes out over
+        // WhatsApp together with the personalised project pack, so the lead ends
+        // up in a conversation with an advisor rather than alone with a PDF.
       setDone(true)
       // Confirmed success (lead recorded + brochure served). Labeled as a
       // download so it can be separated from enquiry leads in GA4.
-      trackLead({ form_name: 'brochure_download', project: projectSlug || undefined })
+      trackLead({ form_name: 'project_details_whatsapp', project: projectSlug || undefined })
     } catch (e) {
       setServerError((e as Error).message || 'Network error.')
     } finally {
@@ -147,7 +141,7 @@ export function BrochureDownloadModal({
             <div className="flex items-start justify-between border-b border-brand-deep/10 px-6 py-5">
               <div>
                 <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gold">
-                  Download Brochure
+                  Get Project Details
                 </p>
                 <p
                   id="brochure-modal-title"
@@ -172,19 +166,11 @@ export function BrochureDownloadModal({
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold/15 text-gold">
                     <Check className="h-6 w-6" />
                   </div>
-                  <p className="mt-4 font-serif text-xl text-brand-deep">Brochure on its way.</p>
+                  <p className="mt-4 font-serif text-xl text-brand-deep">Sending it to your WhatsApp.</p>
                   <p className="mt-2 text-sm text-brand-deep/65">
-                    If the download didn&rsquo;t start automatically,{' '}
-                    <a
-                      href={brochureUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gold underline-offset-2 hover:underline"
-                    >
-                      open it here
-                    </a>
-                    . A senior advisor typically follows up within 15 minutes.
-                  </p>
+                      An advisor will send the brochure and a personalised project pack to
+                      your WhatsApp, typically within 15 minutes.
+                    </p>
                   <button
                     type="button"
                     onClick={onClose}
@@ -196,8 +182,8 @@ export function BrochureDownloadModal({
               ) : (
                 <form onSubmit={onSubmit} className="space-y-4">
                   <p className="rounded-md border border-brand-deep/10 bg-cream/40 px-4 py-3 text-xs leading-relaxed text-brand-deep/75">
-                    Share your name and phone — we&rsquo;ll start the brochure download and have an
-                    advisor reach out with current availability and unit-level pricing.
+                    Share your name and phone and we&rsquo;ll send the brochure directly to your
+                    WhatsApp and have an advisor reach out with current availability and unit-level pricing.
                   </p>
 
                   <label className="flex flex-col gap-1.5">
