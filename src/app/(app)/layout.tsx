@@ -15,6 +15,7 @@ import { MetaPixelRouteTracker } from '@/components/MetaPixelRouteTracker'
 import { GoogleAnalytics } from '@/components/GoogleAnalytics'
 import { GoogleAnalyticsRouteTracker } from '@/components/GoogleAnalyticsRouteTracker'
 import { Providers } from '@/providers'
+import { AttributionCapture } from '@/components/AttributionCapture'
 // SplashLoader intentionally not imported — see the note in (frontend)/layout.tsx
 import { JsonLd } from '@/components/shared/JsonLd'
 import { organizationSchema } from '@/lib/seo-jsonld'
@@ -64,6 +65,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <MetaPixelRouteTracker />
         <GoogleAnalytics />
         <GoogleAnalyticsRouteTracker />
+        {/* Captures campaign attribution at landing into a first-party cookie,
+            read server-side when a form is submitted. Renders nothing. */}
+        <AttributionCapture />
         <Providers>
           {/* <SplashLoader /> removed for Core Web Vitals — see (frontend)/layout.tsx */}
           <AdminBar adminBarProps={{ preview: isEnabled }} />

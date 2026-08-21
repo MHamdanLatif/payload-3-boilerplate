@@ -90,6 +90,7 @@ export function ConsultationForm() {
         body: JSON.stringify({
           name: values.fullName.trim(),
           phone: values.whatsapp.trim(),
+          conversionSurface: 'consultation-form',
           sourceKind: 'consultation',
           sourceName: null,
           sourceSlug: null,

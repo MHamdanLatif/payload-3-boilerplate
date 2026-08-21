@@ -95,6 +95,10 @@ export function LeadForm({
           sourceKind,
           placement,
           source: `${sourceKind}-landing:${placement}`,
+          // WHERE the conversion happened, as opposed to how the buyer was
+          // acquired. Derived from placement because this same form serves the
+          // hero, the closing CTA and the modal.
+          conversionSurface: placement === 'hero' ? 'project-hero-form' : 'project-enquiry-cta',
         }),
       })
       if (!res.ok) {

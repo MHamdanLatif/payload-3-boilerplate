@@ -80,6 +80,7 @@ export function BrochureDownloadModal({
         body: JSON.stringify({
           name: name.trim(),
           phone,
+          conversionSurface: 'project-details-whatsapp',
           sourceKind: 'project',
           source: 'project-landing:brochure',
           placement: 'modal',

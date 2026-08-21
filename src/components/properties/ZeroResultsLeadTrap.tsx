@@ -49,6 +49,7 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
           name: name.trim(),
           phone: phone.trim(),
           notes: notes.trim() || null,
+          conversionSurface: 'zero-results-form',
           sourceKind: 'zero-results',
           source: 'properties:zero-results',
           placement: 'zero-results',

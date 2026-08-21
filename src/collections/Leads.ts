@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { authenticated } from '../access/authenticated'
+import { attributionFields } from './Leads/attributionFields'
 import { leadAfterChange } from './Leads/hooks/leadAfterChange'
 import { seedLeadDefaults } from './Leads/hooks/seedLeadDefaults'
 
@@ -98,6 +99,12 @@ export const Leads: CollectionConfig = {
     { name: 'sourceSlug', type: 'text', label: 'Enquiring about (slug)' },
     { name: 'placement', type: 'text' },
     { name: 'source', type: 'text', label: 'Source tag' },
+
+    // Structured attribution. The legacy 'source' above is intentionally kept:
+    // it is the only attribution the pre-existing leads have, and rewriting it
+    // would destroy that history.
+    ...attributionFields,
+
     { name: 'notes', type: 'textarea' },
     { name: 'propertyType', type: 'text' },
     { name: 'budget', type: 'text' },

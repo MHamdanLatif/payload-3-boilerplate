@@ -7,7 +7,41 @@ import type { FeaturedProject } from '@/payload-types'
  * pre-fill the brochure assets from the project the lead enquired about, so the
  * auto-sent link has content immediately. The agent can override any of it later.
  */
-export const seedLeadDefaults: CollectionBeforeChangeHook = async ({ data, operation, req }) => {
+const FIRST_TOUCH_KEYS = [
+  'firstTouchSource', 'firstTouchMedium', 'firstTouchCampaign', 'firstTouchContent',
+  'firstTouchTerm', 'firstTouchLandingPath', 'firstTouchReferrer', 'firstTouchFbclid',
+  'firstTouchGclid', 'firstTouchAt', 'acquiredProject',
+] as const
+
+export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
+  // First touch and acquired project are write-once. Enforced here rather than
+  // by convention, because a mutable field eventually gets mutated - and the
+  // one thing this model must guarantee is that the campaign and project which
+  // ACQUIRED a buyer survive every later visit and every cross-sell.
+  //
+  // The admin marks these read-only, but that is a UI affordance; the REST API
+  // and any future import script would bypass it.
+  if (operation === 'update' && originalDoc) {
+    const guarded = { ...data }
+    let blocked = false
+    for (const key of FIRST_TOUCH_KEYS) {
+      const existing = (originalDoc as Record<string, unknown>)[key]
+      if (existing != null && existing !== '' && guarded[key] !== existing) {
+        guarded[key] = existing
+        blocked = true
+      }
+    }
+    if (blocked) {
+      req.payload.logger.info('[leads] first-touch attribution is immutable; restored prior values')
+    }
+    return guarded
+  }
+
   if (operation !== 'create') return data
   const next = { ...data }
 

@@ -3,8 +3,39 @@ import crypto from 'crypto'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
+import {
+  ATTRIBUTION_COOKIE,
+  acquisitionSourceFromTouch,
+  CONVERSION_SURFACES,
+  parseAttribution,
+  type ConversionSurface,
+  type Touch,
+} from '@/lib/attribution'
 
 const PRIVYR_TIMEOUT_MS = 5000
+
+/**
+ * Flatten a Touch into the lead's prefixed columns.
+ *
+ * Undefined values are omitted rather than written as null, so a partial touch
+ * never blanks a field that another code path populated.
+ */
+function touchColumns(prefix: 'firstTouch' | 'latestTouch', t: Touch | null): Record<string, unknown> {
+  if (!t) return {}
+  const out: Record<string, unknown> = {}
+  const put = (k: string, v: unknown) => { if (v !== undefined && v !== null && v !== '') out[prefix + k] = v }
+  put('Source', t.source)
+  put('Medium', t.medium)
+  put('Campaign', t.campaign)
+  put('Content', t.content)
+  put('Term', t.term)
+  put('LandingPath', t.landingPath)
+  put('Referrer', t.referrer)
+  put('Fbclid', t.fbclid)
+  put('Gclid', t.gclid)
+  put('At', t.at)
+  return out
+}
 
 /** Parse a Cookie header into a name→value map. */
 function parseCookies(header: string | null): Record<string, string> {
@@ -70,6 +101,13 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
+  // Validated against the allowed list rather than trusted: this arrives in the
+  // request body, so an arbitrary string would otherwise be written straight to
+  // an enum column and fail at the database.
+  const rawSurface = typeof body.conversionSurface === 'string' ? body.conversionSurface.trim() : ''
+  const conversionSurface = (CONVERSION_SURFACES as readonly string[]).includes(rawSurface)
+    ? (rawSurface as ConversionSurface)
+    : null
 
   if (!name || name.length < 2) {
     return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 400 })
@@ -117,6 +155,12 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
   // POST, so we read them server-side (plus IP/UA from headers) without touching
   // the form components. _fbc embeds the original fbclid.
   const cookies = parseCookies(req.headers.get('cookie'))
+  // Attribution comes from OUR cookie, not the request body: the browser should
+  // not be able to claim it arrived from a campaign it did not.
+  const attribution = parseAttribution(cookies[ATTRIBUTION_COOKIE])
+  const firstTouch = attribution?.f ?? null
+  const latestTouch = attribution?.l ?? firstTouch
+
   const fbc = cookies['_fbc'] || (typeof body.fbc === 'string' ? body.fbc : null)
   const fbp = cookies['_fbp'] || (typeof body.fbp === 'string' ? body.fbp : null)
   const fbclid =
@@ -200,6 +244,12 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
         propertyType: propertyType ?? undefined,
         budget: budget ?? undefined,
         searchedParams: searchedParams ?? undefined,
+        // Structured attribution. First touch is what ad spend is judged
+        // against; latest touch shows what re-engaged a dormant buyer.
+        ...touchColumns('firstTouch', firstTouch),
+        ...touchColumns('latestTouch', latestTouch),
+        acquisitionSource: acquisitionSourceFromTouch(firstTouch),
+        conversionSurface: conversionSurface ?? undefined,
         // Meta attribution (for the CAPI event when the lead is later qualified)
         eventId,
         fbc: fbc ?? undefined,

@@ -1353,7 +1353,7 @@ export interface PaymentPlanLead {
 export interface Lead {
   id: number;
   /**
-   * Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. “Qualified” and “Junk” send a Meta CAPI event; “Site Visit” and “Closed Won” only do so if their env vars are set — see leadAfterChange.
+   * Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. Each stage sends its own Meta CAPI event — Qualified, Site Visit (Schedule), Closed Won (Purchase) and Junk — so the ad account learns what a real buyer looks like, not just what a lead looks like. See leadAfterChange to rename or disable any of them.
    */
   status?: ('unqualified' | 'contacted' | 'qualified' | 'site-visit' | 'closed-won' | 'junk') | null;
   /**
@@ -1371,6 +1371,59 @@ export interface Lead {
   sourceSlug?: string | null;
   placement?: string | null;
   source?: string | null;
+  /**
+   * HOW this buyer was acquired. Derived automatically from the first touch for web enquiries; set by hand for walk-ins, referrals and phone leads.
+   */
+  acquisitionSource?:
+    | (
+        | 'meta-ads'
+        | 'google-ads'
+        | 'google-organic'
+        | 'direct'
+        | 'whatsapp'
+        | 'instagram-organic'
+        | 'referral'
+        | 'manual'
+        | 'unknown'
+      )
+    | null;
+  /**
+   * WHERE they converted - which form or CTA. Distinct from acquisition source: a Meta ad (source) can convert on the project hero form (surface).
+   */
+  conversionSurface?:
+    | (
+        | 'project-hero-form'
+        | 'project-enquiry-cta'
+        | 'project-details-whatsapp'
+        | 'whatsapp-cta'
+        | 'listing-form'
+        | 'consultation-form'
+        | 'zero-results-form'
+        | 'project-pack'
+        | 'crm-manual'
+        | 'other'
+      )
+    | null;
+  firstTouchSource?: string | null;
+  firstTouchMedium?: string | null;
+  firstTouchCampaign?: string | null;
+  firstTouchContent?: string | null;
+  firstTouchTerm?: string | null;
+  firstTouchLandingPath?: string | null;
+  firstTouchReferrer?: string | null;
+  firstTouchFbclid?: string | null;
+  firstTouchGclid?: string | null;
+  firstTouchAt?: string | null;
+  latestTouchSource?: string | null;
+  latestTouchMedium?: string | null;
+  latestTouchCampaign?: string | null;
+  latestTouchContent?: string | null;
+  latestTouchTerm?: string | null;
+  latestTouchLandingPath?: string | null;
+  latestTouchReferrer?: string | null;
+  latestTouchFbclid?: string | null;
+  latestTouchGclid?: string | null;
+  latestTouchAt?: string | null;
   notes?: string | null;
   propertyType?: string | null;
   budget?: string | null;
@@ -2261,6 +2314,28 @@ export interface LeadsSelect<T extends boolean = true> {
   sourceSlug?: T;
   placement?: T;
   source?: T;
+  acquisitionSource?: T;
+  conversionSurface?: T;
+  firstTouchSource?: T;
+  firstTouchMedium?: T;
+  firstTouchCampaign?: T;
+  firstTouchContent?: T;
+  firstTouchTerm?: T;
+  firstTouchLandingPath?: T;
+  firstTouchReferrer?: T;
+  firstTouchFbclid?: T;
+  firstTouchGclid?: T;
+  firstTouchAt?: T;
+  latestTouchSource?: T;
+  latestTouchMedium?: T;
+  latestTouchCampaign?: T;
+  latestTouchContent?: T;
+  latestTouchTerm?: T;
+  latestTouchLandingPath?: T;
+  latestTouchReferrer?: T;
+  latestTouchFbclid?: T;
+  latestTouchGclid?: T;
+  latestTouchAt?: T;
   notes?: T;
   propertyType?: T;
   budget?: T;
