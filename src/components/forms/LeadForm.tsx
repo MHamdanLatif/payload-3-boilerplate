@@ -111,7 +111,15 @@ export function LeadForm({
       // before navigating away so it's queued while this page is still live.
       trackLead({ form_name: LEAD_FORM_NAME[sourceKind], project: sourceSlug || undefined })
       onSuccess?.()
-      router.push(`/thank-you?source=${sourceKind}:${encodeURIComponent(sourceSlug)}`)
+      // Carry the server's event id so the pixel on /thank-you can fire Lead
+      // with the SAME event_id and Meta deduplicates the pair. A random UUID,
+      // not personal data.
+      const ok = (await res.json().catch(() => ({}))) as { eventId?: string }
+        const eventId = ok.eventId
+      router.push(
+        `/thank-you?source=${sourceKind}:${encodeURIComponent(sourceSlug)}` +
+          (eventId ? `&eid=${encodeURIComponent(eventId)}` : ''),
+      )
     } catch {
       setErrors({ api: 'Network error. Please try again.' })
       setSubmitting(false)

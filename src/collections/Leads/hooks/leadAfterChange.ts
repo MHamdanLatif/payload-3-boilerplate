@@ -100,8 +100,29 @@ function capiEventForStatus(status: Lead['status']): string | null {
   const configured: Record<string, { env: string; fallback: string | null }> = {
     qualified: { env: 'META_CAPI_QUALIFIED_EVENT', fallback: 'QualifiedLead' },
     junk: { env: 'META_CAPI_JUNK_EVENT', fallback: 'DisqualifiedLead' },
+    // NOTE: 'unqualified' is absent on purpose. It is now labelled "Uncontacted"
+    // and is the default every lead is created with - reporting it would fire a
+    // disqualification for every new enquiry. Its old "does not fit" meaning
+    // moved to 'not-a-fit' below.
     'site-visit': { env: 'META_CAPI_SITE_VISIT_EVENT', fallback: 'Schedule' },
     'closed-won': { env: 'META_CAPI_CLOSED_WON_EVENT', fallback: 'Purchase' },
+    // Deeper funnel stages. Silent by default: adding a status to the CRM must
+    // not change what the ad account optimises for as a side effect. Set the
+    // env var to switch one on, e.g. META_CAPI_BOOKING_PENDING_EVENT=InitiateCheckout.
+    negotiation: { env: 'META_CAPI_NEGOTIATION_EVENT', fallback: null },
+    'booking-pending': { env: 'META_CAPI_BOOKING_PENDING_EVENT', fallback: null },
+    // Negative outcomes. 'not-a-fit' mirrors the old 'unqualified' meaning, so
+    // it reports as a disqualification; 'lost', 'unresponsive' and 'nurture'
+    // stay silent because a stalled deal is not a signal Meta can act on.
+    'not-a-fit': { env: 'META_CAPI_NOT_A_FIT_EVENT', fallback: 'DisqualifiedLead' },
+    lost: { env: 'META_CAPI_LOST_EVENT', fallback: null },
+    unresponsive: { env: 'META_CAPI_UNRESPONSIVE_EVENT', fallback: null },
+    nurture: { env: 'META_CAPI_NURTURE_EVENT', fallback: null },
+    // Early stages are internal pipeline movement, not conversions. Behaviour
+    // is intent data; qualification stays a human decision.
+    'details-sent': { env: 'META_CAPI_DETAILS_SENT_EVENT', fallback: null },
+    engaged: { env: 'META_CAPI_ENGAGED_EVENT', fallback: null },
+    contacted: { env: 'META_CAPI_CONTACTED_EVENT', fallback: null },
   }
   const entry = status ? configured[status] : undefined
   if (!entry) return null

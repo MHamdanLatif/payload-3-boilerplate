@@ -8,6 +8,7 @@ import { META_PIXEL_ID } from '@/components/MetaPixel'
 type SearchParams = {
   project?: string
   source?: string // "project:<slug>" or "listing:<slug>"
+  eid?: string // Meta event id, minted server-side when the lead was saved
 }
 
 function parseSource(source: string | undefined, legacyProject: string | undefined) {
@@ -40,13 +41,27 @@ export default async function ThankYouPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const { project, source } = await searchParams
+  const { project, source, eid } = await searchParams
+  // Passing this to fbq lets Meta deduplicate the browser Lead against the
+  // server-side one now sent by lead-capture. Without it the same enquiry is
+  // counted twice and every cost-per-lead figure is understated by ~half.
+  //
+  // Format-checked because it is interpolated into an inline script; a UUID
+  // cannot legitimately contain anything outside this character set.
+  const eventId =
+    typeof eid === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(eid) ? eid : null
   const parsed = parseSource(source, project)
   const displayName = parsed ? parsed.slug.replace(/-/g, ' ') : null
   const sourceLabel = parsed?.kind === 'listing' ? 'listing' : 'enquiry'
   const whatsappText = displayName
     ? `Hi, I just enquired about ${displayName}. Following up.`
     : 'Hi, I just enquired through your website. Following up.'
+
+  // Built here rather than inline in the template so the quoting stays legible.
+  const customData = displayName
+    ? `{content_name:'${displayName.replace(/'/g, "\\'")}'}`
+    : '{}'
+  const eventOpts = eventId ? `{eventID:'${eventId}'}` : '{}'
 
   return (
     <>
@@ -55,7 +70,7 @@ export default async function ThankYouPage({
           {/* Lead-event-only — base pixel (init + PageView) comes from the root layout's <MetaPixel />. */}
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function waitFb(){if(typeof window.fbq==='function'){fbq('track','Lead'${displayName ? `,{content_name:'${displayName.replace(/'/g, "\\'")}'}` : ''});}else{setTimeout(waitFb,150);}})();`,
+              __html: `(function waitFb(){if(typeof window.fbq==='function'){fbq('track','Lead',${customData},${eventOpts});}else{setTimeout(waitFb,150);}})();`,
             }}
           />
           <noscript>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getPayload } from 'payload'
+import { sendCapiEvent } from '@/lib/meta-capi'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 import {
@@ -273,5 +274,35 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
   if (!privyrOk && !backedUp) {
     return NextResponse.json({ ok: false, error: 'Could not record lead' }, { status: 502 })
   }
-  return NextResponse.json({ ok: true })
+  // Server-side Lead, deduplicated against the browser pixel by event_id.
+  //
+  // Previously ONLY the browser fired Lead, which loses every conversion from
+  // an ad blocker or from iOS tracking prevention - precisely the traffic paid
+  // social delivers. Firing both and letting Meta deduplicate recovers those
+  // without double-counting.
+  //
+  // Deliberately after the lead is saved and never awaited into the response
+  // path's failure modes: a Meta outage must not cost us a lead.
+  void sendCapiEvent({
+    eventName: process.env.META_CAPI_LEAD_EVENT || 'Lead',
+    eventId,
+    email: email || null,
+    phone,
+    fbc,
+    fbp,
+    fbclid,
+    clientIp,
+    userAgent,
+    customData: {
+      lead_source: metaAdName || source || sourceKind || 'website',
+      ...(sourceName ? { content_name: sourceName } : {}),
+    },
+  }).catch((err) => {
+    console.warn('[lead-capture] CAPI Lead failed:', (err as Error)?.message)
+  })
+
+  // eventId goes back to the caller so the browser pixel can fire with the SAME
+  // id. Without that the two events are counted twice. It is a random UUID, not
+  // personal data, so putting it in the redirect URL is safe.
+  return NextResponse.json({ ok: true, eventId })
 }
