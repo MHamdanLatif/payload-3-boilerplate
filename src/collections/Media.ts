@@ -54,6 +54,16 @@ export const Media: CollectionConfig = {
     },
     imageSizes: [
       {
+        // Social-preview variant. Deliberately JPEG while every other size is
+        // WebP: WhatsApp's handling of WebP link previews is unreliable, and a
+        // preview that silently fails to render is worse than a larger file.
+        // 1200x630 is the ratio Meta and Twitter both crop to.
+        name: 'og',
+        width: 1200,
+        height: 630,
+        formatOptions: { format: 'jpeg', options: { quality: 82 } },
+      },
+      {
         name: 'thumbnail',
         width: 300,
         formatOptions: { format: 'webp', options: { quality: 80, effort: 4 } },

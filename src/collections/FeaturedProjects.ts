@@ -191,6 +191,16 @@ export const FeaturedProjects: CollectionConfig = {
       },
     },
     {
+      name: 'socialShareImage',
+      type: 'upload',
+      relationTo: 'media',
+      label: 'Social Share Image (optional)',
+      admin: {
+        description:
+          'Overrides the elevation image in WhatsApp/Facebook link previews for this project. Optional - the first elevation is used when empty. Upload a 1200x630 crop if the elevation loses its subject when cropped to a wide banner.',
+      },
+    },
+    {
       name: 'walkthroughVideoUrl',
       type: 'text',
       label: 'Walkthrough Video URL',

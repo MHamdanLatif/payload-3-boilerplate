@@ -8,11 +8,66 @@ import type { Lead, Media } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 import { BrochureView } from '@/components/brochure/BrochureView'
 import { logBrochureOpen, isCrawler } from '@/lib/brochure-open'
+import { buildPackMeta } from '@/lib/pack-metadata'
 
-export const metadata: Metadata = {
-  title: 'Your brochure | Lateef Properties',
-  description: 'Your personalised property brochure.',
-  robots: { index: false, follow: false },
+/**
+ * Project-specific link previews.
+ *
+ * A pack link shared on WhatsApp previously showed the generic company logo, so
+ * a Tulip Comfort lead and a Saima Elite lead received visually identical
+ * messages. The preview now carries the project's own elevation and name.
+ *
+ * noindex/nofollow is retained deliberately: Open Graph tags are read by
+ * messaging crawlers, which ignore robots directives, so richer previews cost
+ * nothing in search exposure. The page stays out of the index and the sitemap.
+ *
+ * No lead data appears here - see src/lib/pack-metadata.ts for why.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  let lead: Lead | null = null
+  try {
+    const payload = await getPayload({ config })
+    const res = await payload.find({
+      collection: 'leads',
+      where: { brochureId: { equals: id } },
+      depth: 2,
+      limit: 1,
+    })
+    lead = (res.docs[0] as Lead) ?? null
+  } catch {
+    // Fall through to the generic preview rather than failing the page.
+  }
+
+  const payload = await getPayload({ config })
+  const meta = await buildPackMeta(payload, lead, id)
+
+  return {
+    title: meta.title,
+    description: meta.description,
+    robots: { index: false, follow: false },
+    alternates: { canonical: meta.canonical },
+    openGraph: {
+      type: 'website',
+      siteName: 'Lateef Properties',
+      title: meta.title,
+      description: meta.description,
+      url: meta.canonical,
+      ...(meta.imageUrl
+        ? { images: [{ url: meta.imageUrl, width: 1200, height: 630, alt: meta.title }] }
+        : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: meta.title,
+      description: meta.description,
+      ...(meta.imageUrl ? { images: [meta.imageUrl] } : {}),
+    },
+  }
 }
 
 export const dynamic = 'force-dynamic'
