@@ -76,8 +76,13 @@ export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
         if (!next.currentInterestedProject) next.currentInterestedProject = project.id
         if (needsAssets && !next.brochureHeadline) next.brochureHeadline = project.title
         if (!next.brochurePdfPrimary && project.brochure) next.brochurePdfPrimary = project.brochure
-        if (!next.brochureMapEmbed && project.googleMapsEmbedUrl) {
+        if (needsAssets && !next.brochureMapEmbed && project.googleMapsEmbedUrl) {
           next.brochureMapEmbed = project.googleMapsEmbedUrl
+        }
+        // Walkthrough video, so a new lead's pack shows it without anyone
+        // pasting the URL onto each lead by hand.
+        if (!next.brochureVideoUrl && project.walkthroughVideoUrl) {
+          next.brochureVideoUrl = project.walkthroughVideoUrl
         }
       }
     } catch {

@@ -191,6 +191,15 @@ export const FeaturedProjects: CollectionConfig = {
       },
     },
     {
+      name: 'walkthroughVideoUrl',
+      type: 'text',
+      label: 'Walkthrough Video URL',
+      admin: {
+        description:
+          'YouTube or Vimeo link to the project walkthrough. Copied onto every NEW lead created for this project, so their personalised project pack shows the video automatically. Existing leads are not changed - set the video on the lead itself to add it retrospectively.',
+      },
+    },
+    {
       name: 'googleMapsEmbedUrl',
       type: 'text',
       label: 'Google Maps Embed URL',
@@ -280,6 +289,16 @@ export const FeaturedProjects: CollectionConfig = {
           type: 'select',
           required: true,
           options: UNIT_TYPE_OPTIONS.map((v) => ({ label: v, value: v })),
+        },
+        {
+          name: 'flatLayout',
+          type: 'upload',
+          relationTo: 'media',
+          label: 'Flat Layout',
+          admin: {
+            description:
+              'Floor plan for this specific unit. Shown as a "Flat Layout" link in the Available Units table on the project page, replacing the payment-plan link for that row. Upload one per unit type; rows without a layout keep the payment-plan link.',
+          },
         },
         {
           name: 'isDuplex',

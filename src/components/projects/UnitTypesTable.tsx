@@ -7,6 +7,17 @@ import {
   unitSummary,
 } from '@/lib/featured-projects'
 import { SectionRule } from '@/components/landing/SectionRule'
+import type { Media } from '@/payload-types'
+
+/** Small counts read better spelled out in prose. Falls back to digits. */
+const COUNT_WORDS = ['zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+const countWord = (n: number): string => COUNT_WORDS[n] ?? String(n)
+
+/** Uploaded flat-layout image for a unit, or null. Depth 1 populates the relation. */
+const layoutUrl = (u: { flatLayout?: number | Media | null }): string | null => {
+  const m = u.flatLayout
+  return m && typeof m === 'object' && m.url ? m.url : null
+}
 
 /**
  * Server-rendered table of a project's available units.
@@ -57,10 +68,12 @@ export function UnitTypesTable({
   // (~753 impressions/quarter) and it currently lands on blog posts, because no
   // commercial page states in text which units are actually duplexes.
   const duplexProse = summary.duplexCount
-    ? `${summary.duplexCount} of them ${summary.duplexCount === 1 ? 'is a' : 'are'} two-level duplex ${
-        summary.duplexCount === 1 ? 'apartment' : 'apartments'
-      }${summary.duplexTypes.length ? ` (${summary.duplexTypes.join(', ')})` : ''}${
-        project.location ? ` — duplex apartments in ${project.location}, Karachi` : ''
+    ? `${countWord(summary.duplexCount)} of them ${
+        summary.duplexCount === 1 ? 'is a duplex apartment' : 'are duplex apartments'
+      }${
+        summary.duplexTypes.length ? ` (${summary.duplexTypes.join(', ')})` : ''
+      }${
+        project.location ? ` - duplex apartments in ${project.location}, Karachi` : ''
       }.`
     : null
 
@@ -110,7 +123,7 @@ export function UnitTypesTable({
                   Price
                 </th>
                 <th className={th} scope="col">
-                  <span className="sr-only">Payment plan</span>
+                  <span className="sr-only">Flat layout</span>
                 </th>
               </tr>
             </thead>
@@ -156,12 +169,28 @@ export function UnitTypesTable({
                     {formatPkr(u.price)}
                   </td>
                   <td className={`${td} block pb-5 md:table-cell md:pb-3.5`}>
-                    <a
-                      className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
-                      href={`?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}
-                    >
-                      Payment plan
-                    </a>
+                    {/* The flat layout is the more useful action where one exists:
+                        a buyer comparing units wants the plan, and the payment
+                        calculator is a full section further down the page anyway.
+                        Rows without a layout keep the payment-plan link, so the
+                        column is never dead. */}
+                    {layoutUrl(u) ? (
+                      <a
+                        className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
+                        href={layoutUrl(u) as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Flat Layout
+                      </a>
+                    ) : (
+                      <a
+                        className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
+                        href={`?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}
+                      >
+                        Payment plan
+                      </a>
+                    )}
                   </td>
                 </tr>
               ))}

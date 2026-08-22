@@ -812,6 +812,10 @@ export interface FeaturedProject {
    */
   brochure?: (number | null) | Media;
   /**
+   * YouTube or Vimeo link to the project walkthrough. Copied onto every NEW lead created for this project, so their personalised project pack shows the video automatically. Existing leads are not changed - set the video on the lead itself to add it retrospectively.
+   */
+  walkthroughVideoUrl?: string | null;
+  /**
    * Paste only the `src` URL from a Google Maps "Embed a map" iframe. Powers the Location section AND we auto-extract lat/lng from it for SEO structured data — no manual coordinates needed.
    */
   googleMapsEmbedUrl?: string | null;
@@ -863,6 +867,10 @@ export interface FeaturedProject {
           | '3 Bed Drawing'
           | '4 Bed Drawing'
           | '4+ Rooms';
+        /**
+         * Floor plan for this specific unit. Shown as a "Flat Layout" link in the Available Units table on the project page, replacing the payment-plan link for that row. Upload one per unit type; rows without a layout keep the payment-plan link.
+         */
+        flatLayout?: (number | null) | Media;
         /**
          * Tick if this unit is a two-level duplex. Kept separate from Unit Type on purpose: "duplex" is the layout, "3 Bed Drawing" is the configuration, and buyers search for both together ("4 bed duplex Karachi"). Collapsing them into one field would lose the bed count. A project can mix duplex and flat units.
          */
@@ -2091,6 +2099,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
       };
   nightElevation?: T;
   brochure?: T;
+  walkthroughVideoUrl?: T;
   googleMapsEmbedUrl?: T;
   addressLine?: T;
   faqs?:
@@ -2118,6 +2127,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
     | {
         name?: T;
         type?: T;
+        flatLayout?: T;
         isDuplex?: T;
         rooms?: T;
         price?: T;
