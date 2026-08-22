@@ -196,7 +196,7 @@ export const FeaturedProjects: CollectionConfig = {
       label: 'Walkthrough Video URL',
       admin: {
         description:
-          'YouTube or Vimeo link to the project walkthrough. Copied onto every NEW lead created for this project, so their personalised project pack shows the video automatically. Existing leads are not changed - set the video on the lead itself to add it retrospectively.',
+          'Paste the PLAIN video link, e.g. https://youtu.be/xxxx or https://www.youtube.com/watch?v=xxxx - NOT the <iframe> embed code, and not a /shorts/ URL. (This differs from the Google Maps field below, which does want the src out of an iframe.) A plain link is converted to a youtube-nocookie embed, so no tracking cookies are set until the visitor presses play. Set the video to Unlisted on YouTube, not Private - Private will not play for leads. Copied onto every NEW lead for this project so their project pack shows the video automatically; existing leads are unchanged.',
       },
     },
     {
