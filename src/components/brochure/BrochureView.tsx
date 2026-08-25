@@ -123,14 +123,24 @@ function useTrackInView(brochureId: string, asset: Asset) {
 }
 
 /**
- * Inline PDF preview — renders the brochure right on the page via Google's PDF
- * viewer, which displays reliably on mobile (incl. Android, where a raw <iframe>
- * to a PDF forces a download). No download button; the lead reads it in place.
- * The media is already public (served from R2), so no new exposure.
+ * Inline PDF preview.
  *
- * The heavy viewer only mounts once the section nears the viewport (so it never
- * competes with initial page render), and a branded loader shows until it's
- * ready. Engagement is tracked when the section first comes into view.
+ * Previously rendered through Google's `docs.google.com/gview` viewer, chosen
+ * because Android Chrome downloads a PDF rather than displaying it in a bare
+ * iframe. That endpoint is deprecated and now fails often: when it does the
+ * browser receives something it cannot display inline and offers to save a file
+ * literally named "gview", while the iframe's load event never fires, so the
+ * loader spun forever. Meanwhile "open full screen" worked instantly, because
+ * it hit the PDF directly and skipped Google altogether.
+ *
+ * Now the PDF is served straight from our own R2 URL and rendered by the
+ * browser's own viewer. `navigator.pdfViewerEnabled` is the standard way to ask
+ * whether that will actually work — true in desktop Chrome, Firefox, Edge and
+ * Safari; false on Android Chrome, which is exactly the case gview existed for.
+ *
+ * Where inline rendering is unavailable we do not pretend: the lead gets a
+ * clear card that opens the brochure in their device's own PDF reader, which
+ * handles it far better than any embed would.
  */
 function PdfPreview({
   brochureId,
@@ -146,6 +156,20 @@ function PdfPreview({
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [show, setShow] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [slow, setSlow] = useState(false)
+  // null = not yet determined (server render / before hydration)
+  const [canInline, setCanInline] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    // Feature detection rather than user-agent sniffing. Older browsers do not
+    // expose the property; a wide viewport is a reasonable stand-in there.
+    const nav = navigator as Navigator & { pdfViewerEnabled?: boolean }
+    setCanInline(
+      typeof nav.pdfViewerEnabled === 'boolean'
+        ? nav.pdfViewerEnabled
+        : window.matchMedia('(min-width: 1024px)').matches,
+    )
+  }, [])
 
   useEffect(() => {
     const el = wrapRef.current
@@ -154,7 +178,7 @@ function PdfPreview({
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            setShow(true) // mount the viewer a bit before it's on screen
+            setShow(true) // mount the viewer a little before it is on screen
             track(brochureId, asset) // engagement
             io.disconnect()
             break
@@ -167,7 +191,17 @@ function PdfPreview({
     return () => io.disconnect()
   }, [brochureId, asset])
 
-  const src = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`
+  // A spinner with no exit is worse than no spinner. If the viewer has not
+  // reported itself ready, surface the direct link rather than leaving a lead
+  // watching it turn.
+  useEffect(() => {
+    if (!show || loaded || canInline === false) return
+    const t = window.setTimeout(() => setSlow(true), 6000)
+    return () => window.clearTimeout(t)
+  }, [show, loaded, canInline])
+
+  const inline = canInline !== false
+
   return (
     <div>
       <h2 className="flex items-center gap-2 font-serif text-2xl tracking-tight text-brand-deep">
@@ -175,29 +209,81 @@ function PdfPreview({
       </h2>
       <div
         ref={wrapRef}
-        className="relative mt-4 h-[72vh] overflow-hidden rounded-2xl border border-brand-deep/10 bg-white shadow-luxe"
+        className={`relative mt-4 overflow-hidden rounded-2xl border border-brand-deep/10 bg-white shadow-luxe ${
+          inline ? 'h-[72vh]' : ''
+        }`}
       >
-        {show && (
-          <iframe
-            src={src}
-            title={label}
-            onLoad={() => setLoaded(true)}
-            className={`h-full w-full transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-          />
-        )}
-        {(!show || !loaded) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-            <Loader2 className="h-7 w-7 animate-spin text-gold" />
-            <p className="text-sm text-brand-deep/65">Loading brochure…</p>
-            <p className="text-xs text-brand-deep/40">This can take a few seconds on mobile.</p>
-          </div>
+        {inline ? (
+          <>
+            {show && (
+              <iframe
+                src={url}
+                title={label}
+                onLoad={() => setLoaded(true)}
+                className={`h-full w-full transition-opacity duration-500 ${
+                  loaded ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            )}
+            {(!show || !loaded) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                {slow ? (
+                  <>
+                    <FileText className="h-7 w-7 text-gold" />
+                    <p className="text-sm text-brand-deep/70">
+                      The preview is taking a while to load.
+                    </p>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 rounded-full bg-brand-deep px-5 py-2.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:bg-gold hover:text-brand-deep"
+                    >
+                      Open the brochure
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-7 w-7 animate-spin text-gold" />
+                    <p className="text-sm text-brand-deep/65">Loading brochure…</p>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          // Device cannot display a PDF inline. Offer the real thing instead of
+          // an embed that would silently download.
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track(brochureId, asset)}
+            className="flex flex-col items-center gap-3 px-6 py-12 text-center transition-colors hover:bg-cream/40"
+          >
+            <FileText className="h-9 w-9 text-gold" />
+            <span className="font-serif text-lg text-brand-deep">{label}</span>
+            <span className="text-sm text-brand-deep/60">
+              Tap to open the full brochure
+            </span>
+            <span className="mt-2 rounded-full bg-brand-deep px-5 py-2.5 text-xs font-medium uppercase tracking-[0.18em] text-white">
+              Open brochure
+            </span>
+          </a>
         )}
       </div>
-      <p className="mt-2 text-center text-xs text-brand-deep/45">
-        <a href={url} target="_blank" rel="noopener noreferrer" className="underline hover:text-gold">
-          Open full screen ↗
-        </a>
-      </p>
+      {inline && (
+        <p className="mt-2 text-center text-xs text-brand-deep/45">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-gold"
+          >
+            Open full screen ↗
+          </a>
+        </p>
+      )}
     </div>
   )
 }
