@@ -409,6 +409,10 @@ export function organizationSchema() {
   // Real socials. WhatsApp first (it's the primary contact channel) then the
   // public social profiles Google uses for the Knowledge Panel.
   const SAME_AS: string[] = [
+    // The verified Google Business Profile. sameAs is how a machine is told
+    // "this website and that listing are the same organisation", and a GBP is
+    // the most authoritative target available to a local business.
+    MAPS_URL,
     WHATSAPP_URL,
     'https://www.instagram.com/lateefproperties',
     'https://www.facebook.com/lateefpropertiespk',
@@ -485,6 +489,15 @@ export function organizationSchema() {
       },
     ],
     sameAs: SAME_AS,
+    // Lateef Builders is an established entity with its own domain, and until
+    // now the connection existed only as a navigation link. Declaring it gives
+    // this brand a corroborating relationship rather than leaving it to stand
+    // entirely on its own first-party claims.
+    parentOrganization: {
+      '@type': 'Organization',
+      name: 'Lateef Builders',
+      url: 'https://www.lateefbuilders.pk/',
+    },
     knowsAbout: [
       'Karachi real estate',
       'Pre-launch property allocations',
