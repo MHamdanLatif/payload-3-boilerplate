@@ -400,8 +400,11 @@ export function organizationSchema() {
   const REGION = 'Sindh'
   const COUNTRY = 'PK'
   // Block 16, Gulshan-e-Iqbal centroid. Swap in a precise pin if you have one.
-  const GEO_LAT = 24.917
-  const GEO_LNG = 67.0857
+  // Taken from the verified Google Business Profile pin, confirmed by the owner.
+  // The previous values were 1,577 m out, which is a trust signal Google checks
+  // between a site and its GBP - do not replace these with an approximation.
+  const GEO_LAT = 24.903633056547328
+  const GEO_LNG = 67.08051501674562
   const MAPS_URL = 'https://maps.app.goo.gl/RTVU2EMN8bzqwbQL9'
   const WHATSAPP_URL = 'https://wa.me/923363528333'
   // priceRange: a qualitative band ($, $$, $$$, $$$$) or a literal range string.
