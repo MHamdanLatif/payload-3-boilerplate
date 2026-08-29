@@ -86,6 +86,15 @@ const redirects = async () => {
       permanent: true,
     },
 
+    // The Al Wahab builder article was rewritten and republished under a new
+    // slug. The old URL had been live and indexed since 2026-07-24, so it
+    // forwards rather than 404ing.
+    {
+      source: '/blog/al-wahab-builders-track-record-and-current-projects',
+      destination: '/blog/al-wahab-builders-a-legacy-built-across-karachi',
+      permanent: true,
+    },
+
     // Blog slug cleanups (site audit). The Tulip post was standardised to the
     // singular project name; the Saima Elite post had a stray double hyphen
     // left over from the "&" in its title. Forward the old slugs.

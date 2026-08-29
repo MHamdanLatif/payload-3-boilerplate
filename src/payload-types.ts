@@ -820,6 +820,34 @@ export interface FeaturedProject {
    */
   brochure?: (number | null) | Media;
   /**
+   * The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression. Most persuasive when the earlier projects are in the same locality - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.
+   */
+  builderTrackRecord?:
+    | {
+        /**
+         * e.g. Rim Jhim Towers
+         */
+        name: string;
+        /**
+         * e.g. Safoora Chowk, Scheme 33
+         */
+        location?: string | null;
+        /**
+         * One concrete fact - e.g. "132 apartments + 195 shops". Numbers carry weight that adjectives do not.
+         */
+        detail?: string | null;
+        /**
+         * Tick on the row representing this project, so it is highlighted as the latest step.
+         */
+        isCurrent?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Optional. The long-form article about the developer. Linked from the track-record block, which gives that article an internal link from a high-traffic page.
+   */
+  builderStory?: (number | null) | Blog;
+  /**
    * Overrides the elevation image in WhatsApp/Facebook link previews for this project. Optional - the first elevation is used when empty. Upload a 1200x630 crop if the elevation loses its subject when cropped to a wide banner.
    */
   socialShareImage?: (number | null) | Media;
@@ -1015,6 +1043,114 @@ export interface FeaturedProject {
   createdAt: string;
 }
 /**
+ * Karachi real-estate articles. Write the article in your Claude Max chat, generate the cover image in Gemini Pro, paste both in below. The CMS auto-derives excerpt/meta/read-time, auto-scans for project + location mentions to populate internal links, and wraps them as Lexical link nodes on publish.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blogs".
+ */
+export interface Blog {
+  id: number;
+  title: string;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  /**
+   * Drafts are not visible publicly. Scheduled posts publish automatically when publishedAt is in the past.
+   */
+  status: 'draft' | 'scheduled' | 'published';
+  /**
+   * Public visibility timestamp. Auto-filled by the generator.
+   */
+  publishedAt?: string | null;
+  /**
+   * Estimated read minutes. Computed from content length.
+   */
+  readTime?: number | null;
+  /**
+   * Index-card teaser. Max 280 chars.
+   */
+  excerpt?: string | null;
+  /**
+   * Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.
+   */
+  keywords?:
+    | {
+        keyword: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Hero image for /blog index card and the post page.
+   */
+  featuredImage?: (number | null) | Media;
+  /**
+   * Paste markdown from your Claude conversation — `## headings`, `-` bullets, `**bold**`, `[text](url)` are auto-converted on paste. Aim for 1000–1500 words with H2 every 200–300 words.
+   */
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Auto-populated from project/location names detected in the article body. Review before publishing. On every save where status=published, the publish hook wraps the first exact match of each anchorText inside the article content with a link to the resolved target URL. Already-injected entries are skipped on subsequent saves.
+   */
+  seoInternalLinks?:
+    | {
+        /**
+         * The exact phrase in the article body to wrap as a link.
+         */
+        anchorText: string;
+        linkType: 'project' | 'location' | 'index';
+        targetProject?: (number | null) | FeaturedProject;
+        /**
+         * Slug only, e.g. "scheme-33". Resolves to /locations/<slug>.
+         */
+        targetLocationSlug?: string | null;
+        /**
+         * Set by the publish hook once the link has been injected into the content.
+         */
+        injected?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.
+   */
+  featuredCards?:
+    | {
+        cardType: 'project' | 'listing';
+        targetProject?: (number | null) | FeaturedProject;
+        targetListing?: (number | null) | PropertyListing;
+        id?: string | null;
+      }[]
+    | null;
+  generatedBy?: {
+    topic?: (number | null) | BlogTopic;
+    model?: string | null;
+    generatedAt?: string | null;
+    placementWarnings?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Individual ready-to-move units — a specific flat, plot, office, shop, or commercial space (ready, resale, or urgent sale).
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1142,114 +1278,6 @@ export interface PropertyListing {
     };
     [k: string]: unknown;
   } | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    /**
-     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
-     */
-    image?: (number | null) | Media;
-  };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Karachi real-estate articles. Write the article in your Claude Max chat, generate the cover image in Gemini Pro, paste both in below. The CMS auto-derives excerpt/meta/read-time, auto-scans for project + location mentions to populate internal links, and wraps them as Lexical link nodes on publish.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "blogs".
- */
-export interface Blog {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  /**
-   * Drafts are not visible publicly. Scheduled posts publish automatically when publishedAt is in the past.
-   */
-  status: 'draft' | 'scheduled' | 'published';
-  /**
-   * Public visibility timestamp. Auto-filled by the generator.
-   */
-  publishedAt?: string | null;
-  /**
-   * Estimated read minutes. Computed from content length.
-   */
-  readTime?: number | null;
-  /**
-   * Index-card teaser. Max 280 chars.
-   */
-  excerpt?: string | null;
-  /**
-   * Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.
-   */
-  keywords?:
-    | {
-        keyword: string;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Hero image for /blog index card and the post page.
-   */
-  featuredImage?: (number | null) | Media;
-  /**
-   * Paste markdown from your Claude conversation — `## headings`, `-` bullets, `**bold**`, `[text](url)` are auto-converted on paste. Aim for 1000–1500 words with H2 every 200–300 words.
-   */
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  /**
-   * Auto-populated from project/location names detected in the article body. Review before publishing. On every save where status=published, the publish hook wraps the first exact match of each anchorText inside the article content with a link to the resolved target URL. Already-injected entries are skipped on subsequent saves.
-   */
-  seoInternalLinks?:
-    | {
-        /**
-         * The exact phrase in the article body to wrap as a link.
-         */
-        anchorText: string;
-        linkType: 'project' | 'location' | 'index';
-        targetProject?: (number | null) | FeaturedProject;
-        /**
-         * Slug only, e.g. "scheme-33". Resolves to /locations/<slug>.
-         */
-        targetLocationSlug?: string | null;
-        /**
-         * Set by the publish hook once the link has been injected into the content.
-         */
-        injected?: boolean | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.
-   */
-  featuredCards?:
-    | {
-        cardType: 'project' | 'listing';
-        targetProject?: (number | null) | FeaturedProject;
-        targetListing?: (number | null) | PropertyListing;
-        id?: string | null;
-      }[]
-    | null;
-  generatedBy?: {
-    topic?: (number | null) | BlogTopic;
-    model?: string | null;
-    generatedAt?: string | null;
-    placementWarnings?: string | null;
-  };
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -2121,6 +2149,16 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
       };
   nightElevation?: T;
   brochure?: T;
+  builderTrackRecord?:
+    | T
+    | {
+        name?: T;
+        location?: T;
+        detail?: T;
+        isCurrent?: T;
+        id?: T;
+      };
+  builderStory?: T;
   socialShareImage?: T;
   walkthroughVideoUrl?: T;
   googleMapsEmbedUrl?: T;

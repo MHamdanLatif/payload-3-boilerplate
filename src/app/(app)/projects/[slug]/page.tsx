@@ -24,6 +24,7 @@ import { deriveProjectKeywords } from '@/lib/seo-keywords'
 import { ProjectHero } from '@/components/projects/ProjectHero'
 import { ProjectOverview } from '@/components/projects/ProjectOverview'
 import { UnitTypesTable } from '@/components/projects/UnitTypesTable'
+import { BuilderTrackRecord } from '@/components/projects/BuilderTrackRecord'
 import { PaymentPlanCalculator } from '@/components/projects/PaymentPlanCalculator'
 import { NightElevationCard } from '@/components/projects/NightElevationCard'
 import { AmenitiesSection } from '@/components/shared/AmenitiesSection'
@@ -158,21 +159,26 @@ export default async function ProjectLandingPage({
             calculator below is a client component. Renders nothing when the
             project has no unitTypes rows. */}
         <UnitTypesTable project={project} sectionNumber="02 / AVAILABLE UNITS" />
-        <PaymentPlanCalculator project={project} sectionNumber="03 / PAYMENT PLAN" />
+        {/* Placed immediately after the prices: seeing a pre-launch figure is
+            exactly what prompts "but will they actually build it?" - answering
+            it here, rather than at the foot of the page, meets the doubt where
+            it arises. Renders nothing when a project has no track record. */}
+        <BuilderTrackRecord project={project} sectionNumber="03 / THE BUILDER" />
+        <PaymentPlanCalculator project={project} sectionNumber="04 / PAYMENT PLAN" />
         <NightElevationCard project={project} />
-        <AmenitiesSection amenities={project.amenities} sectionNumber="04 / AMENITIES" />
+        <AmenitiesSection amenities={project.amenities} sectionNumber="05 / AMENITIES" />
         <PhotoGallerySection
           photos={project.photoGallery}
           itemTitle={project.title}
-          sectionNumber="05 / GALLERY"
+          sectionNumber="06 / GALLERY"
         />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="06 / LOCATION"
+          sectionNumber="07 / LOCATION"
         />
-        <FaqSection faqs={project.faqs} sectionNumber="07 / FAQ" />
+        <FaqSection faqs={project.faqs} sectionNumber="08 / FAQ" />
         <InsightsSection
           blogs={relatedBlogs}
           eyebrow="FURTHER READING"
@@ -184,7 +190,7 @@ export default async function ProjectLandingPage({
           sourceName={project.title}
           sourceSlug={project.slug ?? ''}
           sourceKind="project"
-          sectionNumber="08 / ENQUIRE"
+          sectionNumber="09 / ENQUIRE"
         />
       </main>
       <WhatsAppFloatingCta projectTitle={project.title} projectSlug={project.slug ?? undefined} />

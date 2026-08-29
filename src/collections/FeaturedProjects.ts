@@ -191,6 +191,42 @@ export const FeaturedProjects: CollectionConfig = {
       },
     },
     {
+      name: 'builderTrackRecord',
+      type: 'array',
+      label: 'Builder Track Record',
+      labels: { singular: 'Previous Project', plural: 'Previous Projects' },
+      admin: {
+        description:
+          'The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression. Most persuasive when the earlier projects are in the same locality - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.',
+      },
+      fields: [
+        { name: 'name', type: 'text', required: true, admin: { description: 'e.g. Rim Jhim Towers' } },
+        { name: 'location', type: 'text', admin: { description: 'e.g. Safoora Chowk, Scheme 33' } },
+        {
+          name: 'detail',
+          type: 'text',
+          admin: { description: 'One concrete fact - e.g. "132 apartments + 195 shops". Numbers carry weight that adjectives do not.' },
+        },
+        {
+          name: 'isCurrent',
+          type: 'checkbox',
+          label: 'Current project',
+          defaultValue: false,
+          admin: { description: 'Tick on the row representing this project, so it is highlighted as the latest step.' },
+        },
+      ],
+    },
+    {
+      name: 'builderStory',
+      type: 'relationship',
+      relationTo: 'blogs',
+      label: 'Builder Story Article',
+      admin: {
+        description:
+          'Optional. The long-form article about the developer. Linked from the track-record block, which gives that article an internal link from a high-traffic page.',
+      },
+    },
+    {
       name: 'socialShareImage',
       type: 'upload',
       relationTo: 'media',
