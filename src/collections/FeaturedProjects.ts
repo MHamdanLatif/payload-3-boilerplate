@@ -197,15 +197,41 @@ export const FeaturedProjects: CollectionConfig = {
       labels: { singular: 'Previous Project', plural: 'Previous Projects' },
       admin: {
         description:
-          'The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression. Most persuasive when the earlier projects are in the same locality - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.',
+          'The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression of photo cards. Most persuasive when the earlier projects are in the same locality and shown as real photographs - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.',
       },
       fields: [
         { name: 'name', type: 'text', required: true, admin: { description: 'e.g. Rim Jhim Towers' } },
-        { name: 'location', type: 'text', admin: { description: 'e.g. Safoora Chowk, Scheme 33' } },
+        {
+          name: 'image',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              'A photograph of the finished building where one exists - a real photo of a standing tower is the whole point of this section, and outperforms a render. Use the elevation only for THIS project, which cannot be photographed yet. Landscape crops best; the card shows a 4:3 area.',
+          },
+        },
+        { name: 'location', type: 'text', admin: { description: 'e.g. Safoora Chowrangi, Scheme 33. The first part (before the comma) is also used in the intro sentence.' } },
         {
           name: 'detail',
           type: 'text',
-          admin: { description: 'One concrete fact - e.g. "132 apartments + 195 shops". Numbers carry weight that adjectives do not.' },
+          admin: { description: 'One concrete fact - e.g. "132 Apartments · 195 Shops". Numbers carry weight that adjectives do not.' },
+        },
+        {
+          name: 'completedYear',
+          type: 'text',
+          label: 'Completed (year)',
+          admin: {
+            description: 'e.g. 2008. Shown as "Completed 2008" beside the detail. Leave empty on the current project.',
+          },
+        },
+        {
+          name: 'statusLine',
+          type: 'text',
+          label: 'Status line',
+          admin: {
+            description:
+              'The caption under the facts - e.g. "Completed Mixed-Use Development", "Completed Residential Development", or "The Next Chapter" for this project.',
+          },
         },
         {
           name: 'isCurrent',

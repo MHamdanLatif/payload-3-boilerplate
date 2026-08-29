@@ -10,6 +10,7 @@ import * as migration_20260717_000000_send_file from './20260717_000000_send_fil
 import * as migration_20260807_000000_brochure_dwell from './20260807_000000_brochure_dwell';
 import * as migration_20260817_000000_is_duplex from './20260817_000000_is_duplex';
 import * as migration_20260818_000000_lead_status_site_visit_closed_won from './20260818_000000_lead_status_site_visit_closed_won';
+import * as migration_20260829_000000_builder_track_record from './20260829_000000_builder_track_record';
 
 export const migrations = [
   {
@@ -71,5 +72,10 @@ export const migrations = [
     up: migration_20260818_000000_lead_status_site_visit_closed_won.up,
     down: migration_20260818_000000_lead_status_site_visit_closed_won.down,
     name: '20260818_000000_lead_status_site_visit_closed_won',
+  },
+  {
+    up: migration_20260829_000000_builder_track_record.up,
+    down: migration_20260829_000000_builder_track_record.down,
+    name: '20260829_000000_builder_track_record',
   },
 ];

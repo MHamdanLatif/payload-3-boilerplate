@@ -820,7 +820,7 @@ export interface FeaturedProject {
    */
   brochure?: (number | null) | Media;
   /**
-   * The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression. Most persuasive when the earlier projects are in the same locality - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.
+   * The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Rendered on the landing page as a progression of photo cards. Most persuasive when the earlier projects are in the same locality and shown as real photographs - a buyer can go and look at them - so keep the list local rather than listing everything the builder has ever done.
    */
   builderTrackRecord?:
     | {
@@ -829,13 +829,25 @@ export interface FeaturedProject {
          */
         name: string;
         /**
-         * e.g. Safoora Chowk, Scheme 33
+         * A photograph of the finished building where one exists - a real photo of a standing tower is the whole point of this section, and outperforms a render. Use the elevation only for THIS project, which cannot be photographed yet. Landscape crops best; the card shows a 4:3 area.
+         */
+        image?: (number | null) | Media;
+        /**
+         * e.g. Safoora Chowrangi, Scheme 33. The first part (before the comma) is also used in the intro sentence.
          */
         location?: string | null;
         /**
-         * One concrete fact - e.g. "132 apartments + 195 shops". Numbers carry weight that adjectives do not.
+         * One concrete fact - e.g. "132 Apartments · 195 Shops". Numbers carry weight that adjectives do not.
          */
         detail?: string | null;
+        /**
+         * e.g. 2008. Shown as "Completed 2008" beside the detail. Leave empty on the current project.
+         */
+        completedYear?: string | null;
+        /**
+         * The caption under the facts - e.g. "Completed Mixed-Use Development", "Completed Residential Development", or "The Next Chapter" for this project.
+         */
+        statusLine?: string | null;
         /**
          * Tick on the row representing this project, so it is highlighted as the latest step.
          */
@@ -2153,8 +2165,11 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
     | T
     | {
         name?: T;
+        image?: T;
         location?: T;
         detail?: T;
+        completedYear?: T;
+        statusLine?: T;
         isCurrent?: T;
         id?: T;
       };
