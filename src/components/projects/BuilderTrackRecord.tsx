@@ -103,6 +103,9 @@ export function BuilderTrackRecord({
             const facts = [e.detail, e.completedYear ? `Completed ${e.completedYear}` : null]
               .filter(Boolean)
               .join(' · ')
+            // Completed projects are numbered among themselves, so the labels
+            // read 01, 02 regardless of where the current row sits in the array.
+            const landmarkNo = String(previous.indexOf(e) + 1).padStart(2, '0')
             // The connector only makes sense between cards on the same row, and
             // the grid is three-wide only at lg.
             const showArrow = i < entries.length - 1 && (i + 1) % 3 !== 0
@@ -118,7 +121,7 @@ export function BuilderTrackRecord({
                 >
                   <div className="flex items-baseline gap-3 px-6 pb-4 pt-5">
                     <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/40">
-                      {e.isCurrent ? 'Now' : `Step ${i + 1}`}
+                      {e.isCurrent ? 'Next Chapter' : `Landmark ${landmarkNo}`}
                     </span>
                     <h3 className="font-serif text-xl leading-tight text-brand-deep">{e.name}</h3>
                   </div>
