@@ -11,6 +11,7 @@ import * as migration_20260807_000000_brochure_dwell from './20260807_000000_bro
 import * as migration_20260817_000000_is_duplex from './20260817_000000_is_duplex';
 import * as migration_20260818_000000_lead_status_site_visit_closed_won from './20260818_000000_lead_status_site_visit_closed_won';
 import * as migration_20260829_000000_builder_track_record from './20260829_000000_builder_track_record';
+import * as migration_20260903_000000_marketed_projects from './20260903_000000_marketed_projects';
 
 export const migrations = [
   {
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20260829_000000_builder_track_record.up,
     down: migration_20260829_000000_builder_track_record.down,
     name: '20260829_000000_builder_track_record',
+  },
+  {
+    up: migration_20260903_000000_marketed_projects.up,
+    down: migration_20260903_000000_marketed_projects.down,
+    name: '20260903_000000_marketed_projects',
   },
 ];

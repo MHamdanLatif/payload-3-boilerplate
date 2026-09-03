@@ -104,6 +104,23 @@ export const Leads: CollectionConfig = {
       },
     },
     {
+      // Paid landing pages live in their own collection, so the three
+      // relationships above cannot point at them. Making those polymorphic would
+      // migrate them into a join table — a destructive rewrite of live CRM data
+      // — so this sits alongside instead. `linkedProject` on the marketed doc
+      // still stamps acquiredProject, which keeps project-level reporting whole.
+      name: 'marketedProject',
+      type: 'relationship',
+      relationTo: 'marketed-projects',
+      label: 'Acquired through ad page',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description:
+          'The paid landing page this lead registered on. Write-once, for the same reason as Acquired through project.',
+      },
+    },
+    {
       name: 'brochureId',
       type: 'text',
       unique: true,
@@ -136,11 +153,24 @@ export const Leads: CollectionConfig = {
       type: 'text',
       admin: {
         description:
-          'project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown',
+          'project | marketed-project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown',
       },
     },
     { name: 'sourceName', type: 'text', label: 'Enquiring about (name)' },
     { name: 'sourceSlug', type: 'text', label: 'Enquiring about (slug)' },
+    {
+      // Free text, not a select: the options are built per project from its own
+      // unit rows, and the value stored is the label the buyer actually saw. A
+      // select would mint an enum that needs an ALTER TYPE every time a unit
+      // configuration is added.
+      name: 'interestedUnitType',
+      type: 'text',
+      label: 'Interested in unit',
+      admin: {
+        description:
+          'What they picked on the ad page form. "Not sure yet" is a real answer, not a missing one.',
+      },
+    },
     { name: 'placement', type: 'text' },
     { name: 'source', type: 'text', label: 'Source tag' },
 

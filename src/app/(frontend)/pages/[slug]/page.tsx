@@ -14,6 +14,18 @@ import { RenderHero } from '@/heros/RenderHero'
 import { generateMeta } from '@/utilities/generateMeta'
 import PageClient from './page.client'
 
+/**
+ * The stock Payload `pages` collection, served under /pages/<slug>.
+ *
+ * It used to own the root segment (/<slug>), which made it impossible to add any
+ * other CMS-driven root URL — Next.js rejects two dynamic segments resolving to
+ * the same path at build time. The paid landing pages need that root, and this
+ * route was serving nothing: the collection holds a single draft row with no
+ * slug, and every page it renders is already noindexed by `generateMeta`.
+ *
+ * Moved rather than deleted so the admin preview button and the revalidate hook
+ * keep working if the collection is ever put to real use.
+ */
 export async function generateStaticParams() {
   const payload = await getPayload({ config: configPromise })
   const pages = await payload.find({
@@ -45,7 +57,7 @@ type Args = {
 
 export default async function Page({ params: paramsPromise }: Args) {
   const { slug = 'home' } = await paramsPromise
-  const url = '/' + slug
+  const url = '/pages/' + slug
 
   let page: PageType | null
 

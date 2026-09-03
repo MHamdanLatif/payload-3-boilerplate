@@ -1,8 +1,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
-import type { Blog, FeaturedProject, Media } from '@/payload-types'
+import type { Blog, Media } from '@/payload-types'
 import { imageAlt, imageUrl } from '@/lib/featured-projects'
+import type { TrackRecordSource } from '@/lib/project-shape'
 import { SectionRule } from '@/components/landing/SectionRule'
 
 /**
@@ -28,7 +29,7 @@ export function BuilderTrackRecord({
   project,
   sectionNumber = '03 / THE BUILDER',
 }: {
-  project: FeaturedProject
+  project: TrackRecordSource
   sectionNumber?: string
 }) {
   const entries = project.builderTrackRecord ?? []

@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 import type { FeaturedProject, Media } from '@/payload-types'
 import { smallestUnit } from '@/lib/featured-projects'
+import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
 import {
   computePlan,
   type ComputeInput,
@@ -63,6 +64,12 @@ export async function POST(req: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
   const projectSlug = typeof body.projectSlug === 'string' ? body.projectSlug.trim() : ''
+  // Which collection to read the project from. Validated against an allowlist,
+  // never trusted: this arrives in the request body and is used as a collection
+  // name in a database read.
+  const projectCollection = isPaymentPlanCollection(body.projectCollection)
+    ? body.projectCollection
+    : 'featured-projects'
   const downPaymentPct = Number(body.downPaymentPct)
   const possessionPctRaw = Number(body.possessionPct)
   const loanIncluded = Boolean(body.loanIncluded)
@@ -100,7 +107,7 @@ export async function POST(req: Request) {
 
   const payload = await getPayload({ config })
   const projectRes = await payload.find({
-    collection: 'featured-projects',
+    collection: projectCollection,
     where: { slug: { equals: projectSlug } },
     depth: 2,
     limit: 1,
@@ -109,6 +116,7 @@ export async function POST(req: Request) {
   if (!project) {
     return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 })
   }
+  const isMarketed = projectCollection === 'marketed-projects'
   const planConfig = project.paymentPlan
   if (planConfig?.enabled === false) {
     return NextResponse.json(
@@ -229,7 +237,10 @@ export async function POST(req: Request) {
       data: {
         name,
         phone,
-        project: project.id,
+        // Exactly one of these is set — writing a marketed id into the
+        // featured-projects FK would violate the constraint and lose the row.
+        project: isMarketed ? null : project.id,
+        marketedProject: isMarketed ? project.id : null,
         projectTitleSnapshot: project.title,
         selectedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? null,
         totalPrice: plan.totals.effectivePrice,

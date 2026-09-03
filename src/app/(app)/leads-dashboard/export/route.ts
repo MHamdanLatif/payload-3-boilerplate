@@ -96,7 +96,7 @@ export async function GET(req: Request) {
   const header = [
     'Name', 'Phone', 'Email', 'Status', 'Reason', 'Acquisition Source',
     'Conversion Surface', 'First Touch Campaign', 'First Touch Content',
-    'Latest Touch Source', 'Legacy Source Tag', 'Project',
+    'Latest Touch Source', 'Legacy Source Tag', 'Project', 'Interested Unit',
     'Property Type', 'Budget', 'Created', 'Brochure Sent',
     'Brochure Opened', 'Opens', 'Time on Page', 'Notes',
   ]
@@ -104,7 +104,7 @@ export async function GET(req: Request) {
   const rows = leads.map((l) => [
     l.name, l.phone, l.email, statusLabel(l.status), l.unqualifiedReason,
     l.acquisitionSource, l.conversionSurface, l.firstTouchCampaign, l.firstTouchContent,
-    l.latestTouchSource, sourceOf(l), l.sourceName,
+    l.latestTouchSource, sourceOf(l), l.sourceName, l.interestedUnitType,
     l.propertyType, l.budget, fmtDateTime(l.createdAt), fmtDateTime(l.brochureSentAt),
     fmtDateTime(l.brochureOpenedAt),
     l.brochureId ? (opens.get(l.brochureId) ?? 0) : 0,

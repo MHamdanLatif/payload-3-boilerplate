@@ -8,14 +8,20 @@ import dynamic from 'next/dynamic'
 import { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/utilities/cn'
-import { trackLead } from '@/lib/analytics'
+import { trackLead, trackMetaLead } from '@/lib/analytics'
+import type { ConversionSurface } from '@/lib/attribution'
+import { PHONE_E164, whatsappUrl } from '@/lib/contact'
 
 // GA4 form_name per source kind. Keeps the conversion event segmentable by the
 // kind of page the enquiry came from.
 const LEAD_FORM_NAME: Record<LeadFormSourceKind, string> = {
   project: 'project_enquiry',
+  // Deliberately the same GA4 form_name as an organic project enquiry, so the
+  // existing conversion history stays one continuous series. Paid vs organic is
+  // already answerable from `acquisitionSource` and `conversionSurface`.
+  'marketed-project': 'project_enquiry',
   listing: 'listing_enquiry',
   location: 'location_enquiry',
   'payment-plan': 'payment_plan_enquiry',
@@ -37,7 +43,15 @@ const PhoneInput = dynamic(() => import('react-phone-number-input'), {
 })
 
 export type LeadFormPlacement = 'hero' | 'final' | 'modal'
-export type LeadFormSourceKind = 'project' | 'listing' | 'location' | 'payment-plan'
+export type LeadFormSourceKind =
+  | 'project'
+  | 'marketed-project'
+  | 'listing'
+  | 'location'
+  | 'payment-plan'
+
+/** The "Interested in" escape hatch. A real answer, not a missing one. */
+export const NOT_SURE_YET = 'Not sure yet'
 
 type Props = {
   sourceName: string
@@ -48,6 +62,22 @@ type Props = {
   submitLabel?: string
   footnote?: string
   onSuccess?: () => void
+  /**
+   * Overrides the placement-derived default. Needed because the same form serves
+   * the organic project pages and the paid landing pages, and an unrecognised
+   * surface is silently dropped server-side.
+   */
+  conversionSurface?: ConversionSurface
+  /**
+   * When present, renders a required "Interested in" select built from the
+   * project's own units, with `NOT_SURE_YET` appended.
+   */
+  unitOptions?: string[]
+  /**
+   * Confirm in place instead of navigating to /thank-you. Used where a
+   * navigation would hand a converted visitor the full site, nav included.
+   */
+  inlineSuccess?: boolean
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -61,13 +91,24 @@ export function LeadForm({
   submitLabel = 'Request a Callback',
   footnote = "We typically call within 15 minutes. Your details stay private.",
   onSuccess,
+  conversionSurface,
+  unitOptions,
+  inlineSuccess = false,
 }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState<string | undefined>(undefined)
   const [email, setEmail] = useState('')
-  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string; api?: string }>({})
+  const [unit, setUnit] = useState('')
+  const [errors, setErrors] = useState<{
+    name?: string
+    phone?: string
+    email?: string
+    unit?: string
+    api?: string
+  }>({})
   const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
 
   const isDark = tone === 'dark'
 
@@ -78,6 +119,7 @@ export function LeadForm({
     if (!phone) errs.phone = 'Phone number is required.'
     else if (!isValidPhoneNumber(phone)) errs.phone = 'Please enter a valid phone number.'
     if (email && !EMAIL_RE.test(email)) errs.email = 'Email looks invalid.'
+    if (unitOptions?.length && !unit) errs.unit = 'Please pick one — "Not sure yet" is fine.'
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
 
@@ -95,10 +137,13 @@ export function LeadForm({
           sourceKind,
           placement,
           source: `${sourceKind}-landing:${placement}`,
+          interestedUnitType: unit || null,
           // WHERE the conversion happened, as opposed to how the buyer was
           // acquired. Derived from placement because this same form serves the
-          // hero, the closing CTA and the modal.
-          conversionSurface: placement === 'hero' ? 'project-hero-form' : 'project-enquiry-cta',
+          // hero, the closing CTA and the modal — unless the caller names it.
+          conversionSurface:
+            conversionSurface ??
+            (placement === 'hero' ? 'project-hero-form' : 'project-enquiry-cta'),
         }),
       })
       if (!res.ok) {
@@ -115,7 +160,19 @@ export function LeadForm({
       // with the SAME event_id and Meta deduplicates the pair. A random UUID,
       // not personal data.
       const ok = (await res.json().catch(() => ({}))) as { eventId?: string }
-        const eventId = ok.eventId
+      const eventId = ok.eventId
+
+      // Confirming in place means /thank-you never loads — and /thank-you is
+      // where the browser pixel normally fires Lead carrying the server's
+      // event_id. Fire it here instead, or Meta sees only the CAPI half of the
+      // pair, which costs match quality and therefore optimisation.
+      if (inlineSuccess) {
+        trackMetaLead(eventId, sourceName || undefined)
+        setDone(true)
+        setSubmitting(false)
+        return
+      }
+
       router.push(
         `/thank-you?source=${sourceKind}:${encodeURIComponent(sourceSlug)}` +
           (eventId ? `&eid=${encodeURIComponent(eventId)}` : ''),
@@ -137,6 +194,60 @@ export function LeadForm({
       : 'border border-brand-deep/15 bg-ivory text-brand-deep placeholder:text-brand-deep/35 focus:border-gold',
   )
   const errorCls = 'text-xs font-medium text-gold-soft'
+
+  if (done) {
+    // The WhatsApp button is the point of this state, not decoration: the
+    // promise made above the form is that details arrive on WhatsApp, so the
+    // confirmation hands them the thread rather than a dead end.
+    return (
+      <div
+        className={cn(
+          'flex flex-col gap-4 rounded-xl border p-6 text-center',
+          isDark ? 'border-white/15 bg-white/[0.04]' : 'border-gold/40 bg-gold/5',
+        )}
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          className={cn(
+            'mx-auto flex h-11 w-11 items-center justify-center rounded-full',
+            isDark ? 'bg-gold/20 text-gold' : 'bg-gold text-brand-deep',
+          )}
+        >
+          <Check className="h-5 w-5" />
+        </span>
+        <p
+          className={cn(
+            'font-serif text-xl',
+            isDark ? 'text-white' : 'text-brand-deep',
+          )}
+        >
+          You&rsquo;re registered.
+        </p>
+        <p className={cn('text-sm leading-relaxed', isDark ? 'text-white/70' : 'text-brand-deep/70')}>
+          We&rsquo;ll send the details and pricing to your WhatsApp within a couple of minutes.
+        </p>
+        <a
+          href={whatsappUrl(
+            sourceName
+              ? `Hi, I just registered my interest in ${sourceName}.`
+              : 'Hi, I just registered my interest through your website.',
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-deep px-6 py-3 text-sm font-medium uppercase tracking-[0.18em] text-white transition-colors hover:bg-gold hover:text-brand-deep"
+        >
+          Message us on WhatsApp
+        </a>
+        <a
+          href={`tel:${PHONE_E164}`}
+          className={cn('text-xs underline underline-offset-4', isDark ? 'text-white/55' : 'text-brand-deep/55')}
+        >
+          Or call now
+        </a>
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
@@ -181,6 +292,26 @@ export function LeadForm({
         />
         {errors.email && <span className={errorCls}>{errors.email}</span>}
       </label>
+
+      {unitOptions && unitOptions.length > 0 && (
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>Interested in which unit type</span>
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            className={cn(inputCls, 'appearance-none pr-8')}
+          >
+            <option value="">Select an option</option>
+            {unitOptions.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+            <option value={NOT_SURE_YET}>{NOT_SURE_YET}</option>
+          </select>
+          {errors.unit && <span className={errorCls}>{errors.unit}</span>}
+        </label>
+      )}
 
       <input type="hidden" name="sourceName" value={sourceName} />
       <input type="hidden" name="sourceSlug" value={sourceSlug} />

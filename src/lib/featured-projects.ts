@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 import type { FeaturedProject, Media } from '@/payload-types'
+import type { ElevationSource, UnitsSource } from '@/lib/project-shape'
 
 export type SmallestUnit = {
   type: NonNullable<FeaturedProject['unitTypes']>[number]['type']
@@ -18,7 +19,7 @@ export function imageAlt(media: number | Media | null | undefined, fallback = ''
 }
 
 /** Lowest-room unit, with price as tiebreaker. Returns null if the project has none. */
-export function smallestUnit(project: FeaturedProject): SmallestUnit | null {
+export function smallestUnit(project: UnitsSource): SmallestUnit | null {
   const units = project.unitTypes ?? []
   if (!units.length) return null
   const sorted = [...units].sort((a, b) => {
@@ -29,7 +30,10 @@ export function smallestUnit(project: FeaturedProject): SmallestUnit | null {
   return { type: u.type, rooms: u.rooms, price: u.price }
 }
 
-export type ProjectUnit = NonNullable<FeaturedProject['unitTypes']>[number]
+// Re-exported from project-shape so existing importers keep working; that module
+// is the single definition, shared with `marketed-projects`.
+export type { ProjectUnit } from '@/lib/project-shape'
+type ProjectUnit = NonNullable<FeaturedProject['unitTypes']>[number]
 
 /**
  * Identity of a unit row, used as the calculator's selection key and as the
@@ -41,7 +45,7 @@ export function unitKey(u: Pick<ProjectUnit, 'type' | 'rooms' | 'price'>): strin
 }
 
 /** Units sorted for display: fewest rooms first, cheapest first within a tie. */
-export function sortedUnits(project: FeaturedProject): ProjectUnit[] {
+export function sortedUnits(project: UnitsSource): ProjectUnit[] {
   return [...(project.unitTypes ?? [])].sort((a, b) => {
     if (a.rooms !== b.rooms) return a.rooms - b.rooms
     return a.price - b.price
@@ -74,7 +78,7 @@ export function unitLabel(u: Pick<ProjectUnit, 'type' | 'isDuplex'>): string {
  * Areas are optional per unit, so min/max area are null unless at least one row
  * carries `areaSqFt` — callers must not print "0 sq ft".
  */
-export function unitSummary(project: FeaturedProject): UnitSummary | null {
+export function unitSummary(project: UnitsSource): UnitSummary | null {
   const units = sortedUnits(project)
   if (!units.length) return null
 
@@ -117,7 +121,7 @@ export function formatPkr(n: number | null | undefined): string {
 }
 
 /** Hero image URL: first elevation, or null. */
-export function heroImage(project: FeaturedProject): string | null {
+export function heroImage(project: ElevationSource): string | null {
   const first = project.elevationImages?.[0]?.image
   return imageUrl(first)
 }

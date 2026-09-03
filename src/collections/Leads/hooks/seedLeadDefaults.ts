@@ -1,6 +1,6 @@
 import type { CollectionBeforeChangeHook } from 'payload'
 import { randomBytes } from 'crypto'
-import type { FeaturedProject } from '@/payload-types'
+import type { FeaturedProject, MarketedProject } from '@/payload-types'
 
 /**
  * On create: give the lead a unique `brochureId` (powers /brochure/<id>) and
@@ -10,7 +10,7 @@ import type { FeaturedProject } from '@/payload-types'
 const FIRST_TOUCH_KEYS = [
   'firstTouchSource', 'firstTouchMedium', 'firstTouchCampaign', 'firstTouchContent',
   'firstTouchTerm', 'firstTouchLandingPath', 'firstTouchReferrer', 'firstTouchFbclid',
-  'firstTouchGclid', 'firstTouchAt', 'acquiredProject',
+  'firstTouchGclid', 'firstTouchAt', 'acquiredProject', 'marketedProject',
 ] as const
 
 export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
@@ -83,6 +83,45 @@ export const seedLeadDefaults: CollectionBeforeChangeHook = async ({
         // pasting the URL onto each lead by hand.
         if (!next.brochureVideoUrl && project.walkthroughVideoUrl) {
           next.brochureVideoUrl = project.walkthroughVideoUrl
+        }
+      }
+    } catch {
+      // best-effort — never block the save on a prefill lookup
+    }
+  }
+
+  // Leads from a paid landing page. Same brochure prefill, but the project
+  // relationships have to come from the marketed doc's `linkedProject`, because
+  // acquiredProject/currentInterestedProject can only point at featured-projects.
+  // Without that link the lead is still captured; it just has no project to
+  // group under in the CRM.
+  if (
+    next.sourceKind === 'marketed-project' &&
+    typeof next.sourceSlug === 'string' &&
+    next.sourceSlug
+  ) {
+    try {
+      const res = await req.payload.find({
+        collection: 'marketed-projects',
+        where: { slug: { equals: next.sourceSlug } },
+        depth: 0,
+        limit: 1,
+      })
+      const mp = res.docs[0] as MarketedProject | undefined
+      if (mp) {
+        if (!next.marketedProject) next.marketedProject = mp.id
+        const linked = typeof mp.linkedProject === 'object' ? mp.linkedProject?.id : mp.linkedProject
+        if (linked) {
+          if (!next.acquiredProject) next.acquiredProject = linked
+          if (!next.currentInterestedProject) next.currentInterestedProject = linked
+        }
+        if (!next.brochureHeadline) next.brochureHeadline = mp.title
+        if (!next.brochurePdfPrimary && mp.brochure) next.brochurePdfPrimary = mp.brochure
+        if (!next.brochureMapEmbed && mp.googleMapsEmbedUrl) {
+          next.brochureMapEmbed = mp.googleMapsEmbedUrl
+        }
+        if (!next.brochureVideoUrl && mp.walkthroughVideoUrl) {
+          next.brochureVideoUrl = mp.walkthroughVideoUrl
         }
       }
     } catch {

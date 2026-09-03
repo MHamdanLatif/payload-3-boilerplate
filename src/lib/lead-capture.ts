@@ -129,6 +129,7 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
   const sourceKindRaw = typeof body.sourceKind === 'string' ? body.sourceKind : null
   const validKinds = [
     'project',
+    'marketed-project',
     'listing',
     'location',
     'payment-plan',
@@ -141,6 +142,12 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
 
   const sourceName = typeof body.sourceName === 'string' ? body.sourceName : null
   const sourceSlug = typeof body.sourceSlug === 'string' ? body.sourceSlug : null
+  // Free text by design (options are per-project), so it is length-capped here
+  // rather than validated against a list.
+  const interestedUnitType =
+    typeof body.interestedUnitType === 'string' && body.interestedUnitType.trim()
+      ? body.interestedUnitType.trim().slice(0, 120)
+      : null
   const placement = typeof body.placement === 'string' ? body.placement : null
   const source = typeof body.source === 'string' ? body.source : 'website'
   const notes = typeof body.notes === 'string' ? body.notes : null
@@ -208,6 +215,9 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
           listingSlug: sourceKind === 'listing' ? sourceSlug : null,
           locationName: sourceKind === 'location' ? sourceName : null,
           locationSlug: sourceKind === 'location' ? sourceSlug : null,
+          // Sales routing depends on this, so it has to reach the CRM, not just
+          // the backup row.
+          interestedUnitType,
           propertyType,
           budget,
           searchedParams,
@@ -241,6 +251,7 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
         sourceSlug: sourceSlug ?? undefined,
         placement: placement ?? undefined,
         source,
+        interestedUnitType: interestedUnitType ?? undefined,
         notes: notes ?? undefined,
         propertyType: propertyType ?? undefined,
         budget: budget ?? undefined,

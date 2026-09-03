@@ -2,7 +2,8 @@ import { CollectionSlug } from 'payload'
 
 const collectionPrefixMap: Partial<Record<CollectionSlug, string>> = {
   posts: '/posts',
-  pages: '',
+  // `pages` moved off the root segment so the paid landing pages could own it.
+  pages: '/pages',
 }
 
 type Props = {

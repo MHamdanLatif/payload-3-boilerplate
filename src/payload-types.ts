@@ -74,6 +74,7 @@ export interface Config {
     users: User;
     comments: Comment;
     'featured-projects': FeaturedProject;
+    'marketed-projects': MarketedProject;
     'property-listings': PropertyListing;
     blogs: Blog;
     'blog-topics': BlogTopic;
@@ -98,6 +99,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
     'featured-projects': FeaturedProjectsSelect<false> | FeaturedProjectsSelect<true>;
+    'marketed-projects': MarketedProjectsSelect<false> | MarketedProjectsSelect<true>;
     'property-listings': PropertyListingsSelect<false> | PropertyListingsSelect<true>;
     blogs: BlogsSelect<false> | BlogsSelect<true>;
     'blog-topics': BlogTopicsSelect<false> | BlogTopicsSelect<true>;
@@ -1341,6 +1343,170 @@ export interface BlogTopic {
   createdAt: string;
 }
 /**
+ * Standalone landing pages for paid campaigns, served at lateefproperties.com/<Slug>. Noindex — they never appear in Google, and are reachable only through an ad or a link you send. Content here is independent of Featured Projects, so campaign pricing never changes the public project page.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "marketed-projects".
+ */
+export interface MarketedProject {
+  id: number;
+  /**
+   * Shown as the page heading. May differ from the organic project title.
+   */
+  title: string;
+  /**
+   * The URL, exactly as typed — capitals are preserved. "TulipComforts" serves lateefproperties.com/TulipComforts. Letters, numbers and hyphens only. Visitors arriving at any other casing (/tulipcomforts, /tulip-comforts) are redirected here automatically, so put THIS spelling in the ad.
+   */
+  slug: string;
+  slugKey?: string | null;
+  /**
+   * Uncheck to take the page down immediately (visitors get a 404). This collection has no draft state, so every save is live on a page you may be paying for traffic to — this is the off switch.
+   */
+  active?: boolean | null;
+  /**
+   * Reporting only — never shown on the page and never read for content. Leads captured here are stamped with this project so they group correctly in the CRM alongside organic leads. Leave blank and those leads arrive with no project attached.
+   */
+  linkedProject?: (number | null) | FeaturedProject;
+  /**
+   * e.g. Al Wahab Builders.
+   */
+  builderName: string;
+  projectType?: ('Mixed-use' | 'Residential Tower' | 'Plot Community') | null;
+  startingPrice?: number | null;
+  location:
+    | 'Gulshan-e-Iqbal'
+    | 'Gulistan-e-Johar'
+    | 'Scheme 33'
+    | 'DHA'
+    | 'Clifton'
+    | 'M.A. Jinnah Road'
+    | 'Jinnah Avenue'
+    | 'Malir'
+    | 'Saddar'
+    | 'Korangi'
+    | 'Model Colony'
+    | 'Sukkur'
+    | 'Other';
+  status: 'Pre-launch' | 'Under Construction';
+  /**
+   * One sentence under the project name in the hero. Also used as the link-preview description when the URL is shared on WhatsApp.
+   */
+  summary?: string | null;
+  /**
+   * The limited-time hook, e.g. "Pre-launch pricing held until 30 September". Rendered as a highlighted strip in the hero. This is the field this whole collection exists for — it can say something the public project page does not.
+   */
+  offerNote?: string | null;
+  /**
+   * The first is the hero background and the WhatsApp link-preview image.
+   */
+  elevationImages: {
+    image: number | Media;
+    caption?: string | null;
+    id?: string | null;
+  }[];
+  /**
+   * Not linked anywhere on the page — it is attached to the personalised pack that gets sent to a lead after they register.
+   */
+  brochure?: (number | null) | Media;
+  /**
+   * Plain YouTube link (https://youtu.be/xxxx), not an <iframe>. Copied onto every new lead from this page so their project pack shows the video. Set the video to Unlisted, not Private.
+   */
+  walkthroughVideoUrl?: string | null;
+  /**
+   * The developer’s earlier projects, oldest first, ending with THIS one (tick "Current project" on that row). Needs at least two rows to render at all.
+   */
+  builderTrackRecord?:
+    | {
+        name: string;
+        image?: (number | null) | Media;
+        location?: string | null;
+        detail?: string | null;
+        completedYear?: string | null;
+        statusLine?: string | null;
+        isCurrent?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Optional. If empty, the Gallery section is hidden.
+   */
+  photoGallery?:
+    | {
+        image: number | Media;
+        caption?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Paste only the `src` URL from a Google Maps "Embed a map" iframe.
+   */
+  googleMapsEmbedUrl?: string | null;
+  /**
+   * Rendered as the Available Units table, and it drives the "interested in" dropdown on both forms. Independent of the organic project — change a price here and only this page changes.
+   */
+  unitTypes?:
+    | {
+        name?: string | null;
+        type:
+          | '1 Bed Lounge'
+          | '2 Bed Lounge'
+          | '2 Bed Drawing'
+          | '2 Bed DD / 3 Bed Lounge'
+          | '3 Bed Lounge'
+          | '3 Bed Drawing'
+          | '4 Bed Drawing'
+          | '4+ Rooms';
+        flatLayout?: (number | null) | Media;
+        /**
+         * Tick if this unit is a two-level duplex. Appends "(Duplex)" to this configuration in the hero availability line.
+         */
+        isDuplex?: boolean | null;
+        rooms: number;
+        price: number;
+        areaSqFt?: number | null;
+        loanAmount?: number | null;
+        defaultPlan?: {
+          downPaymentPct?: number | null;
+          possessionPct?: number | null;
+          installments?:
+            | {
+                frequency: 'Monthly' | 'Quarterly' | 'HalfYearly';
+                amount: number;
+                locked?: boolean | null;
+                id?: string | null;
+              }[]
+            | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Guardrails for the calculator on this page. Uncheck `enabled` to hide the calculator section entirely.
+   */
+  paymentPlan: {
+    enabled?: boolean | null;
+    priceOverride?: number | null;
+    totalDurationMonths: number;
+    downPaymentMinPct: number;
+    downPaymentMaxPct: number;
+    possessionPct: number;
+    paymentHeads?:
+      | {
+          name: string;
+          category: 'Initial Payment' | 'Time-Based' | 'Grey Structure' | 'Finishing' | 'Possession';
+          enabled?: boolean | null;
+          isCustom?: boolean | null;
+          numberOfSlabs?: number | null;
+          id?: string | null;
+        }[]
+      | null;
+    projectLogo?: (number | null) | Media;
+    planDisclaimer?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Audit trail of payment-plan PDFs downloaded by leads. One row per download. Use to prioritise follow-up — these are high-intent buyers who built a custom plan.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1358,6 +1524,10 @@ export interface PaymentPlanLead {
    * Which project the lead built a plan for. Nullable so the audit row survives if the project is later deleted.
    */
   project?: (number | null) | FeaturedProject;
+  /**
+   * Set instead of Project when the plan was built on a paid landing page.
+   */
+  marketedProject?: (number | null) | MarketedProject;
   /**
    * Project title at download time. Preserved even if the project is renamed or deleted later.
    */
@@ -1450,6 +1620,10 @@ export interface Lead {
    */
   closedProject?: (number | null) | FeaturedProject;
   /**
+   * The paid landing page this lead registered on. Write-once, for the same reason as Acquired through project.
+   */
+  marketedProject?: (number | null) | MarketedProject;
+  /**
    * Auto-generated. The trackable link is /brochure/<this id>.
    */
   brochureId?: string | null;
@@ -1457,11 +1631,15 @@ export interface Lead {
   phone: string;
   email?: string | null;
   /**
-   * project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown
+   * project | marketed-project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown
    */
   sourceKind?: string | null;
   sourceName?: string | null;
   sourceSlug?: string | null;
+  /**
+   * What they picked on the ad page form. "Not sure yet" is a real answer, not a missing one.
+   */
+  interestedUnitType?: string | null;
   placement?: string | null;
   source?: string | null;
   /**
@@ -1493,6 +1671,8 @@ export interface Lead {
         | 'consultation-form'
         | 'zero-results-form'
         | 'project-pack'
+        | 'marketed-hero-form'
+        | 'marketed-cta-form'
         | 'crm-manual'
         | 'other'
       )
@@ -1736,6 +1916,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'featured-projects';
         value: number | FeaturedProject;
+      } | null)
+    | ({
+        relationTo: 'marketed-projects';
+        value: number | MarketedProject;
       } | null)
     | ({
         relationTo: 'property-listings';
@@ -2262,6 +2446,104 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "marketed-projects_select".
+ */
+export interface MarketedProjectsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  slugKey?: T;
+  active?: T;
+  linkedProject?: T;
+  builderName?: T;
+  projectType?: T;
+  startingPrice?: T;
+  location?: T;
+  status?: T;
+  summary?: T;
+  offerNote?: T;
+  elevationImages?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  brochure?: T;
+  walkthroughVideoUrl?: T;
+  builderTrackRecord?:
+    | T
+    | {
+        name?: T;
+        image?: T;
+        location?: T;
+        detail?: T;
+        completedYear?: T;
+        statusLine?: T;
+        isCurrent?: T;
+        id?: T;
+      };
+  photoGallery?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        id?: T;
+      };
+  googleMapsEmbedUrl?: T;
+  unitTypes?:
+    | T
+    | {
+        name?: T;
+        type?: T;
+        flatLayout?: T;
+        isDuplex?: T;
+        rooms?: T;
+        price?: T;
+        areaSqFt?: T;
+        loanAmount?: T;
+        defaultPlan?:
+          | T
+          | {
+              downPaymentPct?: T;
+              possessionPct?: T;
+              installments?:
+                | T
+                | {
+                    frequency?: T;
+                    amount?: T;
+                    locked?: T;
+                    id?: T;
+                  };
+            };
+        id?: T;
+      };
+  paymentPlan?:
+    | T
+    | {
+        enabled?: T;
+        priceOverride?: T;
+        totalDurationMonths?: T;
+        downPaymentMinPct?: T;
+        downPaymentMaxPct?: T;
+        possessionPct?: T;
+        paymentHeads?:
+          | T
+          | {
+              name?: T;
+              category?: T;
+              enabled?: T;
+              isCustom?: T;
+              numberOfSlabs?: T;
+              id?: T;
+            };
+        projectLogo?: T;
+        planDisclaimer?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "property-listings_select".
  */
 export interface PropertyListingsSelect<T extends boolean = true> {
@@ -2401,6 +2683,7 @@ export interface PaymentPlanLeadsSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   project?: T;
+  marketedProject?: T;
   projectTitleSnapshot?: T;
   selectedUnitType?: T;
   totalPrice?: T;
@@ -2428,6 +2711,7 @@ export interface LeadsSelect<T extends boolean = true> {
   acquiredProject?: T;
   currentInterestedProject?: T;
   closedProject?: T;
+  marketedProject?: T;
   brochureId?: T;
   name?: T;
   phone?: T;
@@ -2435,6 +2719,7 @@ export interface LeadsSelect<T extends boolean = true> {
   sourceKind?: T;
   sourceName?: T;
   sourceSlug?: T;
+  interestedUnitType?: T;
   placement?: T;
   source?: T;
   acquisitionSource?: T;

@@ -115,3 +115,42 @@ export function trackLead(params: LeadParams): void {
     })
   })
 }
+
+/**
+ * Fire the Meta Pixel `Lead` event from the browser, carrying the server's
+ * `event_id`.
+ *
+ * `/thank-you` normally does this, and pages that navigate there should keep
+ * letting it. This exists for the paid landing pages, which confirm in place and
+ * therefore never load that page — without it Meta would receive only the
+ * server-side CAPI half of the pair.
+ *
+ * Passing the same `eventID` the server used is the whole point: Meta collapses
+ * the browser and server events into one conversion. Omit it and the same lead
+ * is counted twice.
+ *
+ * Waits for `fbq` the same way the GA helper waits for `gtag`, and never throws.
+ */
+export function trackMetaLead(eventId?: string, contentName?: string): void {
+  if (typeof window === 'undefined') return
+  const deadline = Date.now() + GTAG_WAIT_MS
+  const tick = () => {
+    try {
+      const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq
+      if (typeof fbq === 'function') {
+        fbq(
+          'track',
+          'Lead',
+          contentName ? { content_name: contentName } : {},
+          eventId ? { eventID: eventId } : {},
+        )
+        return
+      }
+      if (Date.now() >= deadline) return
+      window.setTimeout(tick, GTAG_POLL_MS)
+    } catch {
+      // Swallow: a blocked pixel must never surface to the user.
+    }
+  }
+  tick()
+}

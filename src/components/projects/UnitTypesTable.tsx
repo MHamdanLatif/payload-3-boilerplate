@@ -1,4 +1,4 @@
-import type { FeaturedProject } from '@/payload-types'
+import type { ReactNode } from 'react'
 import {
   areaRangeLabel,
   formatPkr,
@@ -6,6 +6,7 @@ import {
   unitKey,
   unitSummary,
 } from '@/lib/featured-projects'
+import type { UnitsTableSource } from '@/lib/project-shape'
 import { SectionRule } from '@/components/landing/SectionRule'
 import type { Media } from '@/payload-types'
 
@@ -35,13 +36,23 @@ const layoutUrl = (u: { flatLayout?: number | Media | null }): string | null => 
  * Mobile (81% of our traffic) uses the same single table rather than a
  * duplicate card stack — each cell carries a `data-label` and the row collapses
  * to a block below `md`, so every string appears exactly once in the document.
+ *
+ * Shared with the paid landing pages, which pass `showProse={false}`: the prose
+ * exists to win organic long-tail queries, and those pages are noindex, so on
+ * them it is dead weight in front of the thing the visitor came to read.
  */
 export function UnitTypesTable({
   project,
   sectionNumber = '02 / AVAILABLE UNITS',
+  showProse = true,
+  footerCta,
 }: {
-  project: FeaturedProject
+  project: UnitsTableSource
   sectionNumber?: string
+  /** The crawlable summary sentence. Off for noindex pages. */
+  showProse?: boolean
+  /** Rendered under the table — a conversion CTA on the paid pages. */
+  footerCta?: ReactNode
 }) {
   const units = sortedUnits(project)
   const summary = unitSummary(project)
@@ -95,10 +106,12 @@ export function UnitTypesTable({
         </h2>
         <SectionRule className="mt-6" />
 
-        <p className="mt-6 max-w-3xl text-base leading-relaxed text-brand-deep/75">
-          {prose}
-          {duplexProse ? ` ${duplexProse}` : ''}
-        </p>
+        {showProse && (
+          <p className="mt-6 max-w-3xl text-base leading-relaxed text-brand-deep/75">
+            {prose}
+            {duplexProse ? ` ${duplexProse}` : ''}
+          </p>
+        )}
 
         <div className="mt-10 overflow-x-auto rounded-xl border border-brand-deep/10">
           <table className="w-full border-collapse">
@@ -197,6 +210,8 @@ export function UnitTypesTable({
             </tbody>
           </table>
         </div>
+
+        {footerCta && <div className="mt-8">{footerCta}</div>}
       </div>
     </section>
   )

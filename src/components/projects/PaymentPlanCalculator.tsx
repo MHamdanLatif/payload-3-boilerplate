@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileDown, Lock, Unlock } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
+import type { PaymentPlanSource } from '@/lib/project-shape'
+import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
 import { formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
 import {
   computePlan,
@@ -23,8 +25,14 @@ import { PaymentPlanPdfModal } from './PaymentPlanPdfModal'
 import { cn } from '@/utilities/cn'
 
 type Props = {
-  project: FeaturedProject
+  project: PaymentPlanSource
   sectionNumber?: string
+  /**
+   * Which collection `project` came from. The PDF endpoint re-reads the project
+   * server-side by slug, so without this a marketed slug is looked up in
+   * `featured-projects`, misses, and the download fails with "Project not found".
+   */
+  collection?: PaymentPlanCollection
 }
 
 type ProjectHead = NonNullable<NonNullable<FeaturedProject['paymentPlan']>['paymentHeads']>[number]
@@ -41,6 +49,7 @@ const FREQUENCY_LABEL: Record<InstallmentFrequencyKind, string> = {
 export function PaymentPlanCalculator({
   project,
   sectionNumber = '02 / PAYMENT PLAN',
+  collection = 'featured-projects',
 }: Props) {
   const config = project.paymentPlan
   const enabled = config?.enabled !== false
@@ -786,6 +795,7 @@ export function PaymentPlanCalculator({
         open={pdfOpen}
         onClose={() => setPdfOpen(false)}
         project={project}
+        collection={collection}
         downPaymentPct={downPaymentPct}
         possessionPct={effectivePossessionPct}
         loanIncluded={loanIncluded}

@@ -15,32 +15,24 @@ import { getServerSideURL } from '@/utilities/getURL'
 
 type SeoDoc = Post | Page | FeaturedProject | PropertyListing
 
-function isFeaturedProject(doc: SeoDoc | undefined): doc is FeaturedProject {
-  return !!doc && (doc as FeaturedProject).builderName !== undefined
-}
-
-function isPropertyListing(doc: SeoDoc | undefined): doc is PropertyListing {
-  return (
-    !!doc &&
-    (doc as PropertyListing).status !== undefined &&
-    [
-      'Ready for Possession',
-      'Resale',
-      'Urgent Sale',
-    ].includes((doc as PropertyListing).status as string)
-  )
-}
-
 const generateTitle: GenerateTitle<SeoDoc> = ({ doc }) => {
   return doc?.title ? `${doc.title} | Lateef Properties` : 'Lateef Properties'
 }
 
-const generateURL: GenerateURL<SeoDoc> = ({ doc }) => {
+// Route by collection slug, not by sniffing fields off the document. The old
+// version identified a project by `builderName !== undefined`, which silently
+// mis-routes any future collection that happens to carry a builder name —
+// `marketed-projects` does — into a `/projects/<slug>` canonical it does not own.
+const SEO_PATH_PREFIX: Record<string, string> = {
+  'featured-projects': '/projects',
+  'property-listings': '/listings',
+}
+
+const generateURL: GenerateURL<SeoDoc> = ({ collectionSlug, doc }) => {
   const url = getServerSideURL()
   if (!doc?.slug) return url
-  if (isFeaturedProject(doc)) return `${url}/projects/${doc.slug}`
-  if (isPropertyListing(doc)) return `${url}/listings/${doc.slug}`
-  return `${url}/${doc.slug}`
+  const prefix = collectionSlug ? (SEO_PATH_PREFIX[collectionSlug] ?? '') : ''
+  return `${url}${prefix}/${doc.slug}`
 }
 
 export const plugins: Plugin[] = [

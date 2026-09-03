@@ -7,7 +7,8 @@ import { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
 import { Check, Loader2, X } from 'lucide-react'
-import type { FeaturedProject } from '@/payload-types'
+import type { PaymentPlanSource } from '@/lib/project-shape'
+import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
 import type { InstallmentInput } from '@/lib/payment-plan'
 import { formatPkr } from '@/lib/featured-projects'
 import { cn } from '@/utilities/cn'
@@ -25,7 +26,8 @@ const PhoneInput = dynamic(() => import('react-phone-number-input'), {
 type Props = {
   open: boolean
   onClose: () => void
-  project: FeaturedProject
+  project: PaymentPlanSource
+  collection?: PaymentPlanCollection
   downPaymentPct: number
   possessionPct: number
   loanIncluded: boolean
@@ -40,6 +42,7 @@ export function PaymentPlanPdfModal({
   open,
   onClose,
   project,
+  collection = 'featured-projects',
   downPaymentPct,
   possessionPct,
   loanIncluded,
@@ -98,6 +101,7 @@ export function PaymentPlanPdfModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectSlug: project.slug,
+          projectCollection: collection,
           name: name.trim(),
           phone,
           downPaymentPct,

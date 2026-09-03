@@ -57,6 +57,19 @@ export const PaymentPlanLeads: CollectionConfig = {
       },
     },
     {
+      // Separate column rather than a polymorphic relation: the two collections
+      // are separate on purpose, and widening `project` would migrate live audit
+      // rows into a join table. Exactly one of the two is ever set.
+      name: 'marketedProject',
+      type: 'relationship',
+      relationTo: 'marketed-projects',
+      label: 'Ad landing page',
+      admin: {
+        description:
+          'Set instead of Project when the plan was built on a paid landing page.',
+      },
+    },
+    {
       name: 'projectTitleSnapshot',
       type: 'text',
       admin: {

@@ -14,6 +14,7 @@ import { Posts } from './collections/Posts'
 import { Blogs } from './collections/Blogs'
 import { BlogTopics } from './collections/BlogTopics'
 import { FeaturedProjects } from './collections/FeaturedProjects'
+import { MarketedProjects } from './collections/MarketedProjects'
 import { PaymentPlanLeads } from './collections/PaymentPlanLeads'
 import { Leads } from './collections/Leads'
 import { LinkOpens } from './collections/LinkOpens'
@@ -81,6 +82,7 @@ export default buildConfig({
     Users,
     Comments,
     FeaturedProjects,
+    MarketedProjects,
     PropertyListings,
     Blogs,
     BlogTopics,
