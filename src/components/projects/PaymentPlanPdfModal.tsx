@@ -12,7 +12,7 @@ import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
 import type { InstallmentInput } from '@/lib/payment-plan'
 import { formatPkr } from '@/lib/featured-projects'
 import { cn } from '@/utilities/cn'
-import { trackLead } from '@/lib/analytics'
+import { trackLead, trackMetaEvent } from '@/lib/analytics'
 
 const PhoneInput = dynamic(() => import('react-phone-number-input'), {
   ssr: false,
@@ -123,6 +123,12 @@ export function PaymentPlanPdfModal({
         return
       }
 
+      // Read the headers BEFORE consuming the body: the server hands back the
+      // event name and id it used for the CAPI call, because a PDF body has
+      // nowhere to put them.
+      const capiEventId = res.headers.get('x-event-id')
+      const capiEventName = res.headers.get('x-event-name')
+
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -136,6 +142,19 @@ export function PaymentPlanPdfModal({
       // Confirmed success (lead recorded via /api/payment-plan/pdf → Privyr +
       // PDF served). Labeled as a download to separate it from enquiry leads.
       trackLead({ form_name: 'payment_plan_pdf', project: project.slug || undefined })
+      // The browser half of the pair. Same name, same id as the server's CAPI
+      // event, so Meta collapses them into one conversion instead of two — and
+      // so the download still registers when CAPI alone would have been the only
+      // signal, or vice versa when the pixel is blocked.
+      if (capiEventName) {
+        trackMetaEvent(capiEventName, {
+          eventId: capiEventId ?? undefined,
+          customData: {
+            content_name: project.title,
+            ...(unitDisplayLabel ? { content_category: unitDisplayLabel } : {}),
+          },
+        })
+      }
     } catch (e) {
       setServerError((e as Error).message || 'Network error.')
     } finally {

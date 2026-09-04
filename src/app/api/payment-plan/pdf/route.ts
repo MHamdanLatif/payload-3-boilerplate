@@ -12,6 +12,7 @@ import {
   parseAttribution,
 } from '@/lib/attribution'
 import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
+import { sendCapiEvent } from '@/lib/meta-capi'
 import {
   computePlan,
   type ComputeInput,
@@ -288,27 +289,27 @@ export async function POST(req: Request) {
   // `sourceKind` names the KIND OF PAGE rather than the form, so seedLeadDefaults
   // stamps the project relationships and brochure assets exactly as a form
   // submission would; `conversionSurface` is what records that this was the PDF.
+  const cookies = parseCookies(req.headers.get('cookie'))
+  // Attribution comes from our own cookie, never the request body.
+  const attribution = parseAttribution(cookies[ATTRIBUTION_COOKIE])
+  const firstTouch = attribution?.f ?? null
+  const latestTouch = attribution?.l ?? firstTouch
+
+  // Meta match signals, captured the same way lead-capture does. Used twice:
+  // by the CAPI event below, and stored on the lead so the LATER Qualified /
+  // Site Visit / Closed Won events have something to match a person against.
+  const fbc = cookies['_fbc'] || null
+  const fbp = cookies['_fbp'] || null
+  const fbclid = fbc ? fbc.split('.').slice(3).join('.') || null : null
+  const clientIp =
+    (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    null
+  // One id shared by the CAPI event and the browser pixel, so Meta counts the
+  // download once rather than twice.
+  const eventId = crypto.randomUUID()
+
   try {
-    const cookies = parseCookies(req.headers.get('cookie'))
-    // Attribution comes from our own cookie, never the request body.
-    const attribution = parseAttribution(cookies[ATTRIBUTION_COOKIE])
-    const firstTouch = attribution?.f ?? null
-    const latestTouch = attribution?.l ?? firstTouch
-
-    // Meta match signals, captured the same way lead-capture does. These are not
-    // for this moment — they are what the CAPI event carries when the lead is
-    // later marked Qualified, Site Visit or Closed Won. Without them those
-    // down-funnel events reach Meta with nothing to match a person against, and
-    // it is precisely the paid leads that would be affected.
-    const fbc = cookies['_fbc'] || null
-    const fbp = cookies['_fbp'] || null
-    const fbclid = fbc ? fbc.split('.').slice(3).join('.') || null : null
-    const clientIp =
-      (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
-      req.headers.get('x-real-ip') ||
-      null
-    const eventId = crypto.randomUUID()
-
     await payload.create({
       collection: 'leads',
       data: {
@@ -345,6 +346,35 @@ export async function POST(req: Request) {
     // Never block the buyer's PDF on a CRM write.
     console.warn('[payment-plan/pdf] leads persist failed:', (e as Error).message)
   }
+
+  // ── 5a-iii. Tell the ad account ─────────────────────────────
+  // Building a payment plan is the strongest intent signal the site produces,
+  // and until now the ad account never heard about it.
+  //
+  // A DISTINCT event, not 'Lead': someone who used the hero form and then
+  // downloaded a plan would otherwise be counted as two leads, and Meta would
+  // optimise toward a metric that double-counts. The name is overridable so it
+  // can be pointed at a standard event without a deploy.
+  //
+  // No `value` is sent on purpose. The plan total is not revenue, and feeding it
+  // to Meta as one would corrupt value-based optimisation and any ROAS figure.
+  const capiEventName = process.env.META_CAPI_PAYMENT_PLAN_EVENT || 'PaymentPlanDownload'
+  void sendCapiEvent({
+    eventName: capiEventName,
+    eventId,
+    phone,
+    fbc,
+    fbp,
+    fbclid,
+    clientIp,
+    userAgent: req.headers.get('user-agent'),
+    customData: {
+      content_name: project.title,
+      ...(unitDisplayLabel ? { content_category: unitDisplayLabel } : {}),
+    },
+  }).catch((err) => {
+    console.warn('[payment-plan/pdf] CAPI event failed:', (err as Error)?.message)
+  })
 
   // ── 5b. Privyr forward ──────────────────────────────────────
   // Awaited so the request actually completes before the response is returned
@@ -429,6 +459,11 @@ export async function POST(req: Request) {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-store',
+      // The body is a PDF, so the browser pixel cannot read these from JSON.
+      // It fires the same event name with the same id, and Meta collapses the
+      // pair into one conversion.
+      'X-Event-Id': eventId,
+      'X-Event-Name': capiEventName,
     },
   })
 }

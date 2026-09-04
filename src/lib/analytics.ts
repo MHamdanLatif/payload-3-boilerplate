@@ -132,17 +132,49 @@ export function trackLead(params: LeadParams): void {
  * Waits for `fbq` the same way the GA helper waits for `gtag`, and never throws.
  */
 export function trackMetaLead(eventId?: string, contentName?: string): void {
-  if (typeof window === 'undefined') return
+  trackMetaEvent('Lead', {
+    eventId,
+    customData: contentName ? { content_name: contentName } : undefined,
+  })
+}
+
+/**
+ * Meta's standard events. Anything else must go through `trackCustom`, or the
+ * pixel silently refuses it — which matters here because the payment-plan event
+ * name is configurable, and a mismatch between the browser call and the server's
+ * CAPI call breaks deduplication rather than failing loudly.
+ */
+const META_STANDARD_EVENTS = new Set([
+  'PageView', 'ViewContent', 'Search', 'AddToCart', 'AddToWishlist',
+  'InitiateCheckout', 'AddPaymentInfo', 'Purchase', 'Lead', 'CompleteRegistration',
+  'Contact', 'CustomizeProduct', 'Donate', 'FindLocation', 'Schedule',
+  'StartTrial', 'SubmitApplication', 'Subscribe',
+])
+
+/**
+ * Fire any Meta Pixel event from the browser, carrying the server's event id.
+ *
+ * Passing the same `eventID` the server used is the whole point: Meta collapses
+ * the browser and server events into one conversion. Omit it and the same action
+ * is counted twice.
+ *
+ * Waits for `fbq` the same way the GA helper waits for `gtag`, and never throws.
+ */
+export function trackMetaEvent(
+  eventName: string,
+  opts: { eventId?: string; customData?: Record<string, unknown> } = {},
+): void {
+  if (typeof window === 'undefined' || !eventName) return
   const deadline = Date.now() + GTAG_WAIT_MS
   const tick = () => {
     try {
       const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq
       if (typeof fbq === 'function') {
         fbq(
-          'track',
-          'Lead',
-          contentName ? { content_name: contentName } : {},
-          eventId ? { eventID: eventId } : {},
+          META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom',
+          eventName,
+          opts.customData ?? {},
+          opts.eventId ? { eventID: opts.eventId } : {},
         )
         return
       }
