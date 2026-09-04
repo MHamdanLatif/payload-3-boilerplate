@@ -31,3 +31,12 @@ client_secret*.json
 # also silently swallow any genuine asset added under public/.
 pdfs for seo/
 /*.pdf
+
+# pnpm artefacts. This project deploys with npm and tracks package-lock.json;
+# a committed pnpm-lock.yaml would take precedence over it in the Railway
+# build, silently switching production to a different package manager and a
+# stale dependency snapshot. Some package.json scripts do use pnpm locally
+# (reinstall, e2e:install), so these regenerate — they just must not be
+# committed. pnpm-workspace.yaml here is only pnpm's unfilled allowBuilds stub.
+pnpm-lock.yaml
+pnpm-workspace.yaml
