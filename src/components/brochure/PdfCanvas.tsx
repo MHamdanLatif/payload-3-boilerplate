@@ -31,6 +31,29 @@ const MAX_DPR = 2
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
+type WithResolvers = {
+  withResolvers?: <T>() => {
+    promise: Promise<T>
+    resolve: (value: T | PromiseLike<T>) => void
+    reject: (reason?: unknown) => void
+  }
+}
+
+/** Define Promise.withResolvers where the engine is too old to provide it. */
+function ensurePromiseWithResolvers(): void {
+  const P = Promise as unknown as WithResolvers
+  if (typeof P.withResolvers === 'function') return
+  P.withResolvers = function <T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    return { promise, resolve, reject }
+  }
+}
+
 export function PdfCanvas({
   url,
   label,
@@ -56,11 +79,24 @@ export function PdfCanvas({
     async function render() {
       setStatus('loading')
       try {
+        // MUST run before pdf.js is evaluated.
+        //
+        // pdf.js 6 calls Promise.withResolvers, which only arrived in Chrome 119
+        // (late 2023) and Safari 17.4. Plenty of Android phones — Samsung
+        // Internet especially, which trails Chrome by a long way — do not have
+        // it, and the whole viewer dies with "Promise.withResolvers is not a
+        // function". Desktop never saw it, which is exactly how this shipped.
+        //
+        // The legacy build does not help: it calls it too.
+        ensurePromiseWithResolvers()
+
         // Loaded on demand: pdf.js is large, and a lead who never scrolls to the
-        // brochure should not pay for it.
-        const pdfjs = await import('pdfjs-dist')
+        // brochure should not pay for it. The legacy build is used for the same
+        // reason as the polyfill — these pages are opened on whatever phone the
+        // buyer happens to own, not on a current browser.
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
         pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/build/pdf.worker.min.mjs',
+          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
           import.meta.url,
         ).toString()
 
