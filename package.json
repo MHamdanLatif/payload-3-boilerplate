@@ -51,6 +51,7 @@
     "next": "16.2.3",
     "payload": "3.82.1",
     "payload-admin-bar": "^1.0.7",
+    "pdfjs-dist": "^6.3.289",
     "prism-react-renderer": "^2.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

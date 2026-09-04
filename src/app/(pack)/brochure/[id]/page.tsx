@@ -120,8 +120,12 @@ export default async function BrochurePage({ params }: { params: Promise<{ id: s
       assets={{
         headline: lead.brochureHeadline,
         name: lead.name,
-        pdf1: mediaUrl(lead.brochurePdfPrimary, base),
-        pdf2: mediaUrl(lead.brochurePdfSecondary, base),
+        // Proxied through our own origin rather than pointed at the media
+        // host. pdf.js FETCHES the file, so it must be same-origin, and the
+        // real file location never reaching the browser is what stops the
+        // brochure being copied out of the page source and shared untracked.
+        pdf1: lead.brochurePdfPrimary ? `/api/brochure/${id}/file?slot=primary` : null,
+        pdf2: lead.brochurePdfSecondary ? `/api/brochure/${id}/file?slot=secondary` : null,
         mapEmbed: lead.brochureMapEmbed,
         videoUrl: lead.brochureVideoUrl,
       }}
