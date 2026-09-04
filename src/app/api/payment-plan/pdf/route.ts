@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
@@ -294,6 +295,20 @@ export async function POST(req: Request) {
     const firstTouch = attribution?.f ?? null
     const latestTouch = attribution?.l ?? firstTouch
 
+    // Meta match signals, captured the same way lead-capture does. These are not
+    // for this moment — they are what the CAPI event carries when the lead is
+    // later marked Qualified, Site Visit or Closed Won. Without them those
+    // down-funnel events reach Meta with nothing to match a person against, and
+    // it is precisely the paid leads that would be affected.
+    const fbc = cookies['_fbc'] || null
+    const fbp = cookies['_fbp'] || null
+    const fbclid = fbc ? fbc.split('.').slice(3).join('.') || null : null
+    const clientIp =
+      (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+      req.headers.get('x-real-ip') ||
+      null
+    const eventId = crypto.randomUUID()
+
     await payload.create({
       collection: 'leads',
       data: {
@@ -314,6 +329,11 @@ export async function POST(req: Request) {
         ...touchColumns('firstTouch', firstTouch),
         ...touchColumns('latestTouch', latestTouch),
         acquisitionSource: acquisitionSourceFromTouch(firstTouch),
+        eventId,
+        fbc: fbc ?? undefined,
+        fbp: fbp ?? undefined,
+        fbclid: fbclid ?? undefined,
+        clientIp: clientIp ?? undefined,
         userAgent: req.headers.get('user-agent') ?? undefined,
         // Privyr is forwarded separately below, with the full plan.
         privyrForwarded: false,
