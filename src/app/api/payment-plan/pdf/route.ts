@@ -13,6 +13,15 @@ import {
 } from '@/lib/attribution'
 import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
 import { sendCapiEvent } from '@/lib/meta-capi'
+
+/**
+ * How long a person stays "already counted" for the Lead event.
+ *
+ * Someone who enquires on Monday and downloads a plan on Friday is one lead, not
+ * two. Counting both would understate cost-per-lead and let a campaign look
+ * cheaper than it is.
+ */
+const LEAD_DEDUPE_WINDOW_DAYS = 30
 import {
   computePlan,
   type ComputeInput,
@@ -309,6 +318,23 @@ export async function POST(req: Request) {
   // download once rather than twice.
   const eventId = crypto.randomUUID()
 
+  // Has this person already converted recently? Checked BEFORE our own row is
+  // written, or it would find itself. Drives the Lead event below.
+  let alreadyALead = false
+  try {
+    const since = new Date(Date.now() - LEAD_DEDUPE_WINDOW_DAYS * 86_400_000).toISOString()
+    const prior = await payload.find({
+      collection: 'leads',
+      where: { phone: { equals: phone }, createdAt: { greater_than: since } },
+      depth: 0,
+      limit: 1,
+    })
+    alreadyALead = prior.totalDocs > 0
+  } catch {
+    // If the check fails, assume they are new — undercounting a real conversion
+    // is worse than the occasional duplicate.
+  }
+
   try {
     await payload.create({
       collection: 'leads',
@@ -375,6 +401,41 @@ export async function POST(req: Request) {
   }).catch((err) => {
     console.warn('[payment-plan/pdf] CAPI event failed:', (err as Error)?.message)
   })
+
+  // ...and as a Lead, unless this person already counted as one recently.
+  //
+  // Both events, because they answer different questions. PaymentPlanDownload is
+  // the future optimisation target — it needs months of history behind it before
+  // Meta can optimise toward it, so it has to start accruing now. Lead is what
+  // the ad account can actually optimise for TODAY, while volume is far below
+  // the ~50/week an ad set needs to leave the learning phase.
+  //
+  // Skipping this would hide most of these people entirely: of 11 plan
+  // downloaders to date, 9 never submitted any other form. As a custom event
+  // alone they are invisible to the optimiser, and they are exactly who the ad
+  // spend is meant to find.
+  //
+  // Server-side only — the browser already fired PaymentPlanDownload for this
+  // click, and a second browser event would add noise without adding a signal.
+  // Its own event id, since deduplication is per event-name-and-id pair.
+  if (!alreadyALead) {
+    void sendCapiEvent({
+      eventName: process.env.META_CAPI_LEAD_EVENT || 'Lead',
+      eventId: crypto.randomUUID(),
+      phone,
+      fbc,
+      fbp,
+      fbclid,
+      clientIp,
+      userAgent: req.headers.get('user-agent'),
+      customData: {
+        lead_source: 'payment-plan-pdf',
+        content_name: project.title,
+      },
+    }).catch((err) => {
+      console.warn('[payment-plan/pdf] CAPI Lead failed:', (err as Error)?.message)
+    })
+  }
 
   // ── 5b. Privyr forward ──────────────────────────────────────
   // Awaited so the request actually completes before the response is returned
