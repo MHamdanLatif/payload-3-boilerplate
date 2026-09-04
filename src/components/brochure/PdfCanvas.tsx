@@ -39,6 +39,82 @@ type WithResolvers = {
   }
 }
 
+/**
+ * Define structuredClone where the engine is too old to provide it.
+ *
+ * Chrome 98 / Safari 15.4, so roughly 2022 — newer than a fair number of phones
+ * still in use. Without it pdf.js renders a couple of pages and then stops, or
+ * fails outright, depending on what else is missing.
+ *
+ * Deliberately covers only what pdf.js passes through it: plain objects, arrays,
+ * typed arrays and buffers, Map, Set, Date, RegExp, and cycles. It is not a
+ * complete implementation — Blob, File and transferables are not handled,
+ * because nothing in this path uses them.
+ */
+function ensureStructuredClone(): void {
+  // Typed loosely on purpose: the real signature is generic, and assigning a
+  // runtime shim to it is not something the DOM lib types allow directly.
+  const w = window as unknown as { structuredClone?: (v: unknown) => unknown }
+  if (typeof w.structuredClone === 'function') return
+
+  const clone = (value: unknown, seen: WeakMap<object, unknown>): unknown => {
+    if (value === null || typeof value !== 'object') return value
+    const obj = value as object
+    const hit = seen.get(obj)
+    if (hit !== undefined) return hit
+
+    if (ArrayBuffer.isView(obj)) {
+      const view = obj as unknown as Uint8Array
+      const copy = new (obj.constructor as typeof Uint8Array)(
+        view.buffer.slice(0) as ArrayBuffer,
+        view.byteOffset,
+        view.length,
+      )
+      seen.set(obj, copy)
+      return copy
+    }
+    if (obj instanceof ArrayBuffer) {
+      const copy = obj.slice(0)
+      seen.set(obj, copy)
+      return copy
+    }
+    if (obj instanceof Date) return new Date(obj.getTime())
+    if (obj instanceof RegExp) return new RegExp(obj.source, obj.flags)
+    if (obj instanceof Map) {
+      const copy = new Map()
+      seen.set(obj, copy)
+      obj.forEach((v, k) => copy.set(clone(k, seen), clone(v, seen)))
+      return copy
+    }
+    if (obj instanceof Set) {
+      const copy = new Set()
+      seen.set(obj, copy)
+      obj.forEach((v) => copy.add(clone(v, seen)))
+      return copy
+    }
+    if (Array.isArray(obj)) {
+      const copy: unknown[] = []
+      seen.set(obj, copy)
+      for (const v of obj) copy.push(clone(v, seen))
+      return copy
+    }
+    // Anything that is not a PLAIN object is passed through by reference.
+    // pdf.js hands ImageBitmaps through structuredClone, and deep-copying one
+    // into a bag of properties produces an object canvas.drawImage rejects —
+    // which showed up as the render dying two pages in. Real structuredClone
+    // would transfer these; within one thread, sharing them is equivalent.
+    const proto = Object.getPrototypeOf(obj)
+    if (proto !== Object.prototype && proto !== null) return obj
+
+    const copy: Record<string, unknown> = {}
+    seen.set(obj, copy)
+    for (const [k, v] of Object.entries(obj)) copy[k] = clone(v, seen)
+    return copy
+  }
+
+  w.structuredClone = (value: unknown) => clone(value, new WeakMap())
+}
+
 /** Define Promise.withResolvers where the engine is too old to provide it. */
 function ensurePromiseWithResolvers(): void {
   const P = Promise as unknown as WithResolvers
@@ -89,6 +165,7 @@ export function PdfCanvas({
         //
         // The legacy build does not help: it calls it too.
         ensurePromiseWithResolvers()
+        ensureStructuredClone()
 
         // Loaded on demand: pdf.js is large, and a lead who never scrolls to the
         // brochure should not pay for it. The legacy build is used for the same
@@ -165,15 +242,27 @@ export function PdfCanvas({
         </div>
       )}
 
+      {/* Last resort. Drawing the brochure in the page is what keeps reading it
+          visible to us, but that is OUR benefit — it must never cost the buyer
+          the brochure itself. Any engine too old for the viewer still gets the
+          real file, opened by the device, exactly as it worked before.
+          We lose the in-page dwell signal for these few; the open is still
+          recorded, because the link goes through our own proxy route. */}
       {status === 'error' && (
-        <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-          <FileText className="h-7 w-7 text-gold" />
-          <p className="text-sm text-brand-deep/70">
-            The brochure could not be displayed here.
+        <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+          <FileText className="h-8 w-8 text-gold" />
+          <p className="font-serif text-lg text-brand-deep">{label}</p>
+          <p className="text-sm text-brand-deep/60">
+            Your browser can&rsquo;t show this here.
           </p>
-          <p className="text-xs text-brand-deep/50">
-            Message us on WhatsApp and an advisor will send it across.
-          </p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 rounded-full bg-brand-deep px-6 py-3 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:bg-gold hover:text-brand-deep"
+          >
+            Open brochure
+          </a>
         </div>
       )}
 
