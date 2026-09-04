@@ -105,9 +105,14 @@ export default async function MarketedLandingPage({ params }: { params: Promise<
 
   return (
     <>
-      <MarketedHeader />
       <main>
-        <MarketedHero project={project} />
+        {/* The header is absolutely positioned, so it needs a positioned
+            ancestor scoped to the hero — otherwise it would anchor to the page
+            and scroll away from the image it sits on. */}
+        <div className="relative">
+          <MarketedHeader />
+          <MarketedHero project={project} />
+        </div>
         <UnitTypesTable
           project={project}
           sectionNumber="01 / AVAILABLE UNITS"

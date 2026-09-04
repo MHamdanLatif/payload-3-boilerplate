@@ -42,7 +42,9 @@ export function MarketedHero({ project }: { project: MarketedProject }) {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-brand-deep/95 via-brand-deep/80 to-brand-deep/40" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-brand-deep/95 via-transparent to-transparent" />
 
-      <div className="container relative grid grid-cols-1 items-center gap-10 py-14 md:py-20 lg:grid-cols-12 lg:gap-16 lg:py-28">
+      {/* Extra top padding, not margin: the header overlays this section, so
+          the content has to clear it while the image still runs to the top. */}
+      <div className="container relative grid grid-cols-1 items-center gap-10 pb-14 pt-24 md:pb-20 md:pt-28 lg:grid-cols-12 lg:gap-16 lg:pb-28 lg:pt-32">
         <div className="lg:col-span-7">
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-brand-deep">

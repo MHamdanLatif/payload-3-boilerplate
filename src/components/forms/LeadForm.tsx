@@ -194,6 +194,9 @@ export function LeadForm({
       : 'border border-brand-deep/15 bg-ivory text-brand-deep placeholder:text-brand-deep/35 focus:border-gold',
   )
   const errorCls = 'text-xs font-medium text-gold-soft'
+  // Native dropdown items always render on the browser's own light background,
+  // regardless of the form's tone, so they are pinned rather than inherited.
+  const optionCls = 'bg-white text-brand-deep'
 
   if (done) {
     // The WhatsApp button is the point of this state, not decoration: the
@@ -301,13 +304,21 @@ export function LeadForm({
             onChange={(e) => setUnit(e.target.value)}
             className={cn(inputCls, 'appearance-none pr-8')}
           >
-            <option value="">Select an option</option>
+            {/* Every option carries its own colours. The dark-tone form paints
+                the select white-on-navy, and browsers apply that same text
+                colour to the native dropdown list — which renders on its own
+                white background, leaving the options invisible until hovered. */}
+            <option className={optionCls} value="">
+              Select an option
+            </option>
             {unitOptions.map((o) => (
-              <option key={o} value={o}>
+              <option className={optionCls} key={o} value={o}>
                 {o}
               </option>
             ))}
-            <option value={NOT_SURE_YET}>{NOT_SURE_YET}</option>
+            <option className={optionCls} value={NOT_SURE_YET}>
+              {NOT_SURE_YET}
+            </option>
           </select>
           {errors.unit && <span className={errorCls}>{errors.unit}</span>}
         </label>
