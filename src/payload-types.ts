@@ -1673,6 +1673,7 @@ export interface Lead {
         | 'project-pack'
         | 'marketed-hero-form'
         | 'marketed-cta-form'
+        | 'payment-plan-pdf'
         | 'crm-manual'
         | 'other'
       )

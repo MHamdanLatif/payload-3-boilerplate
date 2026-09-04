@@ -21,7 +21,7 @@ const PRIVYR_TIMEOUT_MS = 5000
  * Undefined values are omitted rather than written as null, so a partial touch
  * never blanks a field that another code path populated.
  */
-function touchColumns(prefix: 'firstTouch' | 'latestTouch', t: Touch | null): Record<string, unknown> {
+export function touchColumns(prefix: 'firstTouch' | 'latestTouch', t: Touch | null): Record<string, unknown> {
   if (!t) return {}
   const out: Record<string, unknown> = {}
   const put = (k: string, v: unknown) => { if (v !== undefined && v !== null && v !== '') out[prefix + k] = v }
@@ -39,7 +39,7 @@ function touchColumns(prefix: 'firstTouch' | 'latestTouch', t: Touch | null): Re
 }
 
 /** Parse a Cookie header into a name→value map. */
-function parseCookies(header: string | null): Record<string, string> {
+export function parseCookies(header: string | null): Record<string, string> {
   const out: Record<string, string> = {}
   if (!header) return out
   for (const part of header.split(';')) {

@@ -194,5 +194,8 @@ export const MARKETED_PROJECTS_DDL: string[] = [
 export const MARKETED_PROJECTS_ENUM_DDL: string[] = [
   `ALTER TYPE "enum_leads_conversion_surface" ADD VALUE IF NOT EXISTS 'marketed-hero-form';`,
   `ALTER TYPE "enum_leads_conversion_surface" ADD VALUE IF NOT EXISTS 'marketed-cta-form';`,
+  // Added later: the payment-plan PDF gate now writes a real lead row, where
+  // before it only wrote to payment-plan-leads and Privyr.
+  `ALTER TYPE "enum_leads_conversion_surface" ADD VALUE IF NOT EXISTS 'payment-plan-pdf';`,
 ]
 

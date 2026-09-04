@@ -3,7 +3,13 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 import type { FeaturedProject, Media } from '@/payload-types'
-import { smallestUnit } from '@/lib/featured-projects'
+import { formatPkr, smallestUnit } from '@/lib/featured-projects'
+import { parseCookies, touchColumns } from '@/lib/lead-capture'
+import {
+  ATTRIBUTION_COOKIE,
+  acquisitionSourceFromTouch,
+  parseAttribution,
+} from '@/lib/attribution'
 import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
 import {
   computePlan,
@@ -266,6 +272,58 @@ export async function POST(req: Request) {
     })
   } catch (e) {
     console.warn('[payment-plan/pdf] PaymentPlanLeads persist failed:', (e as Error).message)
+  }
+
+  // ── 5a-ii. The CRM lead row ─────────────────────────────────
+  // Downloading a custom payment plan is the highest-intent action on the site,
+  // and until now it produced no `leads` row at all — the buyer existed in the
+  // payment-plan audit log and in Privyr, but never appeared in the dashboard
+  // the team actually works from. 11 of 13 such leads had no CRM record.
+  //
+  // Deliberately NOT routed through handleLeadCapture: that would forward to
+  // Privyr a second time, and this route already does so below with the far
+  // richer plan payload.
+  //
+  // `sourceKind` names the KIND OF PAGE rather than the form, so seedLeadDefaults
+  // stamps the project relationships and brochure assets exactly as a form
+  // submission would; `conversionSurface` is what records that this was the PDF.
+  try {
+    const cookies = parseCookies(req.headers.get('cookie'))
+    // Attribution comes from our own cookie, never the request body.
+    const attribution = parseAttribution(cookies[ATTRIBUTION_COOKIE])
+    const firstTouch = attribution?.f ?? null
+    const latestTouch = attribution?.l ?? firstTouch
+
+    await payload.create({
+      collection: 'leads',
+      data: {
+        name,
+        phone,
+        sourceKind: isMarketed ? 'marketed-project' : 'project',
+        sourceName: project.title,
+        sourceSlug: project.slug ?? undefined,
+        placement: 'payment-plan-pdf',
+        source: 'payment-plan:pdf',
+        conversionSurface: 'payment-plan-pdf',
+        interestedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? undefined,
+        // The plan they actually built — the single most useful thing for the
+        // advisor making the call.
+        notes: `Downloaded a payment plan: ${formatPkr(plan.totals.effectivePrice)} total, ${Math.round(
+          (plan.totals.downPayment / plan.totals.effectivePrice) * 100,
+        )}% down (${formatPkr(plan.totals.downPayment)}), ${totalDurationMonths} months.`,
+        ...touchColumns('firstTouch', firstTouch),
+        ...touchColumns('latestTouch', latestTouch),
+        acquisitionSource: acquisitionSourceFromTouch(firstTouch),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+        // Privyr is forwarded separately below, with the full plan.
+        privyrForwarded: false,
+        privyrStatus: 'forwarded separately by payment-plan/pdf',
+      },
+      overrideAccess: true,
+    })
+  } catch (e) {
+    // Never block the buyer's PDF on a CRM write.
+    console.warn('[payment-plan/pdf] leads persist failed:', (e as Error).message)
   }
 
   // ── 5b. Privyr forward ──────────────────────────────────────
