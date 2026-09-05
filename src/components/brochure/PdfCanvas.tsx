@@ -266,9 +266,11 @@ export function PdfCanvas({
         </div>
       )}
 
+      {/* One template string rather than an expression sitting next to text:
+          the JSX form rendered as "8pages", losing the space between them. */}
       {status === 'ready' && pageCount > 1 && (
         <p className="mt-2 text-center text-xs text-brand-deep/45">
-          {pageCount} pages &middot; scroll to read
+          {`${pageCount} pages · scroll to read`}
         </p>
       )}
     </div>
