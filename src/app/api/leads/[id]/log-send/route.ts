@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sendNtfy } from '@/lib/ntfy'
+import { advanceLeadStatus } from '@/lib/lead-auto-status'
 import type { Lead } from '@/payload-types'
 
 /**
@@ -39,6 +40,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         brochureSendStatus: `sent via WhatsApp (manual)${body.link ? ` → ${body.link}` : ''}`,
       },
     })
+
+    // The send is a fact, so the pipeline records it rather than waiting for
+    // someone to remember. Only ever forward, and never over a terminal status.
+    await advanceLeadStatus(payload, id, 'details-sent')
 
     // Optional owner confirmation.
     await sendNtfy({

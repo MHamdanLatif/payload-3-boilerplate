@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sendNtfy } from '@/lib/ntfy'
 import { getServerSideURL } from '@/utilities/getURL'
+import { advanceLeadStatus } from '@/lib/lead-auto-status'
 import type { Lead } from '@/payload-types'
 
 const ASSETS = ['page', 'pdf1', 'pdf2', 'map', 'video'] as const
@@ -125,6 +126,12 @@ export async function logBrochureOpen(opts: {
           data: { brochureOpenedAt: new Date().toISOString() },
         })
       }
+      // Opening the pack is engagement, and it is the last step the system can
+      // observe on its own — everything past this depends on a conversation.
+      // Runs on every open, not just the first: a lead whose brochure was sent
+      // before this shipped is still sitting at Uncontacted, and the next time
+      // they look at it they should move. Advancing is a no-op once they have.
+      await advanceLeadStatus(payload, lead.id, 'engaged')
       if (notify && process.env.NTFY_TOPIC) {
         const project = lead.sourceName || lead.brochureHeadline || 'their brochure'
         const base = getServerSideURL().replace(/\/$/, '')

@@ -86,7 +86,11 @@ export function BrochureDownloadModal({
           placement: 'modal',
           sourceName: projectTitle,
           sourceSlug: projectSlug,
-          notes: 'Downloaded project brochure',
+          // Not "Downloaded": nothing is downloaded here and never was. The
+          // button asks for the brochure to be sent to WhatsApp, so the note has
+          // to describe a request, or whoever picks up the lead reads it as an
+          // action already completed and skips the send.
+          notes: 'Requested the project brochure on WhatsApp',
         }),
       })
       if (!res.ok) {
