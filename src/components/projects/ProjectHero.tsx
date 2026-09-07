@@ -113,8 +113,8 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
                 Tell us a little about you.
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-brand-deep/65">
-                A senior advisor typically calls within 15 minutes with available units,
-                prices, and a viewing slot.
+                Get project details, payment plans and current availability directly on
+                WhatsApp.
               </p>
               <div className="mt-5">
                 <LeadForm
@@ -124,6 +124,7 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
                   placement="hero"
                   tone="light"
                   submitLabel="Register Interest"
+                  footnote="We typically reply within 15 minutes. Your details stay private."
                 />
               </div>
             </div>
