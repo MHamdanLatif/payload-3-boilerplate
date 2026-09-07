@@ -14,7 +14,7 @@ import { buildPackMeta } from '@/lib/pack-metadata'
  * Project-specific link previews.
  *
  * A pack link shared on WhatsApp previously showed the generic company logo, so
- * a Tulip Comfort lead and a Saima Elite lead received visually identical
+ * a Tulip Comforts lead and a Saima Elite lead received visually identical
  * messages. The preview now carries the project's own elevation and name.
  *
  * noindex/nofollow is retained deliberately: Open Graph tags are read by

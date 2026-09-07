@@ -23,7 +23,17 @@ const redirects = async () => {
     // Live projects — direct equivalents on the new site
     {
       source: '/featured/tulip-comfort',
-      destination: '/projects/tulip-comfort',
+      destination: '/projects/tulip-comforts',
+      permanent: true,
+    },
+    // The project was renamed to the builder's actual spelling — the plural —
+    // on 2026-09-07. /projects/tulip-comfort had been live and indexed since the
+    // relaunch and is the URL Google ranks, so it forwards rather than 404ing.
+    // Without this, every search result and every link already sent to a buyer
+    // breaks on the day of the rename.
+    {
+      source: '/projects/tulip-comfort',
+      destination: '/projects/tulip-comforts',
       permanent: true,
     },
     {
@@ -95,12 +105,18 @@ const redirects = async () => {
       permanent: true,
     },
 
-    // Blog slug cleanups (site audit). The Tulip post was standardised to the
-    // singular project name; the Saima Elite post had a stray double hyphen
-    // left over from the "&" in its title. Forward the old slugs.
+    // Blog slug cleanups (site audit). The Saima Elite post had a stray double
+    // hyphen left over from the "&" in its title. Forward the old slug.
+    //
+    // NOTE: this direction was REVERSED on 2026-09-07. The Tulip post was once
+    // standardised to the singular to match the project; the project has since
+    // been corrected to the builder's real spelling, so the post follows it back
+    // to the plural. The old rule had to go rather than sit alongside the new
+    // one — plural → singular and singular → plural together are an infinite
+    // redirect loop, and the page would have become unreachable entirely.
     {
-      source: '/blog/tulip-comforts-pre-launch-apartments-in-scheme-33-karachi',
-      destination: '/blog/tulip-comfort-pre-launch-apartments-in-scheme-33-karachi',
+      source: '/blog/tulip-comfort-pre-launch-apartments-in-scheme-33-karachi',
+      destination: '/blog/tulip-comforts-pre-launch-apartments-in-scheme-33-karachi',
       permanent: true,
     },
     {

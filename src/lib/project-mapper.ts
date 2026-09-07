@@ -33,12 +33,17 @@ export const PROJECT_ENTITIES: EntityEntry[] = [
   },
   {
     kind: 'project',
-    // Canonical matches the live project doc + URL (/projects/tulip-comfort).
-    // The plural "Tulip Comforts" is kept as an alias so legacy blog content
-    // using the old spelling still auto-links to the correct project.
-    canonical: 'Tulip Comfort',
-    aliases: ['Tulip Comforts', 'Tulip'],
-    slug: 'tulip-comfort',
+    // Canonical matches the live project doc + URL (/projects/tulip-comforts).
+    // The builder's own name is the plural; the site briefly used the singular
+    // and it was corrected on 2026-09-07.
+    //
+    // The singular stays an alias, and must: it is still the spelling in older
+    // blog prose, in every lead captured before the rename, and — the part that
+    // matters commercially — it is what a good number of people actually type
+    // into Google.
+    canonical: 'Tulip Comforts',
+    aliases: ['Tulip Comfort', 'Tulip'],
+    slug: 'tulip-comforts',
     url: projectUrl,
   },
   // Saima Center Point was removed here deliberately — the project sold out, its

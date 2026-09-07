@@ -6,7 +6,7 @@ import { getServerSideURL } from '@/utilities/getURL'
  * Open Graph metadata for a personalised project pack.
  *
  * When a pack link is sent on WhatsApp the preview used to show the generic
- * Lateef Properties logo, so a Tulip Comfort lead and a Saima Elite lead
+ * Lateef Properties logo, so a Tulip Comforts lead and a Saima Elite lead
  * received visually identical messages. The preview should show the project the
  * pack is actually about.
  *

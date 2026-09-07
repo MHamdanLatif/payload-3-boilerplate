@@ -17,7 +17,7 @@ import {
  * Mounted once in the root layout. It renders nothing.
  *
  * Why a cookie rather than reading the URL at submit time: a visitor lands on
- * /projects/tulip-comfort?utm_source=meta..., browses to the gallery, opens the
+ * /projects/tulip-comforts?utm_source=meta..., browses to the gallery, opens the
  * calculator, and only then fills in the form. By that point the parameters are
  * long gone from the URL. Capturing at landing is the only reliable moment.
  *

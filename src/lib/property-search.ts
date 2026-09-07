@@ -178,7 +178,7 @@ export async function fetchUnified(payload: Payload, sp: ParsedSearchParams): Pr
   // a duplex still has a bed configuration, so the two combine — ?unitType=4
   // Bed Drawing&layout=duplex is a valid, and very commercial, query.
   //   • FeaturedProjects: match if ANY unit row is a duplex. A project can mix
-  //     duplex and flat units (Tulip Comfort does), so this is per-unit.
+  //     duplex and flat units (Tulip Comforts does), so this is per-unit.
   //   • PropertyListings: the flag sits on the listing itself.
   if (sp.layout === 'duplex') {
     pushIf(sharedProjectWhere.and as Where[], { 'unitTypes.isDuplex': { equals: true } })

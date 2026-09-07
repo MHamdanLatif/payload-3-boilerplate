@@ -68,7 +68,7 @@ export const Leads: CollectionConfig = {
 
     // ── Project attribution ────────────────────────────────────────────────
     // Three concepts, not one mutable field. A buyer enters through Saima Elite,
-    // dislikes it, is shown Tulip Comfort and buys Tulip: the acquisition is
+    // dislikes it, is shown Tulip Comforts and buys Tulip: the acquisition is
     // still Saima Elite, and collapsing that into one field would destroy the
     // record of which project's advertising actually produced the sale.
     {

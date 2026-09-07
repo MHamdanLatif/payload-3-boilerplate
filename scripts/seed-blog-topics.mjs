@@ -94,7 +94,7 @@ const TOPICS = [
       'Saima Group',
       'Saima Elite Enclave',
       'Saima Uptown',
-      'Tulip Comfort',
+      'Tulip Comforts',
       'Saima projects Karachi',
     ],
   },

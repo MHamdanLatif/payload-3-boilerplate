@@ -257,15 +257,15 @@ const TOPICS = [
     ],
   },
   {
-    suggestedTitle: "Tulip Comfort Karachi: An Investor's Complete Review",
+    suggestedTitle: "Tulip Comforts Karachi: An Investor's Complete Review",
     coreFocus:
-      'A complete review of Tulip Comfort — project positioning in Scheme 33, unit types and sizes, payment-plan structure, surrounding amenities, and who the project best suits. Note that pricing should be confirmed with the developer at booking time.',
+      'A complete review of Tulip Comforts — project positioning in Scheme 33, unit types and sizes, payment-plan structure, surrounding amenities, and who the project best suits. Note that pricing should be confirmed with the developer at booking time.',
     targetKeywords: [
-      'Tulip Comfort Karachi',
-      'Tulip Comfort price',
-      'Tulip Comfort Scheme 33',
-      'Tulip Comfort payment plan',
-      'Tulip Comfort review',
+      'Tulip Comforts Karachi',
+      'Tulip Comforts price',
+      'Tulip Comforts Scheme 33',
+      'Tulip Comforts payment plan',
+      'Tulip Comforts review',
     ],
   },
 
