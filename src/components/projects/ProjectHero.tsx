@@ -107,7 +107,7 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
             <div className="relative rounded-2xl border border-white/10 bg-white/95 p-6 text-brand-deep shadow-luxe sm:p-7">
               <div className="mb-4 flex items-center gap-3">
                 <span className="h-px w-8 bg-gold" />
-                <span className="eyebrow text-gold">Get a Callback</span>
+                <span className="eyebrow text-gold">Register Your Interest</span>
               </div>
               <h2 className="font-serif text-2xl leading-tight tracking-tight text-brand-deep">
                 Tell us a little about you.
@@ -123,7 +123,7 @@ export function ProjectHero({ project }: { project: FeaturedProject }) {
                   sourceKind="project"
                   placement="hero"
                   tone="light"
-                  submitLabel="Request a Callback"
+                  submitLabel="Register Interest"
                 />
               </div>
             </div>
