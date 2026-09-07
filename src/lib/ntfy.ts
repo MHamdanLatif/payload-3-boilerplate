@@ -14,6 +14,11 @@
 
 type NtfyPriority = 'min' | 'low' | 'default' | 'high' | 'urgent'
 
+/** Total attempts per notification, including the first. */
+const NTFY_ATTEMPTS = 3
+/** Backoff between attempts, multiplied by the attempt number. */
+const NTFY_RETRY_DELAY_MS = 400
+
 export function ntfyConfigured(): boolean {
   return Boolean(process.env.NTFY_TOPIC)
 }
@@ -52,19 +57,43 @@ export async function sendNtfy({
   if (clickUrl) headers['Click'] = clickUrl
   if (process.env.NTFY_TOKEN) headers['Authorization'] = `Bearer ${process.env.NTFY_TOKEN}`
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 6000)
-  try {
-    const res = await fetch(`${base}/${encodeURIComponent(topic)}`, {
-      method: 'POST',
-      headers,
-      body: message,
-      signal: controller.signal,
-    })
-    return { ok: res.ok, status: String(res.status) }
-  } catch (e) {
-    return { ok: false, status: (e as Error).name || 'error' }
-  } finally {
-    clearTimeout(timeout)
+  // Retried, because a dropped alert is a missed lead.
+  //
+  // Three of four alerts were lost in one night to "TypeError", which is what
+  // Node throws when the request never reaches the host at all — a DNS blip, a
+  // container still coming up after a deploy, a moment of egress trouble. A
+  // single attempt turns any of those into a lead the owner never hears about,
+  // and the whole point of this is that they hear about it while it is worth
+  // calling.
+  //
+  // Only transport failures are retried. An HTTP response, including 4xx and
+  // 5xx, is an answer: retrying a 429 would make rate limiting worse, and
+  // retrying a 400 would fail identically three times.
+  const url = `${base}/${encodeURIComponent(topic)}`
+  let lastError = 'error'
+
+  for (let attempt = 0; attempt < NTFY_ATTEMPTS; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, NTFY_RETRY_DELAY_MS * attempt))
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: message,
+        signal: controller.signal,
+      })
+      return { ok: res.ok, status: String(res.status) }
+    } catch (e) {
+      const err = e as Error
+      // The message matters: "TypeError" alone said nothing about WHY, which is
+      // why the original failures could not be diagnosed from the lead record.
+      lastError = `${err.name}: ${err.message}`.slice(0, 120)
+    } finally {
+      clearTimeout(timeout)
+    }
   }
+
+  return { ok: false, status: lastError }
 }
