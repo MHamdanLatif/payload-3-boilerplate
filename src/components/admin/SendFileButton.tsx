@@ -2,6 +2,12 @@
 
 import React, { useState } from 'react'
 import { Button, useDocumentInfo, toast } from '@payloadcms/ui'
+import {
+  DEFAULT_BROCHURE_TEMPLATE,
+  brochureLink,
+  buildBrochureMessage,
+  whatsappSendUrl,
+} from '@/lib/brochure-message'
 
 /**
  * "Send File" — Privyr-style manual brochure send, on the lead's detail view.
@@ -45,7 +51,7 @@ export const SendFileButton: React.FC = () => {
       }
 
       // Editable message template from the CRM Settings global.
-      let template = "Hi {name}, here's the {project} brochure: {link}"
+      let template: string = DEFAULT_BROCHURE_TEMPLATE
       try {
         const gRes = await fetch('/api/globals/crm-settings?depth=0', { credentials: 'include' })
         if (gRes.ok) {
@@ -56,16 +62,18 @@ export const SendFileButton: React.FC = () => {
         /* fall back to the default template */
       }
 
-      const firstName = String(lead?.name ?? '').split(' ')[0] || 'there'
-      const project = lead?.sourceName || lead?.brochureHeadline || 'your'
-      const link = `${window.location.origin}/brochure/${lead.brochureId}`
-      const message = template
-        .replaceAll('{name}', firstName)
-        .replaceAll('{project}', String(project))
-        .replaceAll('{link}', link)
+      // Shared with the send-brochure endpoint behind the push notification's
+      // action button, so the two cannot word the message differently.
+      const link = brochureLink(window.location.origin, String(lead.brochureId))
+      const message = buildBrochureMessage({
+        template,
+        name: lead?.name,
+        project: lead?.sourceName || lead?.brochureHeadline,
+        link,
+      })
 
       // Open WhatsApp on the lead's chat with the message pre-filled.
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener')
+      window.open(whatsappSendUrl(phone, message), '_blank', 'noopener')
 
       // Log the send (best-effort; doesn't block the user).
       void fetch(`/api/leads/${id}/log-send`, {

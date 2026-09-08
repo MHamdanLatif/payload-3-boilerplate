@@ -39,12 +39,21 @@ export async function sendNtfy({
   priority,
   tags,
   clickUrl,
+  actions,
 }: {
   title?: string
   message: string
   priority?: NtfyPriority
   tags?: string
   clickUrl?: string
+  /**
+   * ntfy "Actions" header — buttons on the notification itself.
+   *
+   * Format: `<type>, <label>, <param>[, opt=value]`, multiple separated by ";".
+   * A comma or semicolon inside a value breaks the parse, so any URL placed here
+   * must not contain either un-encoded.
+   */
+  actions?: string
 }): Promise<{ ok: boolean; status: string }> {
   const topic = process.env.NTFY_TOPIC
   if (!topic) return { ok: false, status: 'no-topic' }
@@ -55,6 +64,8 @@ export async function sendNtfy({
   if (priority) headers['Priority'] = priority
   if (tags) headers['Tags'] = headerSafe(tags)
   if (clickUrl) headers['Click'] = clickUrl
+  // Same latin-1 constraint as Title and Tags — this is an HTTP header.
+  if (actions) headers['Actions'] = headerSafe(actions)
   if (process.env.NTFY_TOKEN) headers['Authorization'] = `Bearer ${process.env.NTFY_TOKEN}`
 
   // Retried, because a dropped alert is a missed lead.

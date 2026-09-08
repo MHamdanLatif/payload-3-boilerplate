@@ -2,6 +2,7 @@ import type { CollectionAfterChangeHook, Payload } from 'payload'
 import type { Lead } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 import { sendNtfy } from '@/lib/ntfy'
+import { signLeadAction } from '@/lib/lead-action-link'
 import { sendCapiEvent } from '@/lib/meta-capi'
 
 /**
@@ -54,6 +55,24 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
   const source = doc.metaAdName || doc.source || doc.sourceKind || 'website'
   const ts = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })
 
+  // A one-tap "Send brochure" button on the notification itself.
+  //
+  // The alert already reaches the owner within seconds; what took the time was
+  // opening the CRM to act on it. This closes that gap with no Meta setup at
+  // all: the link records the send and advances the lead to Details Sent, then
+  // hands off to WhatsApp with the message pre-typed for review.
+  //
+  // Signed, because a push notification carries no session. Offered only when
+  // the lead can actually be messaged — a button that leads nowhere is worse
+  // than no button.
+  const canSend = Boolean(doc.phone && doc.brochureId)
+  const actions = canSend
+    ? `view, Send brochure, ${base}/api/leads/${doc.id}/send-brochure?sig=${signLeadAction(
+        doc.id,
+        'send-brochure',
+      )}, clear=true`
+    : undefined
+
   // Free owner alert via ntfy (replaces the WhatsApp Cloud API notification).
   const res = await sendNtfy({
     title: 'New Lead',
@@ -61,6 +80,7 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
     priority: 'high',
     tags: 'bell',
     clickUrl: adminUrl,
+    actions,
   })
 
   await payload.update({
