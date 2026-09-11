@@ -1,5 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer'
-import { formatPkr } from '@/lib/featured-projects'
+import { formatPlanMoney as formatPkr } from '@/lib/payment-plan'
 import { DEFAULT_DISCLAIMER, type PlanResult } from '@/lib/payment-plan'
 
 const COLORS = {
@@ -18,8 +18,8 @@ const COLORS = {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0,
-    paddingBottom: 24,
+    paddingTop: 20,
+    paddingBottom: 44,
     paddingHorizontal: 0,
     backgroundColor: COLORS.ivory,
     fontFamily: 'Helvetica',
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subtitle: { fontSize: 10, color: COLORS.textSoft, marginBottom: 10 },
-  factsRow: { flexDirection: 'row', gap: 20, marginTop: 4 },
+  factsRow: { flexWrap: 'wrap', flexDirection: 'row', gap: 20, marginTop: 4 },
   fact: { flexDirection: 'column' },
   factLabel: {
     fontSize: 7,
@@ -187,6 +187,8 @@ export type PaymentPlanPdfProps = {
   projectLogoUrl: string | null
   disclaimer: string
   generatedAt: string
+  priceBreakdown?: { label: string; amount: number }[]
+  scheduleLabel?: string
 }
 
 export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
@@ -204,6 +206,8 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
     projectLogoUrl,
     disclaimer,
     generatedAt,
+    priceBreakdown,
+    scheduleLabel,
   } = props
 
   // Active frequencies summary for the title-block facts row.
@@ -245,7 +249,7 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
             </View>
             <View style={styles.fact}>
               <Text style={styles.factLabel}>INSTALLMENTS</Text>
-              <Text style={styles.factValue}>{freqSummary}</Text>
+              <Text style={styles.factValue}>{scheduleLabel ?? freqSummary}</Text>
             </View>
             {selectedUnitType ? (
               <View style={styles.fact}>
@@ -267,16 +271,28 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         ) : null}
 
         {/* ── Table ─────────────────────────────────────────── */}
+        {priceBreakdown && (
+          <View style={styles.loanNote}>
+            <Text style={styles.disclaimerHead}>NEGOTIATED PRICE</Text>
+            {priceBreakdown.map((line, i) => (
+              <View key={i} wrap={false} style={{ flexDirection: 'row', marginTop: 4 }}>
+                <Text style={{ width: '68%' }}>{line.label}</Text>
+                <Text style={{ width: '32%', textAlign: 'right' }}>{formatPkr(line.amount)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={styles.table}>
-          <View style={styles.tableHead}>
-            <Text style={[styles.tableHeadCell, styles.cellWhen]}>WHEN</Text>
-            <Text style={[styles.tableHeadCell, styles.cellHead]}>HEAD</Text>
-            <Text style={[styles.tableHeadCell, styles.cellAmount]}>AMOUNT</Text>
-            <Text style={[styles.tableHeadCell, styles.cellCumulative]}>CUMULATIVE</Text>
+          <View style={styles.tableHead} fixed>
+            <Text style={[styles.cellWhen, styles.tableHeadCell]}>WHEN</Text>
+            <Text style={[styles.cellHead, styles.tableHeadCell]}>HEAD</Text>
+            <Text style={[styles.cellAmount, styles.tableHeadCell]}>AMOUNT</Text>
+            <Text style={[styles.cellCumulative, styles.tableHeadCell]}>CUMULATIVE</Text>
           </View>
           {plan.rows.map((row, i) => (
             <View
               key={i}
+              wrap={false}
               style={[
                 styles.row,
                 row.kind === 'down-payment'
@@ -300,14 +316,15 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         </View>
 
         {/* ── Prepared for ─────────────────────────────────── */}
-        <View style={styles.prep}>
+        <View style={styles.prep} wrap={false}>
           <Text>
-            Prepared for {buyer.name} ({buyer.phone}) on {generatedAt}.
+            Prepared for {buyer.name || 'Client'}
+            {buyer.phone ? ` (${buyer.phone})` : ''} on {generatedAt}.
           </Text>
         </View>
 
         {/* ── Disclaimer ───────────────────────────────────── */}
-        <View style={styles.disclaimerWrap}>
+        <View style={styles.disclaimerWrap} wrap={false}>
           <Text style={styles.disclaimerHead}>DISCLAIMER</Text>
           <Text style={styles.disclaimerText}>{disclaimer}</Text>
         </View>
@@ -315,7 +332,11 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         {/* ── Footer ───────────────────────────────────────── */}
         <View style={styles.footer} fixed>
           <Text>Lateef Properties · Karachi · WhatsApp 03363528333</Text>
-          <Text>www.lateefproperties.com</Text>
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `lateefproperties.com | ${pageNumber} / ${totalPages}`
+            }
+          />
         </View>
       </Page>
     </Document>

@@ -1,6 +1,5 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 
 /**
@@ -15,7 +14,7 @@ import { authenticated } from '../access/authenticated'
 export const PaymentPlanLeads: CollectionConfig = {
   slug: 'payment-plan-leads',
   access: {
-    create: anyone,
+    create: authenticated,
     read: authenticated,
     update: authenticated,
     delete: authenticated,
@@ -65,15 +64,15 @@ export const PaymentPlanLeads: CollectionConfig = {
       relationTo: 'marketed-projects',
       label: 'Ad landing page',
       admin: {
-        description:
-          'Set instead of Project when the plan was built on a paid landing page.',
+        description: 'Set instead of Project when the plan was built on a paid landing page.',
       },
     },
     {
       name: 'projectTitleSnapshot',
       type: 'text',
       admin: {
-        description: 'Project title at download time. Preserved even if the project is renamed or deleted later.',
+        description:
+          'Project title at download time. Preserved even if the project is renamed or deleted later.',
       },
     },
     {
@@ -118,6 +117,9 @@ export const PaymentPlanLeads: CollectionConfig = {
       options: [
         { label: 'Monthly', value: 'Monthly' },
         { label: 'Quarterly', value: 'Quarterly' },
+        { label: 'Half-Yearly', value: 'HalfYearly' },
+        { label: 'Multiple frequencies', value: 'Mixed' },
+        { label: 'No installments', value: 'None' },
       ],
     },
     {
@@ -134,12 +136,15 @@ export const PaymentPlanLeads: CollectionConfig = {
     {
       name: 'loanAmount',
       type: 'number',
-      admin: { description: 'PKR loan component subtracted from price before plan math. Only meaningful when loanIncluded=true.' },
+      admin: {
+        description:
+          'PKR loan component subtracted from price before plan math. Only meaningful when loanIncluded=true.',
+      },
     },
     {
       name: 'engineVersion',
       type: 'text',
-      defaultValue: 'v2',
+      defaultValue: 'v3',
       admin: { readOnly: true, description: 'Compute engine version used at download time.' },
     },
     {

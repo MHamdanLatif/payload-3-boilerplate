@@ -15,6 +15,10 @@ const BeforeDashboard: React.FC = () => {
       Here&apos;s what to do next:
       <ul className={`${baseClass}__instructions`}>
         <li>
+          <a href="/internal/payment-plans">Open Payment Plan Studio</a> to prepare a negotiated,
+          admin-only payment plan.
+        </li>
+        <li>
           <SeedButton />
           {' with a few pages, posts, and projects to jump-start your new site, then '}
           <a href="/" target="_blank">

@@ -27,7 +27,7 @@ export function smallestUnit(project: UnitsSource): SmallestUnit | null {
     return a.price - b.price
   })
   const u = sorted[0]
-  return { type: u.type, rooms: u.rooms, price: u.price }
+  return u
 }
 
 // Re-exported from project-shape so existing importers keep working; that module
@@ -40,8 +40,10 @@ type ProjectUnit = NonNullable<FeaturedProject['unitTypes']>[number]
  * `?unit=` deep-link value from the units table. Defined once so the table's
  * links and the calculator's lookup cannot drift apart.
  */
-export function unitKey(u: Pick<ProjectUnit, 'type' | 'rooms' | 'price'>): string {
-  return `${u.type}::${u.rooms}::${u.price}`
+export function unitKey(
+  u: Pick<ProjectUnit, 'type' | 'rooms' | 'price'> & { id?: string | null; name?: string | null },
+): string {
+  return u.id || `${u.name ?? ''}::${u.type}::${u.rooms}::${u.price}`
 }
 
 /** Units sorted for display: fewest rooms first, cheapest first within a tie. */

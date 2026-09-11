@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FileDown, Lock, Unlock } from 'lucide-react'
+import { FileDown } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import type { PaymentPlanSource } from '@/lib/project-shape'
 import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
-import { formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
+import { smallestUnit, unitKey } from '@/lib/featured-projects'
 import {
   computePlan,
+  formatPlanMoney,
   type ComputeInput,
   type DownPaymentMode,
   type InstallmentFrequencyKind,
@@ -70,10 +71,7 @@ export function PaymentPlanCalculator({
   }, [config?.paymentHeads])
 
   // Only admin-enabled heads reach the buyer. The buyer can further toggle within these.
-  const adminEnabledHeads = useMemo(
-    () => projectHeads.filter((h) => h.enabled),
-    [projectHeads],
-  )
+  const adminEnabledHeads = useMemo(() => projectHeads.filter((h) => h.enabled), [projectHeads])
 
   // Time-Based: admin chooses which frequency rows the buyer ever sees.
   const adminAvailableFrequencies = useMemo<InstallmentFrequencyKind[]>(() => {
@@ -125,8 +123,8 @@ export function PaymentPlanCalculator({
   }, [selectedUnitKey, unitTypes])
 
   const unitPrice =
-    selectedUnit?.price ??
     config?.priceOverride ??
+    selectedUnit?.price ??
     project.startingPrice ??
     smallestUnit(project)?.price ??
     0
@@ -137,7 +135,7 @@ export function PaymentPlanCalculator({
   const [loanIncluded, setLoanIncluded] = useState(false)
 
   // ── DP, Possession ──────────────────────────────────────────────────────
-  const minDown = Math.max(10, config?.downPaymentMinPct ?? 10)
+  const minDown = Math.max(0, config?.downPaymentMinPct ?? 10)
   const maxDown = Math.min(100, config?.downPaymentMaxPct ?? 30)
   const possessionCap = Math.min(5, config?.possessionPct ?? 5)
   const totalDuration = config?.totalDurationMonths ?? 36
@@ -171,21 +169,18 @@ export function PaymentPlanCalculator({
   // First admin-available kind starts active, others inactive.
   const [installments, setInstallments] = useState<InstallmentInput[]>(() => {
     const first = adminAvailableFrequencies[0]
-    return (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map(
-      (kind) => ({
-        kind,
-        active: kind === first,
-        locked: false,
-        valuePerPeriod: 0,
-      }),
-    )
+    return (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map((kind) => ({
+      kind,
+      active: kind === first,
+      locked: false,
+      valuePerPeriod: 0,
+    }))
   })
 
   // Filter installments to admin-allowed kinds before passing to the engine —
   // disabled kinds are treated as if they didn't exist.
   const installmentsForEngine = useMemo<InstallmentInput[]>(
-    () =>
-      installments.filter((f) => adminAvailableFrequencies.includes(f.kind)),
+    () => installments.filter((f) => adminAvailableFrequencies.includes(f.kind)),
     [installments, adminAvailableFrequencies],
   )
 
@@ -195,26 +190,32 @@ export function PaymentPlanCalculator({
   // Payment Plan, and the calculator opens with those exact values on first
   // load + whenever the buyer switches units. Buyer can adjust after.
   useEffect(() => {
+    setDpMode('fixed')
+    setLoanIncluded(false)
+    setBuyerEnabledHeadNames(new Set(adminEnabledHeads.map((h) => h.name)))
+    setDownPaymentPct(Math.min(maxDown, Math.max(minDown, DEFAULT_DOWN_PAYMENT_PCT)))
+    setPossessionPct(possessionAdminEnabled ? possessionCap : 0)
+    setInstallments(
+      (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map((kind) => ({
+        kind,
+        active: kind === adminAvailableFrequencies[0],
+        locked: false,
+        valuePerPeriod: 0,
+      })),
+    )
     const dp = selectedUnit?.defaultPlan
     if (dp) {
       if (typeof dp.downPaymentPct === 'number') {
-        setDownPaymentPct(
-          Math.min(maxDown, Math.max(minDown, dp.downPaymentPct)),
-        )
+        setDownPaymentPct(Math.min(maxDown, Math.max(minDown, dp.downPaymentPct)))
       }
       if (typeof dp.possessionPct === 'number') {
         setPossessionPct(
-          possessionAdminEnabled
-            ? Math.min(possessionCap, Math.max(0, dp.possessionPct))
-            : 0,
+          possessionAdminEnabled ? Math.min(possessionCap, Math.max(0, dp.possessionPct)) : 0,
         )
       }
       const defaultRows = Array.isArray(dp.installments) ? dp.installments : []
       if (defaultRows.length > 0) {
-        const lookup = new Map<
-          InstallmentFrequencyKind,
-          { amount: number; locked: boolean }
-        >()
+        const lookup = new Map<InstallmentFrequencyKind, { amount: number; locked: boolean }>()
         for (const r of defaultRows) {
           if (!r) continue
           const freq = r.frequency as InstallmentFrequencyKind
@@ -222,19 +223,17 @@ export function PaymentPlanCalculator({
           lookup.set(freq, { amount: r.amount, locked: r.locked !== false })
         }
         setInstallments(
-          (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map(
-            (kind) => {
-              const match = lookup.get(kind)
-              if (match)
-                return {
-                  kind,
-                  active: true,
-                  locked: match.locked,
-                  valuePerPeriod: match.amount,
-                }
-              return { kind, active: false, locked: false, valuePerPeriod: 0 }
-            },
-          ),
+          (['Monthly', 'Quarterly', 'HalfYearly'] as InstallmentFrequencyKind[]).map((kind) => {
+            const match = lookup.get(kind)
+            if (match)
+              return {
+                kind,
+                active: true,
+                locked: match.locked,
+                valuePerPeriod: match.amount,
+              }
+            return { kind, active: false, locked: false, valuePerPeriod: 0 }
+          }),
         )
       }
     }
@@ -246,22 +245,17 @@ export function PaymentPlanCalculator({
     field: K,
     value: InstallmentInput[K],
   ) {
-    setInstallments((arr) =>
-      arr.map((f) => (f.kind === kind ? { ...f, [field]: value } : f)),
-    )
+    setInstallments((arr) => arr.map((f) => (f.kind === kind ? { ...f, [field]: value } : f)))
   }
 
   function toggleFrequencyActive(kind: InstallmentFrequencyKind) {
     setInstallments((arr) => {
-      const next = arr.map((f) =>
-        f.kind === kind ? { ...f, active: !f.active } : f,
-      )
+      const next = arr.map((f) => (f.kind === kind ? { ...f, active: !f.active } : f))
       // Enforce "≥1 active" but only across admin-available kinds.
       const activeAdminAvailable = next.filter(
         (f) => f.active && adminAvailableFrequencies.includes(f.kind),
       )
-      if (adminAvailableFrequencies.length > 0 && activeAdminAvailable.length === 0)
-        return arr
+      if (adminAvailableFrequencies.length > 0 && activeAdminAvailable.length === 0) return arr
       return next
     })
   }
@@ -309,6 +303,8 @@ export function PaymentPlanCalculator({
       possessionPct: effectivePossessionPct,
       installments: installmentsForEngine,
       heads: effectiveHeads,
+      availableHeads: projectHeads,
+      possessionCap,
       dpMode,
       downPaymentMinPct: minDown,
       downPaymentMaxPct: maxDown,
@@ -323,6 +319,8 @@ export function PaymentPlanCalculator({
     effectivePossessionPct,
     installmentsForEngine,
     effectiveHeads,
+    projectHeads,
+    possessionCap,
     dpMode,
     minDown,
     maxDown,
@@ -437,7 +435,7 @@ export function PaymentPlanCalculator({
                         Include Expected Loan?
                       </span>
                       <span className="mt-1 block text-xs text-brand-deep/70">
-                        Pre-arranged loan of {formatPkr(unitLoanAmount)} on this unit. When
+                        Pre-arranged loan of {formatPlanMoney(unitLoanAmount)} on this unit. When
                         included, the plan calculates against the price after loan.
                       </span>
                     </span>
@@ -451,12 +449,12 @@ export function PaymentPlanCalculator({
                   Total Price
                 </div>
                 <div className="mt-1 font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">
-                  {formatPkr(plan.totals.effectivePrice)}
+                  {formatPlanMoney(plan.totals.effectivePrice)}
                 </div>
                 {loanIncluded && unitLoanAmount > 0 && (
                   <div className="mt-1 text-xs text-brand-deep/55">
-                    Unit price {formatPkr(unitPrice)} − loan {formatPkr(unitLoanAmount)} ={' '}
-                    {formatPkr(plan.totals.effectivePrice)}
+                    Unit price {formatPlanMoney(unitPrice)} − loan {formatPlanMoney(unitLoanAmount)}{' '}
+                    = {formatPlanMoney(plan.totals.effectivePrice)}
                   </div>
                 )}
               </div>
@@ -470,9 +468,7 @@ export function PaymentPlanCalculator({
                   >
                     Down Payment
                   </label>
-                  <span className="font-serif text-2xl text-brand-deep">
-                    {dpDisplayPct}%
-                  </span>
+                  <span className="font-serif text-2xl text-brand-deep">{dpDisplayPct}%</span>
                 </div>
                 <input
                   id="ppc-down"
@@ -491,28 +487,37 @@ export function PaymentPlanCalculator({
                 <div className="mt-2 flex items-baseline justify-between text-xs text-brand-deep/60">
                   <span>Min {minDown}%</span>
                   <span className="font-medium text-brand-deep">
-                    {formatPkr(plan.totals.downPayment)}
+                    {formatPlanMoney(plan.totals.downPayment)}
                   </span>
                   <span>Max {maxDown}%</span>
                 </div>
 
-                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-brand-deep/10 bg-cream/30 p-2.5">
-                  <input
-                    type="checkbox"
-                    checked={dpMode === 'auto'}
-                    onChange={(e) => setDpMode(e.target.checked ? 'auto' : 'fixed')}
-                    className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-gold"
-                  />
-                  <span className="flex-1 text-[0.7rem] leading-snug text-brand-deep/75">
-                    Auto-compute Down Payment from installments.
-                    {dpMode === 'auto' && (
-                      <span className="block text-[0.65rem] text-brand-deep/55">
-                        Enter what you want to pay per period — we derive the down payment as the
-                        residual.
-                      </span>
-                    )}
-                  </span>
-                </label>
+                {!adminEnabledHeads.some(
+                  (h) => h.category === 'Grey Structure' || h.category === 'Finishing',
+                ) && (
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-brand-deep/10 bg-cream/30 p-2.5">
+                    <input
+                      type="checkbox"
+                      checked={dpMode === 'auto'}
+                      onChange={(e) => {
+                        setInstallments(plan.resolved.installments.map((f) => ({ ...f })))
+                        if (!e.target.checked)
+                          setDownPaymentPct(Math.min(maxDown, Math.max(minDown, computedDpPct)))
+                        setDpMode(e.target.checked ? 'auto' : 'fixed')
+                      }}
+                      className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-gold"
+                    />
+                    <span className="flex-1 text-[0.7rem] leading-snug text-brand-deep/75">
+                      Calculate my down payment from the installment amounts.
+                      {dpMode === 'auto' && (
+                        <span className="block text-[0.65rem] text-brand-deep/55">
+                          Enter what you want to pay per period — we derive the down payment as the
+                          residual.
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                )}
 
                 {plan.resolved.activeInitialHeadNames.length > 0 && (
                   <p className="mt-2 text-[0.65rem] text-brand-deep/55">
@@ -531,9 +536,7 @@ export function PaymentPlanCalculator({
                     >
                       Possession
                     </label>
-                    <span className="font-serif text-2xl text-brand-deep">
-                      {possessionPct}%
-                    </span>
+                    <span className="font-serif text-2xl text-brand-deep">{possessionPct}%</span>
                   </div>
                   <input
                     id="ppc-poss"
@@ -548,7 +551,7 @@ export function PaymentPlanCalculator({
                   <div className="mt-2 flex items-baseline justify-between text-xs text-brand-deep/60">
                     <span>0%</span>
                     <span className="font-medium text-brand-deep">
-                      {formatPkr(plan.totals.possession)}
+                      {formatPlanMoney(plan.totals.possession)}
                     </span>
                     <span>{possessionCap}% cap</span>
                   </div>
@@ -557,154 +560,154 @@ export function PaymentPlanCalculator({
 
               {/* Installment frequencies — only renders if admin enabled any */}
               {adminAvailableFrequencies.length > 0 && (
-              <div className="mb-6">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-brand-deep/55">
-                  Time-Based Installments
-                </div>
-                <div className="mt-3 space-y-2">
-                  {installments.filter((f) => adminAvailableFrequencies.includes(f.kind)).map((f) => {
-                    const resolved = plan.resolved.installments.find(
-                      (r) => r.kind === f.kind,
-                    )
-                    const periodCount = plan.cadence.periodCount[f.kind]
-                    return (
-                      <div
-                        key={f.kind}
-                        className="rounded-lg border border-brand-deep/15 bg-white p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={f.active}
-                            onChange={() => toggleFrequencyActive(f.kind)}
-                            className="h-4 w-4 cursor-pointer accent-gold"
-                            aria-label={`Activate ${FREQUENCY_LABEL[f.kind]}`}
-                          />
-                          <span className="flex-1 text-sm font-medium text-brand-deep">
-                            {FREQUENCY_LABEL[f.kind]}
-                          </span>
-                          {f.active && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setInstallment(f.kind, 'locked', !f.locked)
-                              }
-                              className="rounded-md p-1 text-brand-deep/60 hover:text-gold"
-                              aria-label={f.locked ? 'Unlock' : 'Lock'}
-                              title={f.locked ? 'Unlock (auto-compute)' : 'Lock (fix value)'}
-                            >
-                              {f.locked ? (
-                                <Lock className="h-3.5 w-3.5" />
-                              ) : (
-                                <Unlock className="h-3.5 w-3.5" />
+                <div className="mb-6">
+                  <div className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-brand-deep/55">
+                    Time-Based Installments
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {installments
+                      .filter((f) => adminAvailableFrequencies.includes(f.kind))
+                      .map((f) => {
+                        const resolved = plan.resolved.installments.find((r) => r.kind === f.kind)
+                        const periodCount = plan.cadence.periodCount[f.kind]
+                        return (
+                          <div
+                            key={f.kind}
+                            className="rounded-lg border border-brand-deep/15 bg-white p-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={f.active}
+                                onChange={() => toggleFrequencyActive(f.kind)}
+                                className="h-4 w-4 cursor-pointer accent-gold"
+                                aria-label={`Activate ${FREQUENCY_LABEL[f.kind]}`}
+                              />
+                              <span className="flex-1 text-sm font-medium text-brand-deep">
+                                {FREQUENCY_LABEL[f.kind]}
+                              </span>
+                              {f.active && dpMode === 'fixed' && (
+                                <select
+                                  aria-label={FREQUENCY_LABEL[f.kind] + ' amount method'}
+                                  value={f.locked ? 'entered' : 'calculated'}
+                                  onChange={(e) =>
+                                    setInstallments((arr) =>
+                                      arr.map((item) =>
+                                        item.kind === f.kind
+                                          ? {
+                                              ...item,
+                                              locked: e.target.value === 'entered',
+                                              valuePerPeriod: resolved?.valuePerPeriod ?? 0,
+                                            }
+                                          : item,
+                                      ),
+                                    )
+                                  }
+                                  className="max-w-[170px] rounded-md border border-brand-deep/20 bg-white p-2 text-xs"
+                                >
+                                  <option value="calculated">Calculate for me</option>
+                                  <option value="entered">Enter an amount</option>
+                                </select>
                               )}
-                            </button>
-                          )}
-                        </div>
-                        {f.active && (
-                          <div className="mt-2 flex items-baseline gap-3">
-                            <input
-                              type="number"
-                              min={0}
-                              step={1000}
-                              value={
-                                dpMode === 'auto' || f.locked
-                                  ? f.valuePerPeriod
-                                  : Math.round(resolved?.valuePerPeriod ?? 0)
-                              }
-                              onChange={(e) =>
-                                setInstallment(
-                                  f.kind,
-                                  'valuePerPeriod',
-                                  Number(e.target.value),
-                                )
-                              }
-                              readOnly={dpMode === 'fixed' && !f.locked}
-                              className={cn(
-                                'w-full rounded-md border px-3 py-2 text-sm',
-                                dpMode === 'auto' || f.locked
-                                  ? 'border-brand-deep/30 bg-white text-brand-deep'
-                                  : 'border-brand-deep/10 bg-cream/40 text-brand-deep/70',
-                              )}
-                              placeholder="PKR per period"
-                            />
-                            <span className="text-[0.65rem] uppercase tracking-wider text-brand-deep/55">
-                              × {periodCount}
-                            </span>
+                            </div>
+                            {f.active && (
+                              <div className="mt-2 flex items-baseline gap-3">
+                                <input
+                                  aria-label={FREQUENCY_LABEL[f.kind] + ' amount'}
+                                  type="number"
+                                  min={0}
+                                  step={1000}
+                                  value={
+                                    dpMode === 'auto' || f.locked
+                                      ? f.valuePerPeriod
+                                      : (resolved?.valuePerPeriod ?? 0)
+                                  }
+                                  onChange={(e) =>
+                                    setInstallment(f.kind, 'valuePerPeriod', Number(e.target.value))
+                                  }
+                                  readOnly={dpMode === 'fixed' && !f.locked}
+                                  className={cn(
+                                    'w-full rounded-md border px-3 py-2 text-sm',
+                                    dpMode === 'auto' || f.locked
+                                      ? 'border-brand-deep/30 bg-white text-brand-deep'
+                                      : 'border-brand-deep/10 bg-cream/40 text-brand-deep/70',
+                                  )}
+                                  placeholder="PKR per period"
+                                />
+                                <span className="text-[0.65rem] uppercase tracking-wider text-brand-deep/55">
+                                  × {periodCount}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                        )
+                      })}
+                  </div>
+                  <p className="mt-2 text-[0.65rem] text-brand-deep/55">
+                    Choose &ldquo;Enter an amount&rdquo; to set a payment. &ldquo;Calculate for
+                    me&rdquo; shares the remaining installment budget. Calculated payments may
+                    differ by one paisa for rounding.
+                  </p>
                 </div>
-                <p className="mt-2 text-[0.65rem] text-brand-deep/55">
-                  At least one frequency must remain active. Lock 🔒 to fix a value; unlocked
-                  installments share the time-based budget equally.
-                </p>
-              </div>
               )}
 
               {/* Milestone heads — only renders if admin enabled any milestone heads */}
-              {(adminGreyCount + adminFinishingCount) > 0 && (
-              <div className="mb-2">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-brand-deep/55">
-                  Active Milestones
+              {adminGreyCount + adminFinishingCount > 0 && (
+                <div className="mb-2">
+                  <div className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-brand-deep/55">
+                    Active Milestones
+                  </div>
+                  <p className="mt-2 text-[0.7rem] text-brand-deep/55">
+                    Toggle any milestone off; the schedule rebalances.
+                    {adminGreyCount >= 2 && adminFinishingCount >= 2
+                      ? ' Minimum 2 early-stage + 2 late-stage milestones required.'
+                      : adminGreyCount >= 2
+                        ? ' Minimum 2 early-stage milestones required.'
+                        : adminFinishingCount >= 2
+                          ? ' Minimum 2 late-stage milestones required.'
+                          : ''}
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {adminEnabledHeads
+                      .filter((h) => h.category === 'Grey Structure' || h.category === 'Finishing')
+                      .map((h) => {
+                        const checked = buyerEnabledHeadNames.has(h.name)
+                        const minCount =
+                          h.category === 'Grey Structure' ? adminGreyCount : adminFinishingCount
+                        const activeCount = adminEnabledHeads.filter(
+                          (x) => x.category === h.category && buyerEnabledHeadNames.has(x.name),
+                        ).length
+                        const cannotDeselect = checked && activeCount <= 2
+                        return (
+                          <label
+                            key={h.name}
+                            className={cn(
+                              'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
+                              checked
+                                ? 'bg-gold/10 text-brand-deep'
+                                : 'bg-cream/40 text-brand-deep/55',
+                              cannotDeselect && 'cursor-not-allowed opacity-90',
+                            )}
+                            title={
+                              cannotDeselect
+                                ? `Minimum 2 ${h.category === 'Grey Structure' ? 'early-stage' : 'late-stage'} milestones required`
+                                : undefined
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={cannotDeselect}
+                              onChange={() => toggleHead(h.name, h.category)}
+                              className="h-3.5 w-3.5 accent-gold disabled:opacity-50"
+                            />
+                            <span className="flex-1 truncate">{h.name}</span>
+                            {minCount < 2 && <span className="text-[0.6rem] text-red-600">!</span>}
+                          </label>
+                        )
+                      })}
+                  </div>
                 </div>
-                <p className="mt-2 text-[0.7rem] text-brand-deep/55">
-                  Toggle any milestone off; the schedule rebalances.
-                  {adminGreyCount >= 2 && adminFinishingCount >= 2
-                    ? ' Minimum 2 early-stage + 2 late-stage milestones required.'
-                    : adminGreyCount >= 2
-                      ? ' Minimum 2 early-stage milestones required.'
-                      : adminFinishingCount >= 2
-                        ? ' Minimum 2 late-stage milestones required.'
-                        : ''}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {adminEnabledHeads
-                    .filter(
-                      (h) =>
-                        h.category === 'Grey Structure' || h.category === 'Finishing',
-                    )
-                    .map((h) => {
-                      const checked = buyerEnabledHeadNames.has(h.name)
-                      const minCount =
-                        h.category === 'Grey Structure' ? adminGreyCount : adminFinishingCount
-                      const activeCount = adminEnabledHeads.filter(
-                        (x) =>
-                          x.category === h.category && buyerEnabledHeadNames.has(x.name),
-                      ).length
-                      const cannotDeselect = checked && activeCount <= 2
-                      return (
-                        <label
-                          key={h.name}
-                          className={cn(
-                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
-                            checked ? 'bg-gold/10 text-brand-deep' : 'bg-cream/40 text-brand-deep/55',
-                            cannotDeselect && 'cursor-not-allowed opacity-90',
-                          )}
-                          title={
-                            cannotDeselect
-                              ? `Minimum 2 ${h.category === 'Grey Structure' ? 'early-stage' : 'late-stage'} milestones required`
-                              : undefined
-                          }
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={cannotDeselect}
-                            onChange={() => toggleHead(h.name, h.category)}
-                            className="h-3.5 w-3.5 accent-gold disabled:opacity-50"
-                          />
-                          <span className="flex-1 truncate">{h.name}</span>
-                          {minCount < 2 && (
-                            <span className="text-[0.6rem] text-red-600">!</span>
-                          )}
-                        </label>
-                      )
-                    })}
-                </div>
-              </div>
               )}
             </div>
           </div>
@@ -750,10 +753,12 @@ export function PaymentPlanCalculator({
                           row.kind === 'possession' && 'bg-brand-deep/5',
                         )}
                       >
-                        <td className="py-3 pr-4 text-brand-deep/80 whitespace-nowrap">{row.label}</td>
+                        <td className="py-3 pr-4 text-brand-deep/80 whitespace-nowrap">
+                          {row.label}
+                        </td>
                         <td className="py-3 pr-4 text-brand-deep">{row.headName}</td>
                         <td className="py-3 pr-4 text-right font-medium text-brand-deep whitespace-nowrap">
-                          {formatPkr(row.amount)}
+                          {formatPlanMoney(row.amount)}
                         </td>
                         <td className="py-3 text-right text-brand-deep/70 whitespace-nowrap">
                           {row.cumulativePct}%
@@ -767,10 +772,10 @@ export function PaymentPlanCalculator({
                         Total
                       </td>
                       <td className="py-4 pr-4 text-right font-serif text-base text-brand-deep">
-                        {formatPkr(plan.totals.effectivePrice)}
+                        {formatPlanMoney(plan.totals.effectivePrice)}
                       </td>
                       <td className="py-4 text-right font-serif text-base text-brand-deep">
-                        100%
+                        {plan.rows.at(-1)?.cumulativePct ?? 0}%
                       </td>
                     </tr>
                   </tfoot>
@@ -796,7 +801,9 @@ export function PaymentPlanCalculator({
         onClose={() => setPdfOpen(false)}
         project={project}
         collection={collection}
-        downPaymentPct={downPaymentPct}
+        downPaymentPct={dpMode === 'auto' ? computedDpPct : downPaymentPct}
+        dpMode={dpMode}
+        selectedUnitKey={selectedUnit ? unitKey(selectedUnit) : null}
         possessionPct={effectivePossessionPct}
         loanIncluded={loanIncluded}
         installments={installmentsForEngine}

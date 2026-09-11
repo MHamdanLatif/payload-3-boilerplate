@@ -952,14 +952,14 @@ export interface FeaturedProject {
            */
           possessionPct?: number | null;
           /**
-           * One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as LOCKED on first load so the table matches the builder plan exactly; the buyer can unlock to recompute.
+           * One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as entered amounts on first load so the table matches the builder plan exactly; the buyer can choose Calculate for me to recompute.
            */
           installments?:
             | {
                 frequency: 'Monthly' | 'Quarterly' | 'HalfYearly';
                 amount: number;
                 /**
-                 * When checked, the calculator opens with this value locked (fixed). Buyer can unlock to let the engine recompute.
+                 * When checked, the calculator opens with this entered amount. Buyer can choose Calculate for me to recompute.
                  */
                 locked?: boolean | null;
                 id?: string | null;
@@ -1541,7 +1541,7 @@ export interface PaymentPlanLead {
   downPaymentAmount: number;
   possessionPct: number;
   greyStructureSharePct: number;
-  installmentFrequency: 'Monthly' | 'Quarterly';
+  installmentFrequency: 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Mixed' | 'None';
   totalDurationMonths: number;
   /**
    * True if the buyer toggled "Include Expected Loan?" on this plan.

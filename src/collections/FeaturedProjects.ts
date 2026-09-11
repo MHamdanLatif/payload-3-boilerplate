@@ -451,7 +451,7 @@ export const FeaturedProjects: CollectionConfig = {
               dbName: 'fp_unit_default_inst',
               admin: {
                 description:
-                  'One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as LOCKED on first load so the table matches the builder plan exactly; the buyer can unlock to recompute.',
+                  'One row per frequency the builder plan uses. e.g. Monthly @ PKR 38,375 + Half-Yearly @ PKR 501,000. The calculator pre-fills these as entered amounts on first load so the table matches the builder plan exactly; the buyer can choose Calculate for me to recompute.',
               },
               fields: [
                 {
@@ -472,11 +472,12 @@ export const FeaturedProjects: CollectionConfig = {
                 },
                 {
                   name: 'locked',
+                  label: 'Keep builder amount',
                   type: 'checkbox',
                   defaultValue: true,
                   admin: {
                     description:
-                      'When checked, the calculator opens with this value locked (fixed). Buyer can unlock to let the engine recompute.',
+                      'When checked, the calculator opens with this entered amount. Buyer can choose Calculate for me to recompute.',
                   },
                 },
               ],

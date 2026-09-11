@@ -1,3 +1,4 @@
+import { verifyPaymentPlans } from './payment-plans'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import {
@@ -173,7 +174,7 @@ async function verifySeededPosts(page: Page) {
   }
 }
 
-test('supports onboarding, seeding, and comment moderation', async ({ browser, page }) => {
+test('supports onboarding, seeding, and comment moderation', async ({ browser, page }, testInfo) => {
   await createFirstAdmin(page)
   await seedDatabase(page)
 
@@ -211,6 +212,8 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
       },
     )
     .toBe(1)
+
+  await verifyPaymentPlans(page, publicPage, testInfo)
 
   if (manualReviewMode) {
     await publicPage.bringToFront()
