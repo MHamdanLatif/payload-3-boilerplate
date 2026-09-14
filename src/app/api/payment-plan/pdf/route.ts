@@ -4,13 +4,9 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 import type { FeaturedProject, Media } from '@/payload-types'
-import { formatPkr, smallestUnit } from '@/lib/featured-projects'
+import { formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
 import { parseCookies, touchColumns } from '@/lib/lead-capture'
-import {
-  ATTRIBUTION_COOKIE,
-  acquisitionSourceFromTouch,
-  parseAttribution,
-} from '@/lib/attribution'
+import { ATTRIBUTION_COOKIE, acquisitionSourceFromTouch, parseAttribution } from '@/lib/attribution'
 import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
 import { sendCapiEvent } from '@/lib/meta-capi'
 
@@ -30,7 +26,6 @@ import {
 } from '@/lib/payment-plan'
 import {
   DEFAULT_PAYMENT_HEADS,
-  frequencyFromHeadName,
   type PaymentHead,
   type PaymentHeadCategory,
 } from '@/lib/payment-heads'
@@ -38,7 +33,7 @@ import { PaymentPlanDocument, composeDisclaimer } from '@/components/projects/Pa
 import { renderToBuffer } from '@react-pdf/renderer'
 import { getServerSideURL } from '@/utilities/getURL'
 
-const ENGINE_VERSION = 'v2'
+const ENGINE_VERSION = 'v3'
 
 type ProjectHead = NonNullable<NonNullable<FeaturedProject['paymentPlan']>['paymentHeads']>[number]
 
@@ -78,6 +73,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body))
+    return NextResponse.json({ error: 'Expected a JSON object' }, { status: 400 })
+  if (
+    ![body.downPaymentPct, body.possessionPct].every(
+      (v) => typeof v === 'number' && Number.isFinite(v),
+    )
+  )
+    return NextResponse.json(
+      { error: 'Payment percentages must be finite numbers' },
+      { status: 400 },
+    )
+  if (body.dpMode !== undefined && body.dpMode !== 'fixed' && body.dpMode !== 'auto')
+    return NextResponse.json({ error: 'Invalid down payment mode' }, { status: 400 })
+  if (
+    !Array.isArray(body.installments) ||
+    body.installments.length > 3 ||
+    body.installments.some(
+      (r) =>
+        !r ||
+        typeof r !== 'object' ||
+        !['Monthly', 'Quarterly', 'HalfYearly'].includes(r.kind) ||
+        typeof r.active !== 'boolean' ||
+        typeof r.locked !== 'boolean' ||
+        typeof r.valuePerPeriod !== 'number' ||
+        !Number.isFinite(r.valuePerPeriod) ||
+        r.valuePerPeriod < 0,
+    ) ||
+    new Set(body.installments.map((r) => r.kind)).size !== body.installments.length
+  )
+    return NextResponse.json({ error: 'Invalid installment amounts' }, { status: 400 })
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
   const projectSlug = typeof body.projectSlug === 'string' ? body.projectSlug.trim() : ''
@@ -90,16 +115,13 @@ export async function POST(req: Request) {
   const downPaymentPct = Number(body.downPaymentPct)
   const possessionPctRaw = Number(body.possessionPct)
   const loanIncluded = Boolean(body.loanIncluded)
-  const selectedUnitType =
-    typeof body.selectedUnitType === 'string' ? body.selectedUnitType : null
+  const selectedUnitType = typeof body.selectedUnitType === 'string' ? body.selectedUnitType : null
   const selectedUnitName =
     typeof body.selectedUnitName === 'string' && body.selectedUnitName.trim()
       ? body.selectedUnitName.trim()
       : null
   const buyerEnabledHeadNames = Array.isArray(body.buyerEnabledHeadNames)
-    ? (body.buyerEnabledHeadNames as unknown[]).filter(
-        (x): x is string => typeof x === 'string',
-      )
+    ? (body.buyerEnabledHeadNames as unknown[]).filter((x): x is string => typeof x === 'string')
     : null
   const installments = parseInstallments(body)
 
@@ -110,7 +132,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 400 })
   }
   if (!isValidPhoneNumber(phone, 'PK')) {
-    return NextResponse.json({ ok: false, error: 'Please enter a valid phone number' }, { status: 400 })
+    return NextResponse.json(
+      { ok: false, error: 'Please enter a valid phone number' },
+      { status: 400 },
+    )
   }
   if (!projectSlug) {
     return NextResponse.json({ ok: false, error: 'projectSlug is required' }, { status: 400 })
@@ -144,17 +169,21 @@ export async function POST(req: Request) {
 
   // ── Unit resolution ─────────────────────────────────────────
   const unitTypes = project.unitTypes ?? []
-  const selectedUnit = selectedUnitType
-    ? (selectedUnitName
-        ? unitTypes.find((u) => u.type === selectedUnitType && u.name === selectedUnitName)
-        : null) ??
-      unitTypes.find((u) => u.type === selectedUnitType) ??
-      null
-    : null
+  const candidates = unitTypes.filter(
+    (u) => u.type === selectedUnitType && (!selectedUnitName || u.name === selectedUnitName),
+  )
+  const selectedUnit =
+    typeof body.selectedUnitKey === 'string'
+      ? unitTypes.find((u) => unitKey(u) === body.selectedUnitKey)
+      : candidates.length === 1
+        ? candidates[0]
+        : null
+  if (unitTypes.length && !selectedUnit)
+    return NextResponse.json({ error: 'Select a valid, unambiguous unit' }, { status: 400 })
 
   const unitPrice =
-    selectedUnit?.price ??
     planConfig?.priceOverride ??
+    selectedUnit?.price ??
     project.startingPrice ??
     smallestUnit(project)?.price ??
     0
@@ -182,24 +211,7 @@ export async function POST(req: Request) {
   // Server-side enforcement of admin-visibility:
   //   • Possession slider can only carry value if Possession head is admin-enabled.
   //   • Only frequencies whose Time-Based head is admin-enabled count.
-  const possessionAdminEnabled = projectHeads.some(
-    (h) => h.enabled && h.category === 'Possession',
-  )
-  const possessionPct = !possessionAdminEnabled
-    ? 0
-    : Number.isFinite(possessionPctRaw)
-      ? Math.min(5, Math.max(0, possessionPctRaw))
-      : Math.min(5, planConfig?.possessionPct ?? 5)
-
-  const adminAvailableFrequencies = new Set<string>()
-  for (const h of projectHeads) {
-    if (!h.enabled || h.category !== 'Time-Based') continue
-    const k = frequencyFromHeadName(h.name)
-    if (k) adminAvailableFrequencies.add(k)
-  }
-  const filteredInstallments = installments.filter((f) =>
-    adminAvailableFrequencies.has(f.kind),
-  )
+  const possessionPct = possessionPctRaw
 
   const unitDisplayLabel = selectedUnit
     ? selectedUnit.name
@@ -215,16 +227,18 @@ export async function POST(req: Request) {
     totalDurationMonths,
     downPaymentPct,
     possessionPct,
-    installments: filteredInstallments,
+    installments,
     heads: effectiveHeads,
+    availableHeads: projectHeads,
+    dpMode: body.dpMode === 'auto' ? 'auto' : 'fixed',
+    downPaymentMinPct: planConfig?.downPaymentMinPct ?? 10,
+    downPaymentMaxPct: planConfig?.downPaymentMaxPct ?? 30,
+    possessionCap: planConfig?.possessionPct ?? 5,
   }
   const plan = computePlan(computeInput)
 
   if (plan.warnings.length > 0) {
-    return NextResponse.json(
-      { ok: false, error: plan.warnings.join(' · ') },
-      { status: 400 },
-    )
+    return NextResponse.json({ ok: false, error: plan.warnings.join(' · ') }, { status: 400 })
   }
 
   // ── Resolve assets ──────────────────────────────────────────
@@ -244,6 +258,30 @@ export async function POST(req: Request) {
     year: 'numeric',
   })
 
+  let pdfBuffer: Buffer
+  try {
+    pdfBuffer = await renderToBuffer(
+      PaymentPlanDocument({
+        projectTitle: project.title,
+        projectLocation: project.location ?? 'Karachi',
+        builderName: project.builderName ?? 'Lateef Properties',
+        selectedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? null,
+        totalDurationMonths,
+        buyer: { name, phone },
+        plan,
+        loanIncluded,
+        loanAmount: unitLoanAmount,
+        lateefLogoUrl,
+        projectLogoUrl,
+        disclaimer,
+        generatedAt,
+      }),
+    )
+  } catch (e) {
+    console.error('[payment-plan/pdf] render failed:', (e as Error).message)
+    return NextResponse.json({ ok: false, error: 'PDF render failed' }, { status: 500 })
+  }
+
   // ── 5a. Audit-log row ───────────────────────────────────────
   // Awaited on purpose: a floating promise can be dropped when the container is
   // recycled before it settles, silently losing the lead record. A failure here
@@ -261,15 +299,17 @@ export async function POST(req: Request) {
         projectTitleSnapshot: project.title,
         selectedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? null,
         totalPrice: plan.totals.effectivePrice,
-        downPaymentPct: plan.totals.downPayment / plan.totals.effectivePrice * 100,
+        downPaymentPct: (plan.totals.downPayment / plan.totals.effectivePrice) * 100,
         downPaymentAmount: plan.totals.downPayment,
         possessionPct,
-        greyStructureSharePct: 50, // hard 50/50 in v2
+        greyStructureSharePct:
+          plan.totals.milestoneTotal > 0
+            ? (plan.totals.greyTotal / plan.totals.milestoneTotal) * 100
+            : 0,
         installmentFrequency:
-          plan.cadence.activeFrequencies[0] === 'HalfYearly'
-            ? 'Monthly'
-            : (plan.cadence.activeFrequencies[0] as 'Monthly' | 'Quarterly' | undefined) ??
-              'Monthly',
+          plan.cadence.activeFrequencies.length > 1
+            ? 'Mixed'
+            : (plan.cadence.activeFrequencies[0] ?? 'None'),
         totalDurationMonths,
         loanIncluded,
         loanAmount: loanIncluded ? unitLoanAmount : null,
@@ -385,7 +425,7 @@ export async function POST(req: Request) {
   // No `value` is sent on purpose. The plan total is not revenue, and feeding it
   // to Meta as one would corrupt value-based optimisation and any ROAS figure.
   const capiEventName = process.env.META_CAPI_PAYMENT_PLAN_EVENT || 'PaymentPlanDownload'
-  void sendCapiEvent({
+  await sendCapiEvent({
     eventName: capiEventName,
     eventId,
     phone,
@@ -419,7 +459,7 @@ export async function POST(req: Request) {
   // click, and a second browser event would add noise without adding a signal.
   // Its own event id, since deduplication is per event-name-and-id pair.
   if (!alreadyALead) {
-    void sendCapiEvent({
+    await sendCapiEvent({
       eventName: process.env.META_CAPI_LEAD_EVENT || 'Lead',
       eventId: crypto.randomUUID(),
       phone,
@@ -447,6 +487,7 @@ export async function POST(req: Request) {
     try {
       const res = await fetch(privyrUrl, {
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
@@ -463,7 +504,7 @@ export async function POST(req: Request) {
           loanIncluded,
           loanAmount: loanIncluded ? unitLoanAmount : null,
           totalPrice: plan.totals.effectivePrice,
-          downPaymentPct,
+          downPaymentPct: (plan.totals.downPayment / plan.totals.effectivePrice) * 100,
           possessionPct,
           downPaymentAmount: plan.totals.downPayment,
           installmentFrequencies: plan.cadence.activeFrequencies,
@@ -476,9 +517,7 @@ export async function POST(req: Request) {
         }),
       })
       if (!res.ok) {
-        console.warn(
-          `[payment-plan/pdf] Privyr rejected lead: ${res.status} ${res.statusText}`,
-        )
+        console.warn(`[payment-plan/pdf] Privyr rejected lead: ${res.status} ${res.statusText}`)
       }
     } catch (e) {
       console.warn('[payment-plan/pdf] Privyr forward failed:', (e as Error).message)
@@ -486,32 +525,6 @@ export async function POST(req: Request) {
   }
 
   // ── 6. Render PDF ───────────────────────────────────────────
-  let pdfBuffer: Buffer
-  try {
-    pdfBuffer = await renderToBuffer(
-      PaymentPlanDocument({
-        projectTitle: project.title,
-        projectLocation: project.location ?? 'Karachi',
-        builderName: project.builderName ?? 'Lateef Properties',
-        selectedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? null,
-        totalDurationMonths,
-        buyer: { name, phone },
-        plan,
-        loanIncluded,
-        loanAmount: unitLoanAmount,
-        lateefLogoUrl,
-        projectLogoUrl,
-        disclaimer,
-        generatedAt,
-      }),
-    )
-  } catch (e) {
-    console.error('[payment-plan/pdf] render failed:', (e as Error).message)
-    return NextResponse.json(
-      { ok: false, error: 'PDF render failed' },
-      { status: 500 },
-    )
-  }
 
   const filename = `Lateef-${project.slug ?? 'project'}-PaymentPlan.pdf`
   return new Response(pdfBuffer as unknown as BodyInit, {

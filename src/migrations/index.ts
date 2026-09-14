@@ -1,3 +1,4 @@
+import * as paymentPlanFrequency from './20260911_000000_payment_plan_frequency'
 import * as migration_20241125_222020_initial from './20241125_222020_initial';
 import * as migration_20241214_124128 from './20241214_124128';
 import * as migration_20260222_003500_payload_3_77_compat from './20260222_003500_payload_3_77_compat';
@@ -84,4 +85,5 @@ export const migrations = [
     down: migration_20260903_000000_marketed_projects.down,
     name: '20260903_000000_marketed_projects',
   },
+  { up: paymentPlanFrequency.up, down: paymentPlanFrequency.down, name: '20260911_000000_payment_plan_frequency' },
 ];

@@ -9,7 +9,7 @@ import '@/styles/phone-input.css'
 import { Check, Loader2, X } from 'lucide-react'
 import type { PaymentPlanSource } from '@/lib/project-shape'
 import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
-import type { InstallmentInput } from '@/lib/payment-plan'
+import type { DownPaymentMode, InstallmentInput } from '@/lib/payment-plan'
 import { formatPkr } from '@/lib/featured-projects'
 import { cn } from '@/utilities/cn'
 import { trackLead, trackMetaEvent } from '@/lib/analytics'
@@ -28,6 +28,8 @@ type Props = {
   onClose: () => void
   project: PaymentPlanSource
   collection?: PaymentPlanCollection
+  dpMode: DownPaymentMode
+  selectedUnitKey: string | null
   downPaymentPct: number
   possessionPct: number
   loanIncluded: boolean
@@ -44,6 +46,8 @@ export function PaymentPlanPdfModal({
   project,
   collection = 'featured-projects',
   downPaymentPct,
+  dpMode,
+  selectedUnitKey,
   possessionPct,
   loanIncluded,
   installments,
@@ -88,8 +92,7 @@ export function PaymentPlanPdfModal({
     e.preventDefault()
     const next: typeof errors = {}
     if (!name.trim() || name.trim().length < 2) next.name = 'Please enter your name'
-    if (!phone || !isValidPhoneNumber(phone))
-      next.phone = 'Please enter a valid phone number'
+    if (!phone || !isValidPhoneNumber(phone)) next.phone = 'Please enter a valid phone number'
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
@@ -105,6 +108,8 @@ export function PaymentPlanPdfModal({
           name: name.trim(),
           phone,
           downPaymentPct,
+          dpMode,
+          selectedUnitKey,
           possessionPct,
           loanIncluded,
           installments,
@@ -193,10 +198,7 @@ export function PaymentPlanPdfModal({
                 <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gold">
                   Download Plan
                 </p>
-                <p
-                  id="ppm-title"
-                  className="mt-1 font-serif text-lg leading-tight text-brand-deep"
-                >
+                <p id="ppm-title" className="mt-1 font-serif text-lg leading-tight text-brand-deep">
                   {project.title}
                 </p>
               </div>
@@ -278,9 +280,7 @@ export function PaymentPlanPdfModal({
                         errors.name && 'border-red-400',
                       )}
                     />
-                    {errors.name && (
-                      <span className="text-xs text-red-500">{errors.name}</span>
-                    )}
+                    {errors.name && <span className="text-xs text-red-500">{errors.name}</span>}
                   </label>
 
                   <label className="flex flex-col gap-1.5">
@@ -296,9 +296,7 @@ export function PaymentPlanPdfModal({
                       className="PhoneInput"
                       countryCallingCodeEditable={false}
                     />
-                    {errors.phone && (
-                      <span className="text-xs text-red-500">{errors.phone}</span>
-                    )}
+                    {errors.phone && <span className="text-xs text-red-500">{errors.phone}</span>}
                   </label>
 
                   {serverError && (
