@@ -37,10 +37,6 @@ export default defineConfig({
       USE_LOCAL_SEED_MEDIA: 'true',
       PAYLOAD_SECRET: payloadSecret,
       NEXT_PUBLIC_SERVER_URL: baseURL,
-      // Test leads must never notify owners or send production conversion events.
-      NTFY_TOPIC: '',
-      META_CAPI_ACCESS_TOKEN: '',
-      PRIVYR_WEBHOOK_URL: '',
     },
     timeout: 180000,
   },
