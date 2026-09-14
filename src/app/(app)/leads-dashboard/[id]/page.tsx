@@ -22,6 +22,7 @@ const fmtStamp = (d: string | null | undefined) =>
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
+          timeZone: 'Asia/Karachi',
         })
         .replace(',', ' -')
     : '—'
@@ -141,7 +142,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
           <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-brand-deep/10">
-                <th className={th}>Date</th>
+                <th className={th}>Date (PKT, UTC+5)</th>
                 <th className={th}>Details</th>
                 <th className={th}>Platform</th>
               </tr>

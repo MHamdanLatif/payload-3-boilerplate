@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { createHmac } from 'node:crypto'
 
 import {
   adminEmail,
@@ -6,9 +7,43 @@ import {
   commentText,
   seededPosts,
   targetPost,
+  payloadSecret,
 } from './env'
 
 const manualReviewMode = process.env.E2E_MANUAL_REVIEW === 'true'
+
+async function verifyCrmActions(page: Page) {
+  const created = await page.request.post('/api/leads', {
+    data: { name: 'CRM timezone check', phone: '03001234567', sourceKind: 'listing', brochureSentAt: '2026-09-13T20:30:00.000Z' },
+  })
+  expect(created.ok()).toBeTruthy()
+  const { doc: lead } = await created.json()
+  const actionUrl = (action: string) => {
+    const sig = createHmac('sha256', payloadSecret).update(`${action}:${lead.id}`).digest('base64url').slice(0, 32)
+    return `/api/leads/${lead.id}/whatsapp?sig=${sig}`
+  }
+  expect((await page.request.get(actionUrl('send-brochure'), { maxRedirects: 0 })).status()).toBe(403)
+  expect((await page.request.get(`/api/leads/${lead.id}/whatsapp`, { maxRedirects: 0 })).status()).toBe(403)
+  for (const status of ['unqualified', 'details-sent', 'engaged', 'contacted', 'qualified', 'closed-won', 'junk', 'lost', 'nurture', 'unresponsive', 'not-a-fit']) {
+    expect((await page.request.patch(`/api/leads/${lead.id}`, { data: { status } })).ok()).toBeTruthy()
+    const response = await page.request.get(actionUrl('whatsapp'), { maxRedirects: 0, headers: { Cookie: '' } })
+    expect(response.status()).toBe(302)
+    expect(response.headers().location).toBe('https://wa.me/923001234567')
+    const saved = await (await page.request.get(`/api/leads/${lead.id}?depth=0`)).json()
+    expect(saved.status).toBe(['unqualified', 'details-sent', 'engaged'].includes(status) ? 'contacted' : status)
+    expect(saved.brochureSentAt).toBe('2026-09-13T20:30:00.000Z')
+    expect(saved.brochureSendStatus).toBeFalsy()
+  }
+  await page.goto(`/leads-dashboard/${lead.id}`)
+  await expect(page.getByRole('columnheader', { name: 'Date (PKT, UTC+5)', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /14 Sept 2026 - 01:30 am/i })).toBeVisible()
+  await page.goto('/leads-dashboard')
+  await expect(page.getByText('Dates and filters use Pakistan time (PKT, UTC+5).')).toBeVisible()
+  const csv = await (await page.request.get('/leads-dashboard/export')).text()
+  expect(csv).toContain('Brochure Sent (PKT)')
+  expect(csv).toContain('14/09/2026, 01:30:00')
+  expect((await page.request.delete(`/api/leads/${lead.id}`)).ok()).toBeTruthy()
+}
 
 async function maybeFill(page: Page, label: RegExp, value: string) {
   const field = page.getByLabel(label)
@@ -176,6 +211,7 @@ async function verifySeededPosts(page: Page) {
 test('supports onboarding, seeding, and comment moderation', async ({ browser, page }) => {
   await createFirstAdmin(page)
   await seedDatabase(page)
+  await verifyCrmActions(page)
 
   const publicContext = await browser.newContext()
   const publicPage = await publicContext.newPage()

@@ -110,6 +110,12 @@ If you prefer `npm`, you can run:
 - **Database**: PostgreSQL
 - **Node.js**: Compatible version as specified in `package.json`
 
+### CRM notifications and reporting
+
+New-lead NTFY alerts offer **Send brochure** and **WhatsApp** actions when the lead has the required details. WhatsApp opens a blank chat and marks Uncontacted, Details Sent, or Engaged leads as Contacted; later stages and terminal outcomes stay unchanged. Opening chat does not confirm a message was sent or answered, and does not record a brochure send. Both notification actions use signed links without requiring an admin login.
+
+The leads dashboard, activity timestamps, CSV timestamps, and date filters use Pakistan time (PKT, UTC+5). The e2e suite checks CRM chat actions and timezone rendering with owner notifications, CAPI, and Privyr disabled.
+
 ## Useful Resources
 
 - **Blog post about this template**: [Read here](https://funkyton.com/payload-cms/)

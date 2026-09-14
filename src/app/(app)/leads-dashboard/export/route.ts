@@ -31,7 +31,7 @@ function csvCell(value: unknown): string {
 }
 
 const fmtDateTime = (d: string | null | undefined) =>
-  d ? new Date(d).toISOString().replace('T', ' ').slice(0, 16) : ''
+  d ? new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Karachi', hour12: false }) : ''
 
 /** ms -> "3m 07s", matching how the dashboard renders it. */
 const fmtDuration = (ms: number) => {
@@ -54,10 +54,9 @@ export async function GET(req: Request) {
   const source = sp.get('source')
 
   const and: Where[] = []
-  if (from) and.push({ createdAt: { greater_than_equal: new Date(from).toISOString() } })
+  if (from) and.push({ createdAt: { greater_than_equal: new Date(`${from}T00:00:00+05:00`).toISOString() } })
   if (to) {
-    const end = new Date(to)
-    end.setHours(23, 59, 59, 999)
+    const end = new Date(`${to}T23:59:59.999+05:00`)
     and.push({ createdAt: { less_than_equal: end.toISOString() } })
   }
   if (status && STATUSES.includes(status)) and.push({ status: { equals: status } })
@@ -97,8 +96,8 @@ export async function GET(req: Request) {
     'Name', 'Phone', 'Email', 'Status', 'Reason', 'Acquisition Source',
     'Conversion Surface', 'First Touch Campaign', 'First Touch Content',
     'Latest Touch Source', 'Legacy Source Tag', 'Project', 'Interested Unit',
-    'Property Type', 'Budget', 'Created', 'Brochure Sent',
-    'Brochure Opened', 'Opens', 'Time on Page', 'Notes',
+    'Property Type', 'Budget', 'Created (PKT)', 'Brochure Sent (PKT)',
+    'Brochure Opened (PKT)', 'Opens', 'Time on Page', 'Notes',
   ]
 
   const rows = leads.map((l) => [

@@ -19,7 +19,7 @@ type SP = { from?: string; to?: string; status?: string; source?: string }
 const STATUSES = LEAD_STATUSES
 
 const fmtDate = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
+  d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'Asia/Karachi' }) : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
 
 export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
@@ -30,10 +30,9 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
 
   const sp = await searchParams
   const and: Where[] = []
-  if (sp.from) and.push({ createdAt: { greater_than_equal: new Date(sp.from).toISOString() } })
+  if (sp.from) and.push({ createdAt: { greater_than_equal: new Date(`${sp.from}T00:00:00+05:00`).toISOString() } })
   if (sp.to) {
-    const to = new Date(sp.to)
-    to.setHours(23, 59, 59, 999)
+    const to = new Date(`${sp.to}T23:59:59.999+05:00`)
     and.push({ createdAt: { less_than_equal: to.toISOString() } })
   }
   if (sp.status && (STATUSES as readonly string[]).includes(sp.status)) {
@@ -122,6 +121,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
       <div className="mx-auto max-w-6xl">
         <h1 className="font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">Leads Dashboard</h1>
         <p className="mt-1 text-sm text-brand-deep/60">Native CRM reporting — leads, sources, qualification funnel & brochure opens.</p>
+        <p className="mt-1 text-xs text-brand-deep/55">Dates and filters use Pakistan time (PKT, UTC+5).</p>
 
         {/* Filters */}
         <form method="get" className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-deep/10 bg-white p-4">

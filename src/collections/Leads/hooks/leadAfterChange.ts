@@ -66,12 +66,16 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
   // the lead can actually be messaged — a button that leads nowhere is worse
   // than no button.
   const canSend = Boolean(doc.phone && doc.brochureId)
-  const actions = canSend
+  const sendAction = canSend
     ? `view, Send brochure, ${base}/api/leads/${doc.id}/send-brochure?sig=${signLeadAction(
         doc.id,
         'send-brochure',
       )}, clear=true`
     : undefined
+  const chatAction = doc.phone
+    ? `view, WhatsApp, ${base}/api/leads/${doc.id}/whatsapp?sig=${signLeadAction(doc.id, 'whatsapp')}, clear=true`
+    : undefined
+  const actions = [sendAction, chatAction].filter(Boolean).join('; ') || undefined
 
   // Free owner alert via ntfy (replaces the WhatsApp Cloud API notification).
   const res = await sendNtfy({
