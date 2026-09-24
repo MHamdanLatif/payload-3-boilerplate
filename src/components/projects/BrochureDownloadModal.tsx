@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import '@/styles/phone-input.css'
-import { Check, Download, Loader2, X } from 'lucide-react'
+import { Check, MessageCircle, Loader2, X } from 'lucide-react'
 import { cn } from '@/utilities/cn'
 import { trackLead } from '@/lib/analytics'
 
@@ -107,8 +107,7 @@ export function BrochureDownloadModal({
         // WhatsApp together with the personalised project pack, so the lead ends
         // up in a conversation with an advisor rather than alone with a PDF.
       setDone(true)
-      // Confirmed success (lead recorded + brochure served). Labeled as a
-      // download so it can be separated from enquiry leads in GA4.
+      // Track the recorded request; an advisor sends the brochure separately.
       trackLead({ form_name: 'project_details_whatsapp', project: projectSlug || undefined })
     } catch (e) {
       setServerError((e as Error).message || 'Network error.')
@@ -146,7 +145,7 @@ export function BrochureDownloadModal({
             <div className="flex items-start justify-between border-b border-brand-deep/10 px-6 py-5">
               <div>
                 <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gold">
-                  Get Project Details
+                  Get brochure
                 </p>
                 <p
                   id="brochure-modal-title"
@@ -171,11 +170,10 @@ export function BrochureDownloadModal({
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold/15 text-gold">
                     <Check className="h-6 w-6" />
                   </div>
-                  <p className="mt-4 font-serif text-xl text-brand-deep">Sending it to your WhatsApp.</p>
+                  <p className="mt-4 font-serif text-xl text-brand-deep">Request received.</p>
                   <p className="mt-2 text-sm text-brand-deep/65">
-                      An advisor will send the brochure and a personalised project pack to
-                      your WhatsApp, typically within 15 minutes.
-                    </p>
+                    An advisor will send your brochure.
+                  </p>
                   <button
                     type="button"
                     onClick={onClose}
@@ -242,12 +240,12 @@ export function BrochureDownloadModal({
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Preparing…
+                        Sending request…
                       </>
                     ) : (
                       <>
-                        <Download className="h-4 w-4" />
-                        Download Brochure
+                        <MessageCircle className="h-4 w-4 shrink-0" />
+                        Request brochure on WhatsApp
                       </>
                     )}
                   </button>

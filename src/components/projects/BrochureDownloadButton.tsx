@@ -29,7 +29,7 @@ export function BrochureDownloadButton({ brochureUrl, projectTitle, projectSlug 
         className="group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-deep px-6 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold hover:text-brand-deep"
       >
         <MessageCircle className="h-4 w-4" />
-        Get Project Details on WhatsApp
+        Get brochure
       </button>
       <BrochureDownloadModal
         open={open}
