@@ -114,7 +114,7 @@ If you prefer `npm`, you can run:
 
 New-lead NTFY alerts offer **Send brochure** and **WhatsApp** actions when the lead has the required details. WhatsApp opens a blank chat and marks Uncontacted, Details Sent, or Engaged leads as Contacted; later stages and terminal outcomes stay unchanged. Opening chat does not confirm a message was sent or answered, and does not record a brochure send. Both notification actions use signed links without requiring an admin login.
 
-The leads dashboard, activity timestamps, CSV timestamps, and date filters use Pakistan time (PKT, UTC+5). The e2e suite checks CRM chat actions and timezone rendering with owner notifications, CAPI, and Privyr disabled.
+The leads dashboard, activity timestamps, CSV timestamps, and date filters use Pakistan time (PKT, UTC+5). The e2e suite checks CRM chat actions and timezone rendering with owner notifications and CAPI disabled.
 
 ## Useful Resources
 
@@ -152,7 +152,7 @@ Open **Payment Plan Studio** from the CMS dashboard, or visit `/internal/payment
 4. Edit payment names, amounts, counts and timing. **Enter an amount** preserves that amount; **Calculate for me** allocates the remainder across selected payments. Down payment and possession use PKR amounts in the studio.
 5. Review the remaining balance and export the shared branded PDF. Export is blocked for invalid or unbalanced plans. Optional buyer details appear on the PDF.
 
-Drafts are held in the current browser tab only, and are lost on reload or navigation. Switching project/unit asks before replacing the draft. Studio changes do not modify public project prices or builder defaults. Studio exports do not write leads or send advertising/Privyr events. Duration is descriptive; existing payment dates and counts are edited explicitly. Month 0 means signing, or construction completion for an undated milestone.
+Drafts are held in the current browser tab only, and are lost on reload or navigation. Switching project/unit asks before replacing the draft. Studio changes do not modify public project prices or builder defaults. Studio exports do not write leads or send advertising events. Duration is descriptive; existing payment dates and counts are edited explicitly. Month 0 means signing, or construction completion for an undated milestone.
 
 The public calculator uses the same plain-language amount choices. Its existing `locked` storage field is retained for compatibility and means an entered amount; there are no lock/unlock controls. Preview and PDF share the selected unit identity, calculation mode and project limits. Calculated payments can differ by a paisa for exact rounding; entered amounts are preserved. With no calculated installment or milestone available, an unallocated balance is reported instead of silently changing down payment.
 
@@ -176,4 +176,6 @@ corepack pnpm exec tsc --noEmit --incremental false
 corepack pnpm test:e2e
 ```
 
-The unit suite covers allocation invariants, rounding, project constraints, Auto DP PDF parity and separate charges. The Docker/PostgreSQL Playwright suite includes the admin-only route, price adjustments, PDF download, public amount choices and stable unit selection alongside onboarding, seeding and comments. It requires Docker and Playwright Chromium (`corepack pnpm exec playwright install chromium`). Test-server environment overrides disable Privyr, Meta CAPI and ntfy delivery.
+The unit suite covers allocation invariants, rounding, project constraints, Auto DP PDF parity and separate charges. The Docker/PostgreSQL Playwright suite includes the admin-only route, price adjustments, PDF download, public amount choices and stable unit selection alongside onboarding, seeding and comments. It requires Docker and Playwright Chromium (`corepack pnpm exec playwright install chromium`). Test-server environment overrides disable Meta CAPI and ntfy delivery.
+
+Website enquiries and payment-plan PDF leads are stored in the native CRM. Privyr forwarding has been removed, including from PDF requests. `PRIVYR_WEBHOOK_URL` is no longer read and can be removed from deployment settings. Existing Privyr history fields are retained but hidden in the admin.

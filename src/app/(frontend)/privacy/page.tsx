@@ -114,7 +114,7 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Lead management and customer relationship management (CRM)
                 </strong>
-                — we route enquiries to our CRM (Privyr) so the right advisor follows
+                — we route enquiries to our own CRM so the right advisor follows
                 up.
               </li>
               <li>
@@ -238,10 +238,6 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul>
               <li>
-                <strong>Privyr</strong> — our CRM, which receives lead submissions for
-                advisor follow-up.
-              </li>
-              <li>
                 <strong>Railway, Inc.</strong> — our cloud hosting and database
                 provider.
               </li>
@@ -269,7 +265,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2>7. International Transfers</h2>
             <p>
-              Some of our service providers (Meta, Google, Railway, Privyr) operate
+              Some of our service providers (Meta, Google, Railway) operate
               servers outside Pakistan and the UAE, including in the United States,
               the European Union, and Singapore. Where personal information is
               transferred internationally, we rely on the service providers&rsquo;

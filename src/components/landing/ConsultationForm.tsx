@@ -78,7 +78,7 @@ export function ConsultationForm() {
     try {
       // Project field now stores a status preference (Pre-launch / Under-construction /
       // Ready-for-possession / Off-market / No preference), not a specific project name.
-      // We prepend it to notes for Privyr context.
+      // We prepend it to notes for CRM context.
       const projectPref = values.project || null
       const buyerNotes = values.notes.trim()
       const composedNotes = projectPref

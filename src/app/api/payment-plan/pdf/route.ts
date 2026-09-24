@@ -326,14 +326,8 @@ export async function POST(req: Request) {
   }
 
   // ── 5a-ii. The CRM lead row ─────────────────────────────────
-  // Downloading a custom payment plan is the highest-intent action on the site,
-  // and until now it produced no `leads` row at all — the buyer existed in the
-  // payment-plan audit log and in Privyr, but never appeared in the dashboard
-  // the team actually works from. 11 of 13 such leads had no CRM record.
-  //
-  // Deliberately NOT routed through handleLeadCapture: that would forward to
-  // Privyr a second time, and this route already does so below with the far
-  // richer plan payload.
+  // Record PDF enquiries in the native CRM alongside the detailed plan audit.
+  // This route handles its own plan-specific persistence and attribution.
   //
   // `sourceKind` names the KIND OF PAGE rather than the form, so seedLeadDefaults
   // stamps the project relationships and brochure assets exactly as a form
@@ -402,9 +396,6 @@ export async function POST(req: Request) {
         fbclid: fbclid ?? undefined,
         clientIp: clientIp ?? undefined,
         userAgent: req.headers.get('user-agent') ?? undefined,
-        // Privyr is forwarded separately below, with the full plan.
-        privyrForwarded: false,
-        privyrStatus: 'forwarded separately by payment-plan/pdf',
       },
       overrideAccess: true,
     })
@@ -475,53 +466,6 @@ export async function POST(req: Request) {
     }).catch((err) => {
       console.warn('[payment-plan/pdf] CAPI Lead failed:', (err as Error)?.message)
     })
-  }
-
-  // ── 5b. Privyr forward ──────────────────────────────────────
-  // Awaited so the request actually completes before the response is returned
-  // (a floating fetch can be dropped on container recycle). `fetch` only rejects
-  // on network errors, so we must also check `res.ok` — otherwise a 4xx from
-  // Privyr is silently swallowed. Neither case may block the buyer's PDF.
-  const privyrUrl = process.env.PRIVYR_WEBHOOK_URL
-  if (privyrUrl) {
-    try {
-      const res = await fetch(privyrUrl, {
-        method: 'POST',
-        signal: AbortSignal.timeout(10000),
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          phone,
-          sourceKind: 'payment-plan',
-          sourceName: project.title,
-          sourceSlug: project.slug,
-          placement: 'payment-plan-pdf',
-          projectName: project.title,
-          projectSlug: project.slug,
-          selectedUnitType: selectedUnit?.type ?? null,
-          selectedUnitName: selectedUnit?.name ?? null,
-          selectedUnitLabel: unitDisplayLabel,
-          loanIncluded,
-          loanAmount: loanIncluded ? unitLoanAmount : null,
-          totalPrice: plan.totals.effectivePrice,
-          downPaymentPct: (plan.totals.downPayment / plan.totals.effectivePrice) * 100,
-          possessionPct,
-          downPaymentAmount: plan.totals.downPayment,
-          installmentFrequencies: plan.cadence.activeFrequencies,
-          activeMilestones: [
-            ...plan.resolved.activeGreyHeadNames,
-            ...plan.resolved.activeFinishingHeadNames,
-          ],
-          engineVersion: ENGINE_VERSION,
-          timestamp: new Date().toISOString(),
-        }),
-      })
-      if (!res.ok) {
-        console.warn(`[payment-plan/pdf] Privyr rejected lead: ${res.status} ${res.statusText}`)
-      }
-    } catch (e) {
-      console.warn('[payment-plan/pdf] Privyr forward failed:', (e as Error).message)
-    }
   }
 
   // ── 6. Render PDF ───────────────────────────────────────────

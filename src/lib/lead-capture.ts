@@ -13,8 +13,6 @@ import {
   type Touch,
 } from '@/lib/attribution'
 
-const PRIVYR_TIMEOUT_MS = 5000
-
 /**
  * Flatten a Touch into the lead's prefixed columns.
  *
@@ -50,7 +48,7 @@ export function parseCookies(header: string | null): Record<string, string> {
 }
 
 /**
- * Lead webhook proxy + backup — shared implementation.
+ * Native CRM lead capture.
  *
  * Lives here rather than in a route file because it is served from TWO URLs
  * during a migration: the new /api/lead-capture, and the legacy /api/leads.
@@ -68,14 +66,8 @@ export function parseCookies(header: string | null): Record<string, string> {
  * 401s anonymous callers — losing real leads silently. Once traffic to the old
  * path has drained, delete src/app/api/leads/route.ts and Payload reclaims it.
  *
- * Lead webhook proxy + backup.
- *
- * All site forms POST here. Every submission is (1) saved to the `leads`
- * collection as a durable backup — visible in the admin, independent of the CRM
- * — and (2) forwarded to PRIVYR_WEBHOOK_URL. The request succeeds if EITHER the
- * backup was saved or Privyr accepted the lead, so a Privyr outage never loses
- * a lead or shows the visitor an error. `privyrForwarded` on the saved row
- * records whether the CRM accepted it, so the team can follow up on any misses.
+ * Site forms save directly to the leads collection in our native CRM.
+ * A request succeeds only after the lead has been saved.
  *
  * Core fields (every form sends these):
  *   - name       (required)
@@ -185,59 +177,8 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
     (typeof body.eventId === 'string' && body.eventId) || crypto.randomUUID()
   const metaAdName = typeof body.metaAdName === 'string' ? body.metaAdName : null
 
-  // ── 1. Forward to Privyr (bounded; capture the outcome for the backup row) ──
-  const url = process.env.PRIVYR_WEBHOOK_URL
-  let privyrOk = false
-  let privyrStatus = 'not-configured'
-  if (url) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), PRIVYR_TIMEOUT_MS)
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          name,
-          phone,
-          email: email || null,
-          sourceKind,
-          source,
-          placement,
-          notes,
-          timestamp: new Date().toISOString(),
-          sourceName,
-          sourceSlug,
-          // CRM-friendly aliases so Privyr can show "Project/Listing Name" columns.
-          projectName: sourceKind === 'project' ? sourceName : null,
-          projectSlug: sourceKind === 'project' ? sourceSlug : null,
-          listingName: sourceKind === 'listing' ? sourceName : null,
-          listingSlug: sourceKind === 'listing' ? sourceSlug : null,
-          locationName: sourceKind === 'location' ? sourceName : null,
-          locationSlug: sourceKind === 'location' ? sourceSlug : null,
-          // Sales routing depends on this, so it has to reach the CRM, not just
-          // the backup row.
-          interestedUnitType,
-          propertyType,
-          budget,
-          searchedParams,
-        }),
-      })
-      privyrOk = res.ok
-      privyrStatus = `${res.status} ${res.statusText}`.trim()
-      if (!res.ok) {
-        console.warn(`[api/leads] Privyr rejected (${sourceKind}/${sourceSlug ?? '-'}): ${privyrStatus}`)
-      }
-    } catch (e) {
-      privyrStatus = (e as Error).name === 'AbortError' ? 'timeout' : `error: ${(e as Error).message}`
-      console.warn('[api/leads] Privyr forward failed:', privyrStatus)
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-
-  // ── 2. Always save a backup row (independent of Privyr) ─────────────────────
-  let backedUp = false
+  // Save the lead to the native CRM before acknowledging the enquiry.
+  let saved = false
   try {
     const payload = await getPayload({ config })
     await payload.create({
@@ -270,19 +211,16 @@ export async function handleLeadCapture(req: Request): Promise<Response> {
         clientIp: clientIp ?? undefined,
         userAgent: userAgent ?? undefined,
         metaAdName: metaAdName ?? undefined,
-        privyrForwarded: privyrOk,
-        privyrStatus,
       },
       overrideAccess: true,
     })
-    backedUp = true
+    saved = true
   } catch (e) {
-    console.warn('[api/leads] backup persist failed:', (e as Error).message)
+    console.warn('[api/leads] CRM persist failed:', (e as Error).message)
   }
 
-  // Success if the lead landed anywhere. Only fail if BOTH the CRM and the
-  // backup failed — otherwise a Privyr outage would needlessly lose the lead.
-  if (!privyrOk && !backedUp) {
+  // Do not acknowledge an enquiry that was not saved in the CRM.
+  if (!saved) {
     return NextResponse.json({ ok: false, error: 'Could not record lead' }, { status: 502 })
   }
   // Server-side Lead, deduplicated against the browser pixel by event_id.

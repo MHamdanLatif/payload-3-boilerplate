@@ -1764,11 +1764,11 @@ export interface Lead {
   capiSentAt?: string | null;
   capiStatus?: string | null;
   /**
-   * Did Privyr accept this lead? (Legacy — being replaced by native CRM.)
+   * Historical forwarding result; Privyr is disconnected.
    */
   privyrForwarded?: boolean | null;
   /**
-   * Privyr response status or error, for diagnostics.
+   * Historical Privyr response; no new requests are sent.
    */
   privyrStatus?: string | null;
   updatedAt: string;

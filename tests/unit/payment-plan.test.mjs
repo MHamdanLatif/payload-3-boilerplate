@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import crypto from 'node:crypto'
 
-function load(file, deps = {}) {
+function load(file, deps = {}, globals = {}) {
   const module = { exports: {} }
   const code = ts.transpileModule(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), {
     compilerOptions: {
@@ -26,6 +26,7 @@ function load(file, deps = {}) {
     console,
     AbortSignal,
     process: { env: {} },
+    ...globals,
   })
   return module.exports
 }
@@ -256,6 +257,7 @@ test('admin export requires a CMS user and recalculates without recording leads'
 })
 
 test('public PDF uses Auto DP, rejects guardrail bypasses, renders before recording leads', async () => {
+  let externalRequests = 0
   let writes = 0,
     captured,
     fail = false
@@ -322,6 +324,9 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
       },
     },
     '@/utilities/getURL': { getServerSideURL: () => 'http://fixture.invalid' },
+  }, {
+    process: { env: { PRIVYR_WEBHOOK_URL: 'https://legacy-crm.invalid' } },
+    fetch: async () => { externalRequests++; return new Response(null, { status: 200 }) },
   })
   const body = {
     ...base,
@@ -334,6 +339,8 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
   }
   const request = (body) => ({ json: async () => body, headers: new Headers() })
   assert.equal((await POST(request(body))).status, 200)
+  assert.equal(writes, 2, 'PDF enquiries persist in both CRM and payment-plan audit')
+  assert.equal(externalRequests, 0, 'Old Privyr settings must not forward PDF leads')
   assert.equal(captured.plan.totals.downPayment, engine.computePlan(body).totals.downPayment)
   assert.equal((await POST(request({ ...body, dpMode: 'fixed', downPaymentPct: 80 }))).status, 400)
   assert.equal((await POST(request(null))).status, 400)
@@ -341,4 +348,48 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
   fail = true
   assert.equal((await POST(request(body))).status, 500)
   assert.equal(writes, 0)
+})
+
+test('lead capture saves to native CRM only and reports persistence failures', async () => {
+  let fail = false
+  let saved
+  let externalRequests = 0
+  let conversions = 0
+  const { handleLeadCapture } = load('src/lib/lead-capture.ts', {
+    'next/server': { NextResponse: { json: (data, options) =>
+      new Response(JSON.stringify(data), { status: options?.status ?? 200 }) } },
+    crypto,
+    payload: { getPayload: async () => ({ create: async (input) => {
+      if (fail) throw Error('Expected CRM write failure')
+      saved = input
+      return { id: 1 }
+    } }) },
+    '@payload-config': {},
+    'libphonenumber-js': { isValidPhoneNumber: () => true },
+    '@/lib/meta-capi': { sendCapiEvent: async () => { conversions++ } },
+    '@/lib/attribution': {
+      ATTRIBUTION_COOKIE: 'attribution', CONVERSION_SURFACES: ['project-hero-form'],
+      acquisitionSourceFromTouch: () => 'direct', parseAttribution: () => null,
+    },
+  }, {
+    process: { env: { PRIVYR_WEBHOOK_URL: 'https://legacy-crm.invalid' } },
+    fetch: async () => { externalRequests++; return new Response(null, { status: 200 }) },
+    setTimeout, clearTimeout, AbortController,
+  })
+  const request = () => new Request('https://site.invalid/api/lead-capture', {
+    method: 'POST', body: JSON.stringify({ name: 'Buyer', phone: '+923001234567',
+      sourceKind: 'project', sourceSlug: 'saima-elite-enclave',
+      interestedUnitType: 'Type 2B1', conversionSurface: 'project-hero-form' }),
+  })
+  const response = await handleLeadCapture(request())
+  assert.equal(response.status, 200)
+  assert.ok((await response.json()).eventId)
+  assert.equal(saved.collection, 'leads')
+  assert.equal(saved.data.sourceSlug, 'saima-elite-enclave')
+  assert.equal(saved.data.interestedUnitType, 'Type 2B1')
+  assert.equal(conversions, 1)
+  fail = true
+  assert.equal((await handleLeadCapture(request())).status, 502)
+  assert.equal(conversions, 1, 'Failed capture must not report a conversion')
+  assert.equal(externalRequests, 0, 'Old Privyr settings must not forward enquiries')
 })

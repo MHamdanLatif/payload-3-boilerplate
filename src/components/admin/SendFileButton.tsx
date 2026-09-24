@@ -10,7 +10,7 @@ import {
 } from '@/lib/brochure-message'
 
 /**
- * "Send File" — Privyr-style manual brochure send, on the lead's detail view.
+ * "Send File" — manual brochure send, on the lead's detail view.
  *
  * On click it: builds the lead's trackable brochure link, fills the editable
  * message template (CRM Settings global), and opens WhatsApp on the lead's chat

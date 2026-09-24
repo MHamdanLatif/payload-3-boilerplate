@@ -31,7 +31,6 @@ export default defineConfig({
       PORT: String(port),
       DATABASE_URI: databaseURL,
       DISABLE_SEARCH_SYNC: 'true',
-      PRIVYR_WEBHOOK_URL: '',
       META_CAPI_ACCESS_TOKEN: '',
       NTFY_TOPIC: '',
       USE_LOCAL_SEED_MEDIA: 'true',

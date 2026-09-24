@@ -152,7 +152,7 @@ export function LeadForm({
         setSubmitting(false)
         return
       }
-      // Confirmed success (Privyr accepted the lead). Fire the GA4 conversion
+      // Confirmed success (lead saved in the native CRM). Fire the GA4 conversion
       // before navigating away so it's queued while this page is still live.
       trackLead({ form_name: LEAD_FORM_NAME[sourceKind], project: sourceSlug || undefined })
       onSuccess?.()

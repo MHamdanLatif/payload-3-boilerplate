@@ -132,7 +132,7 @@ export const Leads: CollectionConfig = {
         description: 'Auto-generated. The trackable link is /brochure/<this id>.',
       },
     },
-    // "Send File" — Privyr-style manual brochure send via WhatsApp (wa.me). No
+    // "Send File" — manual brochure send via WhatsApp (wa.me). No
     // Meta charges; the owner reviews and taps send. Renders in the sidebar.
     {
       name: 'sendFile',
@@ -286,17 +286,25 @@ export const Leads: CollectionConfig = {
       ],
     },
 
-    // ── Legacy Privyr fields (kept; Privyr forward still runs as a fallback) ─
+    // ── Historical Privyr fields (retained for existing records; no forwarding) ─
     {
       name: 'privyrForwarded',
       type: 'checkbox',
       defaultValue: false,
-      admin: { description: 'Did Privyr accept this lead? (Legacy — being replaced by native CRM.)' },
+      admin: {
+        hidden: true,
+        readOnly: true,
+        description: 'Historical forwarding result; Privyr is disconnected.',
+      },
     },
     {
       name: 'privyrStatus',
       type: 'text',
-      admin: { readOnly: true, description: 'Privyr response status or error, for diagnostics.' },
+      admin: {
+        hidden: true,
+        readOnly: true,
+        description: 'Historical Privyr response; no new requests are sent.',
+      },
     },
   ],
 }

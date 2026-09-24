@@ -96,7 +96,7 @@ function whenGtagReady(cb: (gtag: NonNullable<Window['gtag']>) => void): void {
 /**
  * Fire the GA4 `generate_lead` conversion.
  *
- * Call ONLY from a form's confirmed success branch (after the Privyr response
+ * Call ONLY from a form's confirmed success branch (after the lead-capture response
  * resolves OK) — never on validation errors, failed/rejected requests, mount,
  * or render. Safe during SSR, before gtag has loaded, and when gtag is blocked
  * by an extension: it no-ops and never throws.

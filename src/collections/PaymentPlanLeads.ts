@@ -6,7 +6,7 @@ import { authenticated } from '../access/authenticated'
  * Append-only audit log: every time a buyer downloads a payment-plan PDF
  * via /api/payment-plan/pdf, one row lands here. Admins see what each
  * lead modelled (project, unit, down-payment %, frequency) without
- * leaving the CMS — Privyr stays the primary CRM, this is the internal trail.
+ * leaving the CMS — the leads collection is the primary CRM; this is the plan audit trail.
  *
  * `create` is `anyone` because the public API route writes here; `read` /
  * `update` / `delete` are admin-only.

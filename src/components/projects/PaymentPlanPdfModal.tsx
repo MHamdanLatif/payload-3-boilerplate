@@ -144,7 +144,7 @@ export function PaymentPlanPdfModal({
       a.remove()
       URL.revokeObjectURL(url)
       setDone(true)
-      // Confirmed success (lead recorded via /api/payment-plan/pdf → Privyr +
+      // Confirmed success (lead recorded via /api/payment-plan/pdf → native CRM +
       // PDF served). Labeled as a download to separate it from enquiry leads.
       trackLead({ form_name: 'payment_plan_pdf', project: project.slug || undefined })
       // The browser half of the pair. Same name, same id as the server's CAPI
