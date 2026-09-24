@@ -1631,6 +1631,18 @@ export interface Lead {
   phone: string;
   email?: string | null;
   /**
+   * Keep dated pointers from client discussions, preferences and next steps here. Existing enquiry notes remain below.
+   */
+  conversationNotes?: string | null;
+  /**
+   * No reminder by default. Choose a future date and time to receive an ntfy notification. Clear to cancel. The admin picker uses your browser timezone.
+   */
+  followUpAt?: string | null;
+  followUpSentAt?: string | null;
+  followUpStatus?: string | null;
+  followUpRetryAt?: string | null;
+  followUpClaim?: string | null;
+  /**
    * project | marketed-project | listing | location | payment-plan | consultation | zero-results | meta-ad | unknown
    */
   sourceKind?: string | null;
@@ -2717,6 +2729,12 @@ export interface LeadsSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   email?: T;
+  conversationNotes?: T;
+  followUpAt?: T;
+  followUpSentAt?: T;
+  followUpStatus?: T;
+  followUpRetryAt?: T;
+  followUpClaim?: T;
   sourceKind?: T;
   sourceName?: T;
   sourceSlug?: T;

@@ -4,6 +4,7 @@ import { attributionFields } from './Leads/attributionFields'
 import { statusOptions } from '@/lib/lead-status'
 import { leadAfterChange } from './Leads/hooks/leadAfterChange'
 import { seedLeadDefaults } from './Leads/hooks/seedLeadDefaults'
+import { prepareFollowUp } from './Leads/hooks/prepareFollowUp'
 
 /**
  * Every website / Meta lead lives here — the native CRM that replaces Privyr.
@@ -27,13 +28,13 @@ export const Leads: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     group: 'CRM',
-    defaultColumns: ['name', 'phone', 'sourceName', 'status', 'brochureOpenedAt', 'source', 'createdAt'],
+    defaultColumns: ['name', 'phone', 'sourceName', 'status', 'followUpAt', 'brochureOpenedAt', 'source', 'createdAt'],
     description:
       'Every website & Meta lead. Set “Status” after calling — qualified/junk feeds Meta CAPI. The trackable brochure link and WhatsApp alerts fire automatically on new leads.',
   },
   hooks: {
     // beforeChange: fill brochureId + brochure assets from the linked project.
-    beforeChange: [seedLeadDefaults],
+    beforeChange: [seedLeadDefaults, prepareFollowUp],
     // afterChange: WhatsApp owner alert + brochure auto-send (create); Meta CAPI
     // on qualify/junk. Never throws.
     afterChange: [leadAfterChange],
@@ -148,6 +149,26 @@ export const Leads: CollectionConfig = {
     { name: 'name', type: 'text', required: true },
     { name: 'phone', type: 'text', required: true },
     { name: 'email', type: 'text' },
+    {
+      name: 'conversationNotes',
+      type: 'textarea',
+      label: 'Conversation notes',
+      admin: { description: 'Keep dated pointers from client discussions, preferences and next steps here. Existing enquiry notes remain below.' },
+    },
+    {
+      name: 'followUpAt',
+      type: 'date',
+      label: 'Follow-up reminder',
+      index: true,
+      admin: {
+        date: { pickerAppearance: 'dayAndTime' },
+        description: 'No reminder by default. Choose a future date and time to receive an ntfy notification. Clear to cancel. The admin picker uses your browser timezone.',
+      },
+    },
+    { name: 'followUpSentAt', type: 'date', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
+    { name: 'followUpStatus', type: 'text', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
+    { name: 'followUpRetryAt', type: 'date', access: { create: () => false, update: () => false }, admin: { hidden: true } },
+    { name: 'followUpClaim', type: 'text', access: { create: () => false, update: () => false }, admin: { hidden: true } },
     {
       name: 'sourceKind',
       type: 'text',

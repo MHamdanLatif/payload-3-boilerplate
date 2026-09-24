@@ -132,6 +132,16 @@ The leads dashboard, activity timestamps, CSV timestamps, and date filters use P
 </p>
 
 
+## CRM conversation notes and follow-up reminders
+
+Open a lead from `/leads-dashboard` to keep conversation pointers in **Conversation notes** and choose **Set a reminder**. New and existing leads start with **No reminder**. Select a future date/time and save; choose **No reminder** and save to cancel. The dashboard uses Pakistan time (PKT, UTC+5); the CMS admin date picker uses the browser timezone. The same fields are editable in **CRM → Leads**. Original enquiry notes are kept separately.
+
+Reminders use the existing `NTFY_TOPIC`, optional `NTFY_SERVER` (defaults to `https://ntfy.sh`) and `NTFY_TOKEN`. Set `NEXT_PUBLIC_SERVER_URL` to the public site URL for notification links. The running Next.js server checks Postgres every 30 seconds, including immediately on startup. No browser needs to stay open. Keep the Railway service running (disable sleeping/serverless suspension); reminders overdue during downtime are delivered when it restarts. This timer requires a long-running Node server, not a request-only serverless deployment. Failed deliveries retry after five minutes; the lead records Pending, Sent or the last delivery error. Database leases coordinate replicas. A crash after ntfy accepts a notification but before its receipt is saved can cause a duplicate on retry. Cancellation cannot recall an already in-flight notification.
+
+Before deploying, apply `20260924_000000_lead_follow_up` using `corepack pnpm payload migrate` against the intended database with its existing migration history reconciled. Railway does not automatically run migrations. This adds nullable fields and an index without scheduling existing leads. Review pending migrations before running the command; do not run a historical initial migration over an existing untracked schema.
+
+Verify with `corepack pnpm test:follow-up` and `corepack pnpm test:e2e`. The e2e suite keeps real ntfy delivery disabled; delivery outcomes and rescheduling are covered by isolated unit tests.
+
 ## Payment Plan Studio (admin only)
 
 Open **Payment Plan Studio** from the CMS dashboard, or visit `/internal/payment-plans` after signing in. Both the page and `POST /api/admin/payment-plan/pdf` require an authenticated CMS `users` account. Existing CMS users are administrators; this project does not have a separate staff-role system.

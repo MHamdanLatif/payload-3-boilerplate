@@ -206,6 +206,11 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
                     <a className="underline decoration-brand-deep/25 underline-offset-2 hover:text-gold" href={`/leads-dashboard/${l.id}`}>
                       {l.name}
                     </a>
+                    <p className="mt-1 text-xs text-brand-deep/55">
+                      {l.followUpAt
+                        ? `${l.followUpSentAt ? 'Reminder sent' : 'Follow up'}: ${new Date(l.followUpAt).toLocaleString('en-GB', { timeZone: 'Asia/Karachi', dateStyle: 'short', timeStyle: 'short' })} PKT`
+                        : 'No reminder'}
+                    </p>
                   </td>
                   <td className={td}>{l.phone}</td>
                   <td className={td}>{sourceOf(l)}</td>

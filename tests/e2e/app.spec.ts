@@ -1,4 +1,5 @@
 import { verifyPaymentPlans } from './payment-plans'
+import { verifyFollowUp } from './follow-up'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 
@@ -19,6 +20,7 @@ async function verifyCrmActions(page: Page) {
   })
   expect(created.ok()).toBeTruthy()
   const { doc: lead } = await created.json()
+  await verifyFollowUp(page, lead.id)
   const actionUrl = (action: string) => {
     const sig = createHmac('sha256', payloadSecret).update(`${action}:${lead.id}`).digest('base64url').slice(0, 32)
     return `/api/leads/${lead.id}/whatsapp?sig=${sig}`

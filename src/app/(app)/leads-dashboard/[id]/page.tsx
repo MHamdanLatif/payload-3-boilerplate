@@ -5,6 +5,8 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Lead, LinkOpen } from '@/payload-types'
 import { fmtDurationLong, platformOf } from '@/lib/engagement'
+import { LeadFollowUp } from '@/components/LeadFollowUp'
+import { ntfyConfigured } from '@/lib/ntfy'
 
 export const metadata: Metadata = {
   title: 'Lead activity | Lateef Properties',
@@ -137,6 +139,12 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
             Open in admin
           </a>
         </div>
+
+        <LeadFollowUp id={lead.id} notes={lead.conversationNotes} reminder={lead.followUpAt} sentAt={lead.followUpSentAt} status={lead.followUpStatus} configured={ntfyConfigured()} />
+        {lead.notes && <section className="mt-4 rounded-xl border border-brand-deep/10 bg-white p-5">
+          <h2 className="font-serif text-lg text-brand-deep">Original enquiry notes</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-brand-deep/70">{lead.notes}</p>
+        </section>}
 
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
           <table className="w-full min-w-[560px]">
