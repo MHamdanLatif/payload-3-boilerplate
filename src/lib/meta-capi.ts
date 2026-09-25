@@ -68,6 +68,10 @@ export async function sendCapiEvent(opts: {
   if (process.env.META_CAPI_TEST_EVENT_CODE) {
     payload.test_event_code = process.env.META_CAPI_TEST_EVENT_CODE
   }
+  // Temporary: remove after verifying server-side Lead events in Meta Test Events.
+  if (opts.eventName === (process.env.META_CAPI_LEAD_EVENT || 'Lead')) {
+    payload.test_event_code = 'TEST76998'
+  }
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
