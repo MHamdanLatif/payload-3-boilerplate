@@ -238,6 +238,14 @@ export const MarketedProjects: CollectionConfig = {
       ],
     },
     {
+      name: 'amenities',
+      type: 'array',
+      label: 'Amenities',
+      labels: { singular: 'Amenity', plural: 'Amenities' },
+      admin: { description: 'Shown after the gallery. If empty, the Amenities section is hidden.' },
+      fields: [{ name: 'name', type: 'text', required: true }],
+    },
+    {
       name: 'googleMapsEmbedUrl',
       type: 'text',
       label: 'Google Maps Embed URL',

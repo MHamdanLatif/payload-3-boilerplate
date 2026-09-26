@@ -1438,6 +1438,15 @@ export interface MarketedProject {
       }[]
     | null;
   /**
+   * Shown after the gallery. If empty, the Amenities section is hidden.
+   */
+  amenities?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * Paste only the `src` URL from a Google Maps "Embed a map" iframe.
    */
   googleMapsEmbedUrl?: string | null;
@@ -2500,6 +2509,12 @@ export interface MarketedProjectsSelect<T extends boolean = true> {
     | {
         image?: T;
         caption?: T;
+        id?: T;
+      };
+  amenities?:
+    | T
+    | {
+        name?: T;
         id?: T;
       };
   googleMapsEmbedUrl?: T;

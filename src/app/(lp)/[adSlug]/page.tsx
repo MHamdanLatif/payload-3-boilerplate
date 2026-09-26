@@ -13,6 +13,7 @@ import { MarketedCta } from '@/components/marketed/MarketedCta'
 import { StickyActionBar } from '@/components/marketed/StickyActionBar'
 import { BuilderTrackRecord } from '@/components/projects/BuilderTrackRecord'
 import { PhotoGallerySection } from '@/components/shared/PhotoGallerySection'
+import { AmenitiesSection } from '@/components/shared/AmenitiesSection'
 import { MapSection } from '@/components/shared/MapSection'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -116,14 +117,15 @@ export default async function MarketedLandingPage({ params }: { params: Promise<
           itemTitle={project.title}
           sectionNumber="01 / GALLERY"
         />
+        <AmenitiesSection amenities={project.amenities} sectionNumber="02 / AMENITIES" />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="02 / LOCATION"
+          sectionNumber="03 / LOCATION"
         />
-        <BuilderTrackRecord project={project} sectionNumber="03 / THE BUILDER" />
-        <MarketedCta project={project} sectionNumber="04 / REGISTER INTEREST" />
+        <BuilderTrackRecord project={project} sectionNumber="04 / THE BUILDER" />
+        <MarketedCta project={project} sectionNumber="05 / REGISTER INTEREST" />
       </main>
       <MarketedFooter />
       <StickyActionBar

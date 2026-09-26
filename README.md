@@ -132,6 +132,12 @@ The leads dashboard, activity timestamps, CSV timestamps, and date filters use P
 </p>
 
 
+## Marketed project amenities
+
+In **Marketing > Marketed Projects**, add amenities to show the same amenities section used on organic project pages. The marketed page order is hero, gallery, amenities, location, builder, registration CTA, footer. Empty amenities are hidden; content is managed independently from the organic project.
+
+Before deploying, apply `20260926_000000_marketed_project_amenities` using `corepack pnpm payload migrate` against the intended database with its migration history reconciled. Railway does not automatically run migrations. Review pending migrations first; do not run a historical initial migration over an existing untracked schema. This migration adds the amenities table and leaves existing project content unchanged.
+
 ## CRM conversation notes and follow-up reminders
 
 Open a lead from `/leads-dashboard` to keep conversation pointers in **Conversation notes** and choose **Set a reminder**. New and existing leads start with **No reminder**. Select a future date/time and save; choose **No reminder** and save to cancel. The dashboard uses Pakistan time (PKT, UTC+5); the CMS admin date picker uses the browser timezone. The same fields are editable in **CRM → Leads**. Original enquiry notes are kept separately.
