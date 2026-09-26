@@ -11,8 +11,6 @@ import { MarketedFooter } from '@/components/marketed/MarketedFooter'
 import { MarketedHero, REGISTER_ANCHOR } from '@/components/marketed/MarketedHero'
 import { MarketedCta } from '@/components/marketed/MarketedCta'
 import { StickyActionBar } from '@/components/marketed/StickyActionBar'
-import { UnitTypesTable } from '@/components/projects/UnitTypesTable'
-import { PaymentPlanCalculator } from '@/components/projects/PaymentPlanCalculator'
 import { BuilderTrackRecord } from '@/components/projects/BuilderTrackRecord'
 import { PhotoGallerySection } from '@/components/shared/PhotoGallerySection'
 import { MapSection } from '@/components/shared/MapSection'
@@ -113,41 +111,19 @@ export default async function MarketedLandingPage({ params }: { params: Promise<
           <MarketedHeader />
           <MarketedHero project={project} />
         </div>
-        <UnitTypesTable
-          project={project}
-          sectionNumber="01 / AVAILABLE UNITS"
-          // The generated prose exists to win organic long-tail queries. This
-          // page is noindex, so it would only delay the table.
-          showProse={false}
-          footerCta={
-            <a
-              href={`#${REGISTER_ANCHOR}`}
-              className="inline-flex items-center justify-center rounded-full bg-gold px-7 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep shadow-gold transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover"
-            >
-              Register Interest
-            </a>
-          }
-        />
-        <PaymentPlanCalculator
-          project={project}
-          sectionNumber="02 / PAYMENT PLAN"
-          // Without this the PDF endpoint looks this slug up in
-          // `featured-projects`, misses, and the download fails.
-          collection="marketed-projects"
-        />
         <PhotoGallerySection
           photos={project.photoGallery}
           itemTitle={project.title}
-          sectionNumber="03 / GALLERY"
+          sectionNumber="01 / GALLERY"
         />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="04 / LOCATION"
+          sectionNumber="02 / LOCATION"
         />
-        <BuilderTrackRecord project={project} sectionNumber="05 / THE BUILDER" />
-        <MarketedCta project={project} sectionNumber="06 / REGISTER INTEREST" />
+        <BuilderTrackRecord project={project} sectionNumber="03 / THE BUILDER" />
+        <MarketedCta project={project} sectionNumber="04 / REGISTER INTEREST" />
       </main>
       <MarketedFooter />
       <StickyActionBar
