@@ -32,7 +32,7 @@ export default defineConfig({
       DATABASE_URI: databaseURL,
       DISABLE_SEARCH_SYNC: 'true',
       META_CAPI_ACCESS_TOKEN: '',
-      NTFY_TOPIC: '',
+      CRM_PUSH_DISABLED: 'true',
       USE_LOCAL_SEED_MEDIA: 'true',
       PAYLOAD_SECRET: payloadSecret,
       NEXT_PUBLIC_SERVER_URL: baseURL,

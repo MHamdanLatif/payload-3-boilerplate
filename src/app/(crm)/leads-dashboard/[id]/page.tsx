@@ -10,7 +10,7 @@ import config from '@payload-config'
 import type { Lead, LinkOpen } from '@/payload-types'
 import { fmtDurationLong, platformOf } from '@/lib/engagement'
 import { LeadFollowUp } from '@/components/LeadFollowUp'
-import { ntfyConfigured } from '@/lib/ntfy'
+import { crmPushConfigured } from '@/lib/crm-push'
 
 export const metadata: Metadata = {
   title: 'Client record',
@@ -191,7 +191,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
           reminder={lead.followUpAt}
           sentAt={lead.followUpSentAt}
           status={lead.followUpStatus}
-          configured={ntfyConfigured()}
+          configured={crmPushConfigured()}
         />
         {lead.notes && (
           <section className="mt-4 rounded-xl border border-brand-deep/10 bg-white p-5">

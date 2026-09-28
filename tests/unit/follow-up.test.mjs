@@ -66,9 +66,9 @@ function deliveryFixture({
   const { deliverFollowUpReminders } = load('src/lib/follow-up-reminders.ts', {
     'node:crypto': { randomUUID: () => 'lease-123' },
     '@payloadcms/db-postgres': { sql: (parts, ...values) => ({ text: parts.join('?'), values }) },
-    './ntfy': {
-      ntfyConfigured: () => configured,
-      sendNtfy: async (message) => {
+    './crm-push': {
+      crmPushConfigured: () => configured,
+      sendCrmPush: async (_payload, message) => {
         messages.push(message)
         onSend?.()
         return result
@@ -96,7 +96,7 @@ function deliveryFixture({
   return { run: () => deliverFollowUpReminders(payload), calls, messages }
 }
 
-test('unconfigured ntfy leaves due reminders pending without claiming them', async () => {
+test('disabled CRM push leaves due reminders pending without claiming them', async () => {
   const fixture = deliveryFixture({ configured: false })
   await fixture.run()
   assert.equal(fixture.calls.length, 0)

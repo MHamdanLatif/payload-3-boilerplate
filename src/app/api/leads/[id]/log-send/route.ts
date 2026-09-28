@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { sendNtfy } from '@/lib/ntfy'
+import { sendCrmPush } from '@/lib/crm-push'
 import { advanceLeadStatus } from '@/lib/lead-auto-status'
 import type { Lead } from '@/payload-types'
 
 /**
  * Records a manual "Send File" action on a lead (fired by SendFileButton when
  * the owner opens WhatsApp with the brochure message pre-filled). Stamps the
- * lead's delivery log and pushes an optional ntfy confirmation. Admin-only.
+ * lead's delivery log and pushes an optional CRM push confirmation. Admin-only.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -46,8 +46,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await advanceLeadStatus(payload, id, 'details-sent')
 
     // Optional owner confirmation.
-    await sendNtfy({
+    await sendCrmPush(payload, {
       title: 'Brochure Sent',
+      clickUrl: `/leads-dashboard/${id}`,
       message: `Brochure link sent to ${lead?.name ?? 'a lead'} via WhatsApp.`,
       priority: 'low',
       tags: 'outbox_tray',

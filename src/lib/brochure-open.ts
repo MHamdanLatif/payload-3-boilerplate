@@ -1,6 +1,6 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { sendNtfy } from '@/lib/ntfy'
+import { sendCrmPush } from '@/lib/crm-push'
 import { getServerSideURL } from '@/utilities/getURL'
 import { advanceLeadStatus } from '@/lib/lead-auto-status'
 import type { Lead } from '@/payload-types'
@@ -25,7 +25,7 @@ export function normalizeAsset(a?: string | null): BrochureAsset {
 
 /**
  * Records a brochure engagement event and, on every page open, stamps the
- * lead's first read receipt and pushes an ntfy alert to the owner. Best-effort:
+ * lead's first read receipt and pushes a CRM app alert to the owner. Best-effort:
  * never throws. Shared by the server page render (the
  * reliable path, works on iOS where client beacons don't) and the client asset
  * beacons (pdf/map/video).
@@ -91,10 +91,10 @@ export async function logBrochureOpen(opts: {
       // before this shipped is still sitting at Uncontacted, and the next time
       // they look at it they should move. Advancing is a no-op once they have.
       await advanceLeadStatus(payload, lead.id, 'engaged')
-      if (process.env.NTFY_TOPIC) {
+      if (process.env.CRM_PUSH_DISABLED !== 'true') {
         const project = lead.sourceName || lead.brochureHeadline || 'their brochure'
         const base = getServerSideURL().replace(/\/$/, '')
-        await sendNtfy({
+        await sendCrmPush(payload, {
           title: firstEver ? 'Brochure Opened' : 'Brochure Re-opened',
           message: `${lead.name} ${firstEver ? 'just opened' : 'came back to'} ${project}. Good moment to call.`,
           priority: 'high',

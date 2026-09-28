@@ -81,6 +81,7 @@ export interface Config {
     'payment-plan-leads': PaymentPlanLead;
     leads: Lead;
     'link-opens': LinkOpen;
+    'push-subscriptions': PushSubscription;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -106,6 +107,7 @@ export interface Config {
     'payment-plan-leads': PaymentPlanLeadsSelect<false> | PaymentPlanLeadsSelect<true>;
     leads: LeadsSelect<false> | LeadsSelect<true>;
     'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
+    'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -123,11 +125,13 @@ export interface Config {
     header: Header;
     footer: Footer;
     'crm-settings': CrmSetting;
+    'crm-push-settings': CrmPushSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     'crm-settings': CrmSettingsSelect<false> | CrmSettingsSelect<true>;
+    'crm-push-settings': CrmPushSettingsSelect<false> | CrmPushSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -1596,7 +1600,7 @@ export interface Lead {
    */
   conversationNotes?: string | null;
   /**
-   * No reminder by default. Choose a future date and time to receive an ntfy notification. Clear to cancel. The admin picker uses your browser timezone.
+   * No reminder by default. Choose a future date and time to receive a CRM app notification. Clear to cancel. The admin picker uses your browser timezone.
    */
   followUpAt?: string | null;
   followUpSentAt?: string | null;
@@ -1768,6 +1772,20 @@ export interface LinkOpen {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-subscriptions".
+ */
+export interface PushSubscription {
+  id: number;
+  endpointHash: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  owner: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1918,6 +1936,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'link-opens';
         value: number | LinkOpen;
+      } | null)
+    | ({
+        relationTo: 'push-subscriptions';
+        value: number | PushSubscription;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2736,6 +2758,19 @@ export interface LinkOpensSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-subscriptions_select".
+ */
+export interface PushSubscriptionsSelect<T extends boolean = true> {
+  endpointHash?: T;
+  endpoint?: T;
+  p256dh?: T;
+  auth?: T;
+  owner?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
@@ -3030,6 +3065,17 @@ export interface CrmSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-push-settings".
+ */
+export interface CrmPushSetting {
+  id: number;
+  publicKey: string;
+  privateKey: string;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -3080,6 +3126,17 @@ export interface FooterSelect<T extends boolean = true> {
  */
 export interface CrmSettingsSelect<T extends boolean = true> {
   whatsappMessageTemplate?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-push-settings_select".
+ */
+export interface CrmPushSettingsSelect<T extends boolean = true> {
+  publicKey?: T;
+  privateKey?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

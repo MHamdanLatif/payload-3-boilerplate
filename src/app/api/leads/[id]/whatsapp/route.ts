@@ -7,7 +7,7 @@ import { getServerSideURL } from '@/utilities/getURL'
 
 export const dynamic = 'force-dynamic'
 
-/** Owner-initiated chat from NTFY; the action-scoped signature replaces a session. */
+/** Owner-initiated chat from CRM app; the action-scoped signature replaces a session. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!verifyLeadAction(id, 'whatsapp', new URL(req.url).searchParams.get('sig'))) {

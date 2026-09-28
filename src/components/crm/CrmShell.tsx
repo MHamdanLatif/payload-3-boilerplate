@@ -1,4 +1,5 @@
 'use client'
+import { CrmNotifications, disableCrmNotifications } from './CrmNotifications'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -86,7 +87,9 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
     <>
       <header className="crm-top">
         <Link href="/leads-dashboard" className="crm-brand">
-          Lateef<span>CRM</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/lateef-logo.png" alt="Lateef Properties" width={100} height={52} />
+          <span>CRM</span>
         </Link>
         <div className="flex items-center">
           {!standalone && (
@@ -110,6 +113,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={async () => {
                 try {
+                  await disableCrmNotifications()
                   const result = await fetch('/api/users/logout', { method: 'POST' })
                   if (!result.ok) throw Error()
                   window.location.assign('/leads-dashboard/login')
@@ -134,6 +138,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       )}
+      {!login && <CrmNotifications />}
       {children}
       {!login && (
         <nav className="crm-nav" aria-label="CRM navigation">

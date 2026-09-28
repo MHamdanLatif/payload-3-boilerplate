@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { sql } from '@payloadcms/db-postgres'
 import type { Payload } from 'payload'
-import { ntfyConfigured, sendNtfy } from './ntfy'
+import { crmPushConfigured, sendCrmPush } from './crm-push'
 import { getServerSideURL } from '@/utilities/getURL'
 
 // Postgres leases prevent simultaneous replicas from sending the same reminder
 // and let another process retry after a crash. No timers contain lead state.
 export async function deliverFollowUpReminders(payload: Payload) {
-  if (!ntfyConfigured()) return
+  if (!crmPushConfigured()) return
   for (let i = 0; i < 25; i++) {
     const claim = randomUUID()
     const result = await payload.db.drizzle.execute(sql`
@@ -23,7 +23,7 @@ export async function deliverFollowUpReminders(payload: Payload) {
     if (!row) return
     const lead = await payload.findByID({ collection: 'leads', id: row.id, depth: 0 })
     if (lead.followUpClaim !== claim || !lead.followUpAt) continue
-    const response = await sendNtfy({
+    const response = await sendCrmPush(payload, {
       title: 'Follow-up reminder',
       message: `Follow up with ${lead.name}\n${lead.phone}\n${lead.sourceName || 'General enquiry'}\nScheduled: ${new Date(lead.followUpAt).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })} PKT`,
       priority: 'high',
@@ -44,7 +44,7 @@ export async function deliverFollowUpReminders(payload: Payload) {
 const state = globalThis as typeof globalThis & { followUpTimer?: ReturnType<typeof setInterval> }
 
 export function startFollowUpReminders(getPayloadInstance: () => Promise<Payload>) {
-  if (state.followUpTimer || !ntfyConfigured()) return
+  if (state.followUpTimer || !crmPushConfigured()) return
   let running = false
   const tick = async () => {
     if (running) return

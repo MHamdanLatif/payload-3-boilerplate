@@ -17,7 +17,7 @@ test('immediate reopens alert even with legacy cooldown settings, while first re
   const deps = {
     payload: { getPayload: async () => payload },
     '@payload-config': {},
-    '@/lib/ntfy': { sendNtfy: async (value) => { alerts.push(value) } },
+    '@/lib/crm-push': { sendCrmPush: async (_payload, value) => { alerts.push(value) } },
     '@/utilities/getURL': { getServerSideURL: () => 'https://example.test' },
     '@/lib/lead-auto-status': { advanceLeadStatus: async () => {} },
   }
@@ -28,7 +28,7 @@ test('immediate reopens alert even with legacy cooldown settings, while first re
   ).outputText
   vm.runInNewContext(code, {
     module, exports: module.exports, console,
-    process: { env: { NTFY_TOPIC: 'test', BROCHURE_REOPEN_COOLDOWN_MINUTES: '30', BROCHURE_REOPEN_COOLDOWN_HOURS: '2' } },
+    process: { env: { CRM_PUSH_DISABLED: 'false', BROCHURE_REOPEN_COOLDOWN_MINUTES: '30', BROCHURE_REOPEN_COOLDOWN_HOURS: '2' } },
     require: (key) => { if (!(key in deps)) throw Error(key); return deps[key] },
   })
   const { logBrochureOpen } = module.exports

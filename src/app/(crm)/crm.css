@@ -378,3 +378,7 @@
 .crm textarea {
   font-size: 16px;
 }
+
+.crm-brand { display: flex; align-items: center; gap: 10px; }
+.crm-brand img { width: 86px; height: 46px; object-fit: contain; }
+.crm-notifications summary { cursor: pointer; font-weight: 600; }

@@ -1,3 +1,5 @@
+import { PushSubscriptions } from './collections/PushSubscriptions'
+import { CrmPushSettings } from './globals/CrmPushSettings'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { s3Storage } from '@payloadcms/storage-s3'
 
@@ -89,9 +91,10 @@ export default buildConfig({
     PaymentPlanLeads,
     Leads,
     LinkOpens,
+    PushSubscriptions,
   ],
   cors: [getServerSideURL()].filter(Boolean),
-  globals: [Header, Footer, CrmSettings],
+  globals: [Header, Footer, CrmSettings, CrmPushSettings],
   plugins: [
     ...plugins,
     // Cloudflare R2 (S3-compatible) — persistent object storage for the Media

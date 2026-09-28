@@ -1,13 +1,13 @@
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 import type { Lead } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
-import { sendNtfy } from '@/lib/ntfy'
+import { sendCrmPush } from '@/lib/crm-push'
 import { signLeadAction } from '@/lib/lead-action-link'
 import { sendCapiEvent } from '@/lib/meta-capi'
 
 /**
  * The heart of the native CRM.
- *   • On CREATE  → free ntfy push to the owner (new lead: name, project, source).
+ *   • On CREATE  → CRM app notification to the owner (new lead: name, project, source).
  *                  The brochure link is sent to the lead manually via the
  *                  "Send File" button (wa.me), so no auto-send / Meta charges.
  *   • On UPDATE  → when status flips to qualified/junk, push a Meta CAPI event so
@@ -24,7 +24,7 @@ export const leadAfterChange: CollectionAfterChangeHook<Lead> = ({
 }) => {
   if (context?.skipLeadHooks) return doc
 
-  // Detach all outbound work (Meta CAPI, ntfy) from the save. afterChange runs
+  // Detach all outbound work (Meta CAPI, CRM push) from the save. afterChange runs
   // inside the save request, so awaiting a slow network call here makes the
   // admin "Save" spin for seconds (e.g. qualifying a lead waited on the CAPI
   // POST). On our long-running Railway server the detached promise finishes
@@ -66,19 +66,22 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
   // the lead can actually be messaged — a button that leads nowhere is worse
   // than no button.
   const canSend = Boolean(doc.phone && doc.brochureId)
-  const sendAction = canSend
-    ? `view, Send brochure, ${base}/api/leads/${doc.id}/send-brochure?sig=${signLeadAction(
-        doc.id,
-        'send-brochure',
-      )}, clear=true`
-    : undefined
-  const chatAction = doc.phone
-    ? `view, WhatsApp, ${base}/api/leads/${doc.id}/whatsapp?sig=${signLeadAction(doc.id, 'whatsapp')}, clear=true`
-    : undefined
-  const actions = [sendAction, chatAction].filter(Boolean).join('; ') || undefined
+  const actions: { action: string; title: string; url: string }[] = []
+  if (canSend)
+    actions.push({
+      action: 'send-brochure',
+      title: 'Send brochure',
+      url: `${base}/api/leads/${doc.id}/send-brochure?sig=${signLeadAction(doc.id, 'send-brochure')}`,
+    })
+  if (doc.phone)
+    actions.push({
+      action: 'whatsapp',
+      title: 'WhatsApp',
+      url: `${base}/api/leads/${doc.id}/whatsapp?sig=${signLeadAction(doc.id, 'whatsapp')}`,
+    })
 
-  // Free owner alert via ntfy (replaces the WhatsApp Cloud API notification).
-  const res = await sendNtfy({
+  // Free owner alert via CRM push (replaces the WhatsApp Cloud API notification).
+  const res = await sendCrmPush(payload, {
     title: 'New Lead',
     message: `${doc.name} — ${project}\n📞 ${doc.phone}\n📍 ${source}\n🕐 ${ts}`,
     priority: 'high',
@@ -94,7 +97,7 @@ async function onCreate(doc: Lead, payload: Payload): Promise<void> {
     context: { skipLeadHooks: true },
     data: {
       ownerNotifiedAt: res.ok ? nowIso() : undefined,
-      ownerNotifyStatus: `ntfy: ${res.status}`,
+      ownerNotifyStatus: `CRM push: ${res.status}`,
     },
   })
 }

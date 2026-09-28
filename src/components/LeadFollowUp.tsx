@@ -122,12 +122,11 @@ export function LeadFollowUp({
           </label>
         )}
         <p className="text-xs text-brand-deep/60">
-          Save to apply changes. Reminders arrive through ntfy and open this client record.
+          Save to apply changes. Enable notifications in the CRM on your phone to receive reminders that open this client record.
         </p>
         {!configured && (
           <p className="text-sm text-amber-800">
-            ntfy is not configured. Reminders can be saved, but notifications will only send after
-            NTFY_TOPIC is configured on the server.
+            Notifications are disabled on the server. Reminders can be saved and will send when notifications are enabled.
           </p>
         )}
         {reminder && <p className="text-sm">Delivery: {sentAt ? 'Sent' : status || 'Pending'}</p>}

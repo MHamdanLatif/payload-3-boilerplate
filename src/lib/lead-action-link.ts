@@ -3,7 +3,7 @@ import crypto from 'crypto'
 /**
  * Signed one-tap links for push notifications.
  *
- * The action button on an ntfy alert opens a URL, and a push notification
+ * The action button on a CRM app alert opens a URL, and a push notification
  * carries no session — so the endpoint behind it cannot check who is logged in.
  * Without a signature it would be a URL that changes CRM data and only needs
  * guessing a lead id.

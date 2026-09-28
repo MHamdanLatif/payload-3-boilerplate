@@ -162,7 +162,7 @@ export const Leads: CollectionConfig = {
       index: true,
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'No reminder by default. Choose a future date and time to receive an ntfy notification. Clear to cancel. The admin picker uses your browser timezone.',
+        description: 'No reminder by default. Choose a future date and time to receive a CRM app notification. Clear to cancel. The admin picker uses your browser timezone.',
       },
     },
     { name: 'followUpSentAt', type: 'date', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
@@ -264,7 +264,7 @@ export const Leads: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'Delivery log',
-      admin: { initCollapsed: true, description: 'Outbound automation status — ntfy alerts, brochure send & Meta CAPI.' },
+      admin: { initCollapsed: true, description: 'Outbound automation status — CRM app alerts, brochure send & Meta CAPI.' },
       fields: [
         { name: 'ownerNotifiedAt', type: 'date', admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } } },
         { name: 'ownerNotifyStatus', type: 'text', admin: { readOnly: true } },
