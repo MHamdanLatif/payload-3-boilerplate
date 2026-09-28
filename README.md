@@ -134,11 +134,29 @@ The leads dashboard, activity timestamps, CSV timestamps, and date filters use P
 
 ## Marketed project amenities
 
+Marketed projects use a simple **Available Units** list with **Name**, **Type**, and **Area (sq ft)**. Type is the public configuration label (include `(Duplex)` when applicable); Name is an optional internal unit label. Rows drive the hero availability line and enquiry dropdown in CMS order. Detailed unit pricing and payment-plan inputs are only available on organic Featured Projects.
+
+Before deploying this simplification, apply `20260926_000001_marketed_available_units`. It copies existing marketed units into the simple list, preserving names, duplex labels, areas, and the previous hero order. Legacy pricing/payment-plan data is retained in the database but no longer exposed by the marketed-project CMS. Apply the migration against the intended database before building; Railway does not run it automatically.
+
 In **Marketing > Marketed Projects**, add amenities to show the same amenities section used on organic project pages. The marketed page order is hero, gallery, amenities, location, builder, registration CTA, footer. Empty amenities are hidden; content is managed independently from the organic project.
 
 Before deploying, apply `20260926_000000_marketed_project_amenities` using `corepack pnpm payload migrate` against the intended database with its migration history reconciled. Railway does not automatically run migrations. Review pending migrations first; do not run a historical initial migration over an existing untracked schema. This migration adds the amenities table and leaves existing project content unchanged.
 
 ## CRM conversation notes and follow-up reminders
+
+### Mobile CRM (Android)
+
+Open `/leads-dashboard` for the mobile-first CRM. In Chrome on Samsung, sign in with your existing CMS account and tap **Install app** (or use Chrome's **Add to Home screen > Install app**). The installed **Lateef CRM** opens directly to your leads. It uses the existing backend and database, with no separate app server or store account. The CRM has its own layout without the public website navigation or marketing trackers.
+
+**Add lead** asks only for name, phone, project, and WhatsApp/Call/Referral. Phone numbers are normalized with Pakistan as the default country. The server fills the project name/slug, acquisition relationships, manual conversion surface, and brochure assets via the existing lead hooks. Calls retain `source=call` and use the existing `manual` acquisition category; WhatsApp and referrals use their matching categories. No database migration is required for the mobile CRM.
+
+Open a lead to change its status using the pinned control, edit contact details/current interest/closed project, call or open WhatsApp, prepare a brochure, and keep notes and reminders. The original acquisition project is preserved when current interest changes. Search and project/status/source filters are on the lead list; existing reporting and CSV export remain under **Reports**. New ntfy lead and brochure-open links go directly to the mobile lead record.
+
+CMS login sessions now last up to 30 days, including admin sessions. The CRM refreshes valid sessions while in use; expired sessions require sign-in. Sign out on shared devices. The scoped service worker does not cache lead data or API responses; viewing and saving records requires internet access. Notifications continue through the existing ntfy app; this change does not introduce separate browser push subscriptions or biometric login.
+
+Checks: `corepack pnpm exec node --test tests/unit/crm.test.mjs` and `corepack pnpm test:e2e`. The e2e suite includes 360px manual entry, status/contact/closed-project edits, generated attribution, search, manifest, and overflow checks.
+
+Brochure-page opens and reopens send an ntfy alert on every recorded visit, with no cooldown. The former `BROCHURE_REOPEN_COOLDOWN_MINUTES` and `BROCHURE_REOPEN_COOLDOWN_HOURS` environment settings are no longer used.
 
 Open a lead from `/leads-dashboard` to keep conversation pointers in **Conversation notes** and choose **Set a reminder**. New and existing leads start with **No reminder**. Select a future date/time and save; choose **No reminder** and save to cancel. The dashboard uses Pakistan time (PKT, UTC+5); the CMS admin date picker uses the browser timezone. The same fields are editable in **CRM → Leads**. Original enquiry notes are kept separately.
 

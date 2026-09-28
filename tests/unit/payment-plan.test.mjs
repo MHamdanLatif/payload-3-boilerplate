@@ -338,6 +338,10 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
     installments: [{ kind: 'Monthly', active: true, locked: false, valuePerPeriod: 141666.67 }],
   }
   const request = (body) => ({ json: async () => body, headers: new Headers() })
+  const marketedResponse = await POST(request({ ...body, projectCollection: 'marketed-projects' }))
+  assert.equal(marketedResponse.status, 400)
+  assert.equal((await marketedResponse.json()).error, 'Payment plans are not available for marketed projects')
+  assert.equal(writes, 0, 'Retired marketed calculators must not create payment-plan leads')
   assert.equal((await POST(request(body))).status, 200)
   assert.equal(writes, 2, 'PDF enquiries persist in both CRM and payment-plan audit')
   assert.equal(externalRequests, 0, 'Old Privyr settings must not forward PDF leads')

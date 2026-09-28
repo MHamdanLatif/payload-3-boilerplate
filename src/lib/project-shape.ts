@@ -1,24 +1,10 @@
 import type { FeaturedProject } from '@/payload-types'
 
 /**
- * Structural types shared by the organic project page and the paid landing page.
- *
- * `featured-projects` and `marketed-projects` are deliberately separate
- * collections holding separate copies of the same content, so no component can
- * be typed against one concrete document and still serve the other. Rather than
- * forking the units table, the calculator and the track-record block — three of
- * the most fiddly components in the codebase — each is widened to accept the
- * narrowest shape it actually reads.
- *
- * These are derived from `FeaturedProject` rather than hand-written so that a
- * field rename on the organic collection breaks the build here, instead of
- * quietly diverging. `MarketedProject` satisfies them structurally because it
- * reuses the same option constants and the same `required` flags; if the two
- * ever drift, `tsc` says so at the call site.
- *
- * Note what is NOT in here: `propertyType` is required on `FeaturedProject` and
- * absent from `MarketedProject`, which is precisely why a marketed document
- * cannot simply be cast to a `FeaturedProject`.
+ * Narrow shapes used by project components. Detailed unit and payment-plan
+ * shapes belong to organic projects; marketed projects have a separate simple
+ * availability list and share only elevation and builder-track-record shapes.
+ * Derive organic fields from FeaturedProject so schema changes remain checked.
  */
 
 export type ProjectUnit = NonNullable<FeaturedProject['unitTypes']>[number]

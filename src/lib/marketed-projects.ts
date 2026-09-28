@@ -1,8 +1,6 @@
 import type { Payload } from 'payload'
 import type { MarketedProject } from '@/payload-types'
 import { normaliseSlugKey } from '@/collections/MarketedProjects'
-import { areaRangeLabel, sortedUnits, unitSummary } from '@/lib/featured-projects'
-import type { UnitsSource } from '@/lib/project-shape'
 
 export { normaliseSlugKey }
 
@@ -37,7 +35,7 @@ export async function fetchMarketedProject(
 /**
  * Remove the fields that must never cross to the browser.
  *
- * The page hands `project` to client components (the calculator is one), and
+ * Any project data handed to client components is public, and
  * anything passed to a client component is serialised into the RSC flight
  * payload — visible in view-source. Two fields make that a real problem:
  *
@@ -70,38 +68,25 @@ export async function fetchMarketedSlugs(payload: Payload): Promise<string[]> {
   return res.docs.map((d) => (d as MarketedProject).slug).filter(Boolean)
 }
 
-/**
- * Options for the "Interested in which unit type" select, in the same order the
- * units table renders. Duplex is appended per configuration so the buyer picks
- * the thing they actually saw in the table.
- */
-export function unitInterestOptions(project: UnitsSource): string[] {
-  const labels = sortedUnits(project).map((u) =>
-    u.isDuplex ? `${u.type} (Duplex)` : String(u.type),
-  )
-  return [...new Set(labels)]
+/** Labels shared by the hero and enquiry forms, in CMS row order. */
+export function unitInterestOptions(project: Pick<MarketedProject, 'availableUnits'>): string[] {
+  return [...new Set((project.availableUnits ?? []).map((unit) => unit.type.trim()).filter(Boolean))]
 }
 
-/**
- * The hero availability line, e.g.
- * "Available: 2 Bed DD / 3 Bed Lounge, 3 Bed Drawing (Duplex) · 1,300–2,250 sq ft".
- *
- * Differs from the organic hero, which reports an aggregate duplex COUNT
- * ("· 2 duplex"). Here the duplex marker is attached to the specific
- * configurations that offer one, because on an ad page the visitor is choosing
- * between named units rather than skimming a summary.
- *
- * Dedupes on configuration + duplex together: keying on configuration alone
- * would label a whole configuration "(Duplex)" when a project offers both a
- * flat and a duplex of the same bed count.
- */
-export function availabilityLine(project: UnitsSource): string | null {
-  const summary = unitSummary(project)
-  if (!summary) return null
-
+/** Configuration labels and the available area range; no pricing data required. */
+export function availabilityLine(project: Pick<MarketedProject, 'availableUnits'>): string | null {
   const configurations = unitInterestOptions(project)
   if (!configurations.length) return null
 
-  const area = areaRangeLabel(summary)
-  return `Available: ${configurations.join(', ')}${area ? ` · ${area}` : ''}`
+  const areas = (project.availableUnits ?? [])
+    .filter((unit) => unit.type.trim())
+    .map((unit) => unit.areaSqFt)
+    .filter((area): area is number => typeof area === 'number' && Number.isFinite(area) && area > 0)
+  const min = Math.min(...areas)
+  const max = Math.max(...areas)
+  const format = (value: number) => value.toLocaleString('en-US')
+  const area = areas.length
+    ? (min === max ? format(min) : format(min) + '–' + format(max)) + ' sq ft'
+    : null
+  return 'Available: ' + configurations.join(', ') + (area ? ' · ' + area : '')
 }

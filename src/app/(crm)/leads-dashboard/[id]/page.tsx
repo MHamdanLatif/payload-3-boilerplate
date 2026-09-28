@@ -1,3 +1,7 @@
+import { LeadEditor } from '@/components/crm/LeadEditor'
+import { crmProjects } from '@/lib/crm-server'
+import { signLeadAction } from '@/lib/lead-action-link'
+import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { headers as nextHeaders } from 'next/headers'
@@ -9,7 +13,7 @@ import { LeadFollowUp } from '@/components/LeadFollowUp'
 import { ntfyConfigured } from '@/lib/ntfy'
 
 export const metadata: Metadata = {
-  title: 'Lead activity | Lateef Properties',
+  title: 'Client record',
   robots: { index: false, follow: false },
 }
 export const dynamic = 'force-dynamic'
@@ -48,7 +52,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
   const h = await nextHeaders()
   const { user } = await payload.auth({ headers: h })
   const { id } = await params
-  if (!user) redirect(`/admin/login?redirect=/leads-dashboard/${id}`)
+  if (!user) redirect(`/leads-dashboard/login?next=/leads-dashboard/${id}`)
 
   let lead: Lead | null = null
   try {
@@ -105,48 +109,110 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
   }
   rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
+  const projects = await crmProjects()
+  const phone = parsePhoneNumberFromString(lead.phone, 'PK')
   const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
   const td = 'px-3 py-3 text-sm text-brand-deep align-top'
 
   return (
-    <main className="min-h-screen bg-ivory px-4 py-10 md:px-8">
+    <main className="crm-wrap">
       <div className="mx-auto max-w-4xl">
         <a href="/leads-dashboard" className="text-xs text-brand-deep/55 underline">
           ← Back to dashboard
         </a>
 
-        <h1 className="mt-4 font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">
-          {lead.sourceName || lead.brochureHeadline || 'Brochure activity'}
-        </h1>
-        <p className="mt-1 text-sm text-brand-deep/70">
-          {views.length ? (
+        <p className="crm-eyebrow mt-6">Client record</p>
+        <h1 className="crm-title">{lead.name}</h1>
+        <p className="crm-muted mt-2 mb-5">
+          {lead.sourceName || lead.brochureHeadline || 'General enquiry'} ·{' '}
+          {lead.source || lead.acquisitionSource || 'Website'}
+        </p>
+        <LeadEditor
+          key={lead.id}
+          lead={{
+            id: lead.id,
+            name: lead.name,
+            phone: lead.phone,
+            email: lead.email,
+            status: lead.status,
+            currentInterestedProject: lead.currentInterestedProject,
+            closedProject: lead.closedProject,
+            interestedUnitType: lead.interestedUnitType,
+            unqualifiedReason: lead.unqualifiedReason,
+          }}
+          projects={projects}
+        />
+        <div className="crm-grid mt-4">
+          {phone?.isValid() && (
             <>
-              Viewed {views.length} {views.length === 1 ? 'time' : 'times'}
-              {totalLabel ? ` for ${totalLabel}` : ''} by{' '}
-              <span className="font-medium text-brand-deep">{lead.name}</span>
-            </>
-          ) : (
-            <>
-              Not opened yet by <span className="font-medium text-brand-deep">{lead.name}</span>
+              <a className="crm-button secondary" href={'tel:' + phone.number}>
+                Call client
+              </a>
+              <a
+                className="crm-button secondary"
+                target="_blank"
+                rel="noopener noreferrer"
+                href={
+                  '/api/leads/' + lead.id + '/whatsapp?sig=' + signLeadAction(lead.id, 'whatsapp')
+                }
+              >
+                WhatsApp
+              </a>
             </>
           )}
+          {phone?.isValid() && lead.brochureId && (
+            <a
+              className="crm-button col-span-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              href={
+                '/api/leads/' +
+                lead.id +
+                '/send-brochure?sig=' +
+                signLeadAction(lead.id, 'send-brochure')
+              }
+            >
+              Prepare brochure in WhatsApp
+            </a>
+          )}
+        </div>
+        <p className="crm-muted mt-3">
+          {views.length
+            ? 'Brochure opened ' +
+              views.length +
+              ' times' +
+              (totalLabel ? ' · ' + totalLabel + ' reading time' : '')
+            : 'Brochure not opened yet'}
         </p>
 
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-deep/55">
-          <span>{lead.phone}</span>
-          <span>Status: {lead.status ?? 'unqualified'}</span>
-          <a className="text-gold underline" href={`/admin/collections/leads/${lead.id}`}>
-            Open in admin
-          </a>
-        </div>
+        <LeadFollowUp
+          id={lead.id}
+          notes={lead.conversationNotes}
+          reminder={lead.followUpAt}
+          sentAt={lead.followUpSentAt}
+          status={lead.followUpStatus}
+          configured={ntfyConfigured()}
+        />
+        {lead.notes && (
+          <section className="mt-4 rounded-xl border border-brand-deep/10 bg-white p-5">
+            <h2 className="font-serif text-lg text-brand-deep">Original enquiry notes</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-brand-deep/70">{lead.notes}</p>
+          </section>
+        )}
 
-        <LeadFollowUp id={lead.id} notes={lead.conversationNotes} reminder={lead.followUpAt} sentAt={lead.followUpSentAt} status={lead.followUpStatus} configured={ntfyConfigured()} />
-        {lead.notes && <section className="mt-4 rounded-xl border border-brand-deep/10 bg-white p-5">
-          <h2 className="font-serif text-lg text-brand-deep">Original enquiry notes</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-brand-deep/70">{lead.notes}</p>
-        </section>}
-
-        <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
+        <section className="crm-panel mt-6 md:hidden" aria-label="Brochure activity">
+          <h2 className="font-semibold mb-4">Brochure activity</h2>
+          {rows.map((r, i) => (
+            <div key={i} className="border-t border-gray-100 py-3">
+              <p className="text-sm">{r.detail}</p>
+              <p className="crm-muted mt-1">
+                {fmtStamp(r.at)} PKT{r.platform ? ' · ' + r.platform : ''}
+              </p>
+            </div>
+          ))}
+          {!rows.length && <p className="crm-muted">No activity recorded yet.</p>}
+        </section>
+        <section className="mt-8 hidden overflow-x-auto rounded-xl border border-brand-deep/10 bg-white md:block">
           <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-brand-deep/10">
@@ -159,10 +225,14 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
               {rows.map((r, i) => (
                 <tr key={`${r.at}-${i}`} className="border-b border-brand-deep/5">
                   <td className={`${td} whitespace-nowrap`}>{fmtStamp(r.at)}</td>
-                  <td className={`${td} ${r.kind === 'sent' ? 'text-brand-deep/70' : 'text-blue-600'}`}>
+                  <td
+                    className={`${td} ${r.kind === 'sent' ? 'text-brand-deep/70' : 'text-blue-600'}`}
+                  >
                     {r.detail}
                   </td>
-                  <td className={`${td} whitespace-nowrap text-brand-deep/70`}>{r.platform ?? '–'}</td>
+                  <td className={`${td} whitespace-nowrap text-brand-deep/70`}>
+                    {r.platform ?? '–'}
+                  </td>
                 </tr>
               ))}
               {!rows.length && (
@@ -177,8 +247,8 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
         </section>
 
         <p className="mt-4 text-xs text-brand-deep/45">
-          Time on page counts foreground time only and is capped at 30 minutes per visit. Visits from
-          before time-tracking shipped show no duration.
+          Time on page counts foreground time only and is capped at 30 minutes per visit. Visits
+          from before time-tracking shipped show no duration.
         </p>
       </div>
     </main>

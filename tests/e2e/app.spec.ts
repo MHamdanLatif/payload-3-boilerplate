@@ -1,3 +1,4 @@
+import { verifyMobileCrm } from './crm-mobile'
 import { verifyPaymentPlans } from './payment-plans'
 import { verifyFollowUp } from './follow-up'
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -215,6 +216,7 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
   await createFirstAdmin(page)
   await seedDatabase(page)
   await verifyCrmActions(page)
+  await verifyMobileCrm(page)
 
   const publicContext = await browser.newContext()
   const publicPage = await publicContext.newPage()

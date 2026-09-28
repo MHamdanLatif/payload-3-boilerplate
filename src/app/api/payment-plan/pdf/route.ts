@@ -112,6 +112,12 @@ export async function POST(req: Request) {
   const projectCollection = isPaymentPlanCollection(body.projectCollection)
     ? body.projectCollection
     : 'featured-projects'
+  if (projectCollection === 'marketed-projects') {
+    return NextResponse.json(
+      { ok: false, error: 'Payment plans are not available for marketed projects' },
+      { status: 400 },
+    )
+  }
   const downPaymentPct = Number(body.downPaymentPct)
   const possessionPctRaw = Number(body.possessionPct)
   const loanIncluded = Boolean(body.loanIncluded)
@@ -158,7 +164,6 @@ export async function POST(req: Request) {
   if (!project) {
     return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 })
   }
-  const isMarketed = projectCollection === 'marketed-projects'
   const planConfig = project.paymentPlan
   if (planConfig?.enabled === false) {
     return NextResponse.json(
@@ -292,10 +297,7 @@ export async function POST(req: Request) {
       data: {
         name,
         phone,
-        // Exactly one of these is set — writing a marketed id into the
-        // featured-projects FK would violate the constraint and lose the row.
-        project: isMarketed ? null : project.id,
-        marketedProject: isMarketed ? project.id : null,
+        project: project.id,
         projectTitleSnapshot: project.title,
         selectedUnitType: unitDisplayLabel ?? selectedUnit?.type ?? null,
         totalPrice: plan.totals.effectivePrice,
@@ -375,7 +377,7 @@ export async function POST(req: Request) {
       data: {
         name,
         phone,
-        sourceKind: isMarketed ? 'marketed-project' : 'project',
+        sourceKind: 'project',
         sourceName: project.title,
         sourceSlug: project.slug ?? undefined,
         placement: 'payment-plan-pdf',

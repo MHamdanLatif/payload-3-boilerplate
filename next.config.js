@@ -9,6 +9,16 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [{
+      source: '/leads-dashboard/sw.js',
+      headers: [
+        { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Service-Worker-Allowed', value: '/leads-dashboard' },
+      ],
+    }]
+  },
   images: {
     // Order matters: Next negotiates the first format the browser supports.
     // AVIF first (smallest), WebP fallback, then the source.

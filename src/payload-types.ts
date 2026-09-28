@@ -1451,67 +1451,19 @@ export interface MarketedProject {
    */
   googleMapsEmbedUrl?: string | null;
   /**
-   * Rendered as the Available Units table, and it drives the "interested in" dropdown on both forms. Independent of the organic project — change a price here and only this page changes.
+   * Used in the hero availability line and the enquiry form. Drag rows to change their order.
    */
-  unitTypes?:
+  availableUnits?:
     | {
         name?: string | null;
-        type:
-          | '1 Bed Lounge'
-          | '2 Bed Lounge'
-          | '2 Bed Drawing'
-          | '2 Bed DD / 3 Bed Lounge'
-          | '3 Bed Lounge'
-          | '3 Bed Drawing'
-          | '4 Bed Drawing'
-          | '4+ Rooms';
-        flatLayout?: (number | null) | Media;
         /**
-         * Tick if this unit is a two-level duplex. Appends "(Duplex)" to this configuration in the hero availability line.
+         * e.g. 2 Bed DD / 3 Bed Lounge or 3 Bed Drawing (Duplex).
          */
-        isDuplex?: boolean | null;
-        rooms: number;
-        price: number;
+        type: string;
         areaSqFt?: number | null;
-        loanAmount?: number | null;
-        defaultPlan?: {
-          downPaymentPct?: number | null;
-          possessionPct?: number | null;
-          installments?:
-            | {
-                frequency: 'Monthly' | 'Quarterly' | 'HalfYearly';
-                amount: number;
-                locked?: boolean | null;
-                id?: string | null;
-              }[]
-            | null;
-        };
         id?: string | null;
       }[]
     | null;
-  /**
-   * Guardrails for the calculator on this page. Uncheck `enabled` to hide the calculator section entirely.
-   */
-  paymentPlan: {
-    enabled?: boolean | null;
-    priceOverride?: number | null;
-    totalDurationMonths: number;
-    downPaymentMinPct: number;
-    downPaymentMaxPct: number;
-    possessionPct: number;
-    paymentHeads?:
-      | {
-          name: string;
-          category: 'Initial Payment' | 'Time-Based' | 'Grey Structure' | 'Finishing' | 'Possession';
-          enabled?: boolean | null;
-          isCustom?: boolean | null;
-          numberOfSlabs?: number | null;
-          id?: string | null;
-        }[]
-      | null;
-    projectLogo?: (number | null) | Media;
-    planDisclaimer?: string | null;
-  };
   updatedAt: string;
   createdAt: string;
 }
@@ -2518,54 +2470,13 @@ export interface MarketedProjectsSelect<T extends boolean = true> {
         id?: T;
       };
   googleMapsEmbedUrl?: T;
-  unitTypes?:
+  availableUnits?:
     | T
     | {
         name?: T;
         type?: T;
-        flatLayout?: T;
-        isDuplex?: T;
-        rooms?: T;
-        price?: T;
         areaSqFt?: T;
-        loanAmount?: T;
-        defaultPlan?:
-          | T
-          | {
-              downPaymentPct?: T;
-              possessionPct?: T;
-              installments?:
-                | T
-                | {
-                    frequency?: T;
-                    amount?: T;
-                    locked?: T;
-                    id?: T;
-                  };
-            };
         id?: T;
-      };
-  paymentPlan?:
-    | T
-    | {
-        enabled?: T;
-        priceOverride?: T;
-        totalDurationMonths?: T;
-        downPaymentMinPct?: T;
-        downPaymentMaxPct?: T;
-        possessionPct?: T;
-        paymentHeads?:
-          | T
-          | {
-              name?: T;
-              category?: T;
-              enabled?: T;
-              isCustom?: T;
-              numberOfSlabs?: T;
-              id?: T;
-            };
-        projectLogo?: T;
-        planDisclaimer?: T;
       };
   updatedAt?: T;
   createdAt?: T;

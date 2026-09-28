@@ -1,6 +1,7 @@
 import * as paymentPlanFrequency from './20260911_000000_payment_plan_frequency'
 import * as leadFollowUp from './20260924_000000_lead_follow_up'
 import * as marketedProjectAmenities from './20260926_000000_marketed_project_amenities'
+import * as marketedAvailableUnits from './20260926_000001_marketed_available_units'
 import * as migration_20241125_222020_initial from './20241125_222020_initial';
 import * as migration_20241214_124128 from './20241214_124128';
 import * as migration_20260222_003500_payload_3_77_compat from './20260222_003500_payload_3_77_compat';
@@ -90,4 +91,5 @@ export const migrations = [
   { up: paymentPlanFrequency.up, down: paymentPlanFrequency.down, name: '20260911_000000_payment_plan_frequency' },
   { up: leadFollowUp.up, down: leadFollowUp.down, name: '20260924_000000_lead_follow_up' },
   { up: marketedProjectAmenities.up, down: marketedProjectAmenities.down, name: '20260926_000000_marketed_project_amenities' },
+  { up: marketedAvailableUnits.up, down: marketedAvailableUnits.down, name: '20260926_000001_marketed_available_units' },
 ];

@@ -1,0 +1,62 @@
+import { expect, type Page } from '@playwright/test'
+export async function verifyMobileCrm(page: Page) {
+  const media = await (await page.request.get('/api/media?limit=1')).json()
+  const projectRes = await page.request.post('/api/featured-projects', {
+    data: {
+      title: 'Mobile CRM Test',
+      slug: 'mobile-crm-test',
+      builderName: 'Test Builder',
+      propertyType: 'Flat',
+      location: 'Scheme 33',
+      status: 'Pre-launch',
+      elevationImages: [{ image: media.docs[0].id }],
+    },
+  })
+  expect(projectRes.ok(), await projectRes.text()).toBeTruthy()
+  const project = (await projectRes.json()).doc
+  const oldViewport = page.viewportSize()
+  await page.setViewportSize({ width: 360, height: 800 })
+  await page.goto('/leads-dashboard/new')
+  await page.getByLabel('Name', { exact: true }).fill('Mobile CRM Buyer')
+  await page.getByLabel('Phone', { exact: true }).fill('03001234567')
+  await page.getByLabel('Project interested in', { exact: true }).selectOption(String(project.id))
+  await page.getByLabel('Source', { exact: true }).selectOption('referral')
+  await page.getByRole('button', { name: 'Add lead', exact: true }).click()
+  await expect(page).toHaveURL(/\/leads-dashboard\/\d+$/)
+  const id = Number(page.url().split('/').pop())
+  await expect(page.getByRole('heading', { name: 'Mobile CRM Buyer' })).toBeVisible()
+  let lead = await (await page.request.get('/api/leads/' + id + '?depth=0')).json()
+  expect(lead.acquiredProject).toBe(project.id)
+  expect(lead.sourceSlug).toBe('mobile-crm-test')
+  expect(lead.conversionSurface).toBe('crm-manual')
+  expect(lead.acquisitionSource).toBe('referral')
+  expect(lead.brochureId).toBeTruthy()
+  await page.getByLabel('Lead status', { exact: true }).selectOption('closed-won')
+  await expect(page.getByText('Changes saved.')).toBeVisible()
+  await page.getByRole('link', { name: 'Edit details', exact: true }).click()
+  await page.getByLabel('Phone', { exact: true }).fill('03007654321')
+  await page.getByLabel('Closed on project', { exact: true }).selectOption(String(project.id))
+  await page.getByRole('button', { name: 'Save lead details', exact: true }).click()
+  await expect
+    .poll(
+      async () => (await (await page.request.get('/api/leads/' + id + '?depth=0')).json()).phone,
+    )
+    .toBe('+923007654321')
+  lead = await (await page.request.get('/api/leads/' + id + '?depth=0')).json()
+  expect(lead.closedProject).toBe(project.id)
+  expect(lead.acquiredProject).toBe(project.id)
+  await page.goto('/leads-dashboard?q=Mobile+CRM+Buyer')
+  await expect(page.getByRole('heading', { name: 'Mobile CRM Buyer' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
+  const manifest = await (await page.request.get('/leads-dashboard/manifest.webmanifest')).json()
+  expect(manifest.start_url).toBe('/leads-dashboard')
+  expect(manifest.display).toBe('standalone')
+  expect(
+    (await page.request.get('/leads-dashboard/sw.js')).headers()['service-worker-allowed'],
+  ).toBe('/leads-dashboard')
+  await page.request.delete('/api/leads/' + id)
+  await page.request.delete('/api/featured-projects/' + project.id)
+  if (oldViewport) await page.setViewportSize(oldViewport)
+}

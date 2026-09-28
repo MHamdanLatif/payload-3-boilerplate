@@ -50,7 +50,7 @@ function nowIso(): string {
 
 async function onCreate(doc: Lead, payload: Payload): Promise<void> {
   const base = getServerSideURL().replace(/\/$/, '')
-  const adminUrl = `${base}/admin/collections/leads/${doc.id}`
+  const adminUrl = `${base}/leads-dashboard/${doc.id}`
   const project = doc.sourceName || doc.sourceSlug || doc.brochureHeadline || 'general enquiry'
   const source = doc.metaAdName || doc.source || doc.sourceKind || 'website'
   const ts = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })

@@ -19,18 +19,28 @@ type SP = { from?: string; to?: string; status?: string; source?: string }
 const STATUSES = LEAD_STATUSES
 
 const fmtDate = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'Asia/Karachi' }) : '—'
+  d
+    ? new Date(d).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: '2-digit',
+        timeZone: 'Asia/Karachi',
+      })
+    : '—'
 const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
 
 export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
   const payload = await getPayload({ config })
   const h = await nextHeaders()
   const { user } = await payload.auth({ headers: h })
-  if (!user) redirect('/admin/login?redirect=/leads-dashboard')
+  if (!user) redirect('/leads-dashboard/login?next=/leads-dashboard/reports')
 
   const sp = await searchParams
   const and: Where[] = []
-  if (sp.from) and.push({ createdAt: { greater_than_equal: new Date(`${sp.from}T00:00:00+05:00`).toISOString() } })
+  if (sp.from)
+    and.push({
+      createdAt: { greater_than_equal: new Date(`${sp.from}T00:00:00+05:00`).toISOString() },
+    })
   if (sp.to) {
     const to = new Date(`${sp.to}T23:59:59.999+05:00`)
     and.push({ createdAt: { less_than_equal: to.toISOString() } })
@@ -41,8 +51,21 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   const where: Where = and.length ? { and } : {}
 
   const [leadsRes, opensRes] = await Promise.all([
-    payload.find({ collection: 'leads', where, depth: 0, limit: 1000, pagination: false, sort: '-createdAt' }),
-    payload.find({ collection: 'link-opens', where: { asset: { equals: 'page' } }, depth: 0, limit: 5000, pagination: false }),
+    payload.find({
+      collection: 'leads',
+      where,
+      depth: 0,
+      limit: 1000,
+      pagination: false,
+      sort: '-createdAt',
+    }),
+    payload.find({
+      collection: 'link-opens',
+      where: { asset: { equals: 'page' } },
+      depth: 0,
+      limit: 5000,
+      pagination: false,
+    }),
   ])
   let leads = leadsRes.docs as Lead[]
   if (sp.source) leads = leads.filter((l) => sourceOf(l) === sp.source)
@@ -56,7 +79,8 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   for (const o of opensRes.docs as { brochureId?: string | null; dwellMs?: number | null }[]) {
     if (!o.brochureId) continue
     opensByBrochure.set(o.brochureId, (opensByBrochure.get(o.brochureId) ?? 0) + 1)
-    if (o.dwellMs) dwellByBrochure.set(o.brochureId, (dwellByBrochure.get(o.brochureId) ?? 0) + o.dwellMs)
+    if (o.dwellMs)
+      dwellByBrochure.set(o.brochureId, (dwellByBrochure.get(o.brochureId) ?? 0) + o.dwellMs)
   }
   const openedLeads = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId))
   const openedCount = openedLeads.length
@@ -71,7 +95,9 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
     : 0
 
   const total = leads.length
-  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]))
+  const byStatus = Object.fromEntries(
+    STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]),
+  )
   const contacted = total - byStatus.unqualified // anyone past unqualified
   const qualified = leads.filter((l) => atLeast(l.status, 'qualified')).length
   const siteVisits = leads.filter((l) => atLeast(l.status, 'site-visit')).length
@@ -117,34 +143,80 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   }
 
   return (
-    <main className="min-h-screen bg-ivory px-4 py-10 md:px-8">
+    <main className="crm-wrap">
       <div className="mx-auto max-w-6xl">
-        <h1 className="font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">Leads Dashboard</h1>
-        <p className="mt-1 text-sm text-brand-deep/60">Native CRM reporting — leads, sources, qualification funnel & brochure opens.</p>
-        <p className="mt-1 text-xs text-brand-deep/55">Dates and filters use Pakistan time (PKT, UTC+5).</p>
+        <h1 className="font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">
+          Leads Dashboard
+        </h1>
+        <p className="mt-1 text-sm text-brand-deep/60">
+          Native CRM reporting — leads, sources, qualification funnel & brochure opens.
+        </p>
+        <p className="mt-1 text-xs text-brand-deep/55">
+          Dates and filters use Pakistan time (PKT, UTC+5).
+        </p>
 
         {/* Filters */}
-        <form method="get" className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-deep/10 bg-white p-4">
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">From
-            <input type="date" name="from" defaultValue={sp.from} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm" />
+        <form
+          method="get"
+          className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-deep/10 bg-white p-4"
+        >
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+            From
+            <input
+              type="date"
+              name="from"
+              defaultValue={sp.from}
+              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
+            />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">To
-            <input type="date" name="to" defaultValue={sp.to} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm" />
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+            To
+            <input
+              type="date"
+              name="to"
+              defaultValue={sp.to}
+              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
+            />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Status
-            <select name="status" defaultValue={sp.status ?? ''} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm">
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+            Status
+            <select
+              name="status"
+              defaultValue={sp.status ?? ''}
+              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
+            >
               <option value="">All</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(s)}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">Source
-            <select name="source" defaultValue={sp.source ?? ''} className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm">
+          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+            Source
+            <select
+              name="source"
+              defaultValue={sp.source ?? ''}
+              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
+            >
               <option value="">All</option>
-              {allSources.map((s) => <option key={s} value={s}>{s}</option>)}
+              {allSources.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </label>
-          <button type="submit" className="rounded-full bg-brand-deep px-5 py-2 text-xs font-medium uppercase tracking-[0.15em] text-white">Apply</button>
-          <a href="/leads-dashboard" className="text-xs text-brand-deep/55 underline">Reset</a>
+          <button
+            type="submit"
+            className="rounded-full bg-brand-deep px-5 py-2 text-xs font-medium uppercase tracking-[0.15em] text-white"
+          >
+            Apply
+          </button>
+          <a href="/leads-dashboard/reports" className="text-xs text-brand-deep/55 underline">
+            Reset
+          </a>
           {/* Same params as the view above, so you export exactly what you filtered
               to rather than a full dump you then clean up in a spreadsheet. */}
           <a
@@ -168,7 +240,9 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
             { label: 'Avg time on page', value: fmtDuration(avgDwell) },
           ].map((k) => (
             <div key={k.label} className="rounded-xl border border-brand-deep/10 bg-white p-4">
-              <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/50">{k.label}</p>
+              <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/50">
+                {k.label}
+              </p>
               <p className="mt-1 font-serif text-2xl text-brand-deep">{k.value}</p>
             </div>
           ))}
@@ -178,15 +252,32 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
           <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Source / campaign funnel</p>
           <table className="mt-2 w-full min-w-[520px]">
-            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Source</th><th className={th}>Leads</th><th className={th}>Contacted</th><th className={th}>Qualified</th><th className={th}>Qualify rate</th></tr></thead>
+            <thead>
+              <tr className="border-b border-brand-deep/10">
+                <th className={th}>Source</th>
+                <th className={th}>Leads</th>
+                <th className={th}>Contacted</th>
+                <th className={th}>Qualified</th>
+                <th className={th}>Qualify rate</th>
+              </tr>
+            </thead>
             <tbody>
               {sources.map(([s, r]) => (
                 <tr key={s} className="border-b border-brand-deep/5">
-                  <td className={td}>{s}</td><td className={td}>{r.total}</td><td className={td}>{r.contacted}</td><td className={td}>{r.qualified}</td>
+                  <td className={td}>{s}</td>
+                  <td className={td}>{r.total}</td>
+                  <td className={td}>{r.contacted}</td>
+                  <td className={td}>{r.qualified}</td>
                   <td className={td}>{pct(r.qualified, r.total)}%</td>
                 </tr>
               ))}
-              {!sources.length && <tr><td className={td} colSpan={5}>No leads in range.</td></tr>}
+              {!sources.length && (
+                <tr>
+                  <td className={td} colSpan={5}>
+                    No leads in range.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </section>
@@ -198,12 +289,26 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
             Time on page is the total across every visit — click a name for the per-visit breakdown.
           </p>
           <table className="mt-2 w-full min-w-[820px]">
-            <thead><tr className="border-b border-brand-deep/10"><th className={th}>Name</th><th className={th}>Phone</th><th className={th}>Source</th><th className={th}>Status</th><th className={th}>Opens</th><th className={th}>Time on page</th><th className={th}>Created</th><th className={th}></th></tr></thead>
+            <thead>
+              <tr className="border-b border-brand-deep/10">
+                <th className={th}>Name</th>
+                <th className={th}>Phone</th>
+                <th className={th}>Source</th>
+                <th className={th}>Status</th>
+                <th className={th}>Opens</th>
+                <th className={th}>Time on page</th>
+                <th className={th}>Created</th>
+                <th className={th}></th>
+              </tr>
+            </thead>
             <tbody>
               {leads.slice(0, 200).map((l) => (
                 <tr key={l.id} className="border-b border-brand-deep/5">
                   <td className={td}>
-                    <a className="underline decoration-brand-deep/25 underline-offset-2 hover:text-gold" href={`/leads-dashboard/${l.id}`}>
+                    <a
+                      className="underline decoration-brand-deep/25 underline-offset-2 hover:text-gold"
+                      href={`/leads-dashboard/${l.id}`}
+                    >
                       {l.name}
                     </a>
                     <p className="mt-1 text-xs text-brand-deep/55">
@@ -214,11 +319,25 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
                   </td>
                   <td className={td}>{l.phone}</td>
                   <td className={td}>{sourceOf(l)}</td>
-                  <td className={td}><span className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}>{statusLabel(l.status)}</span></td>
-                  <td className={td}>{l.brochureId ? opensByBrochure.get(l.brochureId) ?? 0 : 0}</td>
-                  <td className={td}>{fmtDuration(l.brochureId ? dwellByBrochure.get(l.brochureId) ?? 0 : 0)}</td>
+                  <td className={td}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}
+                    >
+                      {statusLabel(l.status)}
+                    </span>
+                  </td>
+                  <td className={td}>
+                    {l.brochureId ? (opensByBrochure.get(l.brochureId) ?? 0) : 0}
+                  </td>
+                  <td className={td}>
+                    {fmtDuration(l.brochureId ? (dwellByBrochure.get(l.brochureId) ?? 0) : 0)}
+                  </td>
                   <td className={td}>{fmtDate(l.createdAt)}</td>
-                  <td className={td}><a className="text-gold underline" href={`/admin/collections/leads/${l.id}`}>Edit</a></td>
+                  <td className={td}>
+                    <a className="text-gold underline" href={`/admin/collections/leads/${l.id}`}>
+                      Edit
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

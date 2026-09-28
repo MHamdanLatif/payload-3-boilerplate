@@ -1,0 +1,25 @@
+{
+  "id": "/leads-dashboard",
+  "name": "Lateef CRM",
+  "short_name": "Lateef CRM",
+  "description": "Leads, conversations and follow-ups for Lateef Properties.",
+  "start_url": "/leads-dashboard",
+  "scope": "/leads-dashboard",
+  "display": "standalone",
+  "background_color": "hsl(36 33% 97%)",
+  "theme_color": "hsl(231 30% 27%)",
+  "icons": [
+    {
+      "src": "/leads-dashboard/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/leads-dashboard/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

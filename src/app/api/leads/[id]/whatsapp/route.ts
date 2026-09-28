@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Invalid link' }, { status: 403 })
   }
 
-  const adminUrl = `${getServerSideURL().replace(/\/$/, '')}/admin/collections/leads/${id}`
+  const adminUrl = `${getServerSideURL().replace(/\/$/, '')}/leads-dashboard/${id}`
   try {
     const payload = await getPayload({ config })
     const lead = await payload.findByID({ collection: 'leads', id, depth: 0, overrideAccess: true })

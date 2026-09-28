@@ -35,7 +35,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const base = getServerSideURL().replace(/\/$/, '')
-  const adminUrl = `${base}/admin/collections/leads/${id}`
+  const adminUrl = `${base}/leads-dashboard/${id}`
   const sig = new URL(req.url).searchParams.get('sig')
 
   // No session on a notification tap, so the signature IS the authorisation.

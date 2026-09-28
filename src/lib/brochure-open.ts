@@ -8,28 +8,6 @@ import type { Lead } from '@/payload-types'
 const ASSETS = ['page', 'pdf1', 'pdf2', 'map', 'video'] as const
 export type BrochureAsset = (typeof ASSETS)[number]
 
-// Re-open cooldown: after alerting on an open, stay quiet this long, then alert
-// again if the lead returns (a strong buying signal). 0 = alert on every open.
-// Configured in MINUTES. `BROCHURE_REOPEN_COOLDOWN_HOURS` is the retired name,
-// still honoured so an existing deployment doesn't silently change behaviour —
-// but if it is set it WINS over the default, so delete it from the environment
-// to pick up the 30-minute default.
-const DEFAULT_COOLDOWN_MINUTES = 30
-
-function cooldownMs(): number {
-  const mins = process.env.BROCHURE_REOPEN_COOLDOWN_MINUTES
-  if (mins != null && mins !== '') {
-    const n = Number(mins)
-    if (Number.isFinite(n)) return Math.max(0, n) * 60_000
-  }
-  const hours = process.env.BROCHURE_REOPEN_COOLDOWN_HOURS
-  if (hours != null && hours !== '') {
-    const n = Number(hours)
-    if (Number.isFinite(n)) return Math.max(0, n) * 3_600_000
-  }
-  return DEFAULT_COOLDOWN_MINUTES * 60_000
-}
-
 // Link-preview scrapers (WhatsApp, Meta, etc.) fetch the brochure URL to build
 // the chat preview card — that must NOT count as the lead opening it. A missing
 // UA is treated as a bot too (real browsers always send one).
@@ -46,9 +24,9 @@ export function normalizeAsset(a?: string | null): BrochureAsset {
 }
 
 /**
- * Records a brochure engagement event and — on a page open, throttled by the
- * re-open cooldown — stamps the lead's read receipt and pushes an ntfy alert to
- * the owner. Best-effort: never throws. Shared by the server page render (the
+ * Records a brochure engagement event and, on every page open, stamps the
+ * lead's first read receipt and pushes an ntfy alert to the owner. Best-effort:
+ * never throws. Shared by the server page render (the
  * reliable path, works on iOS where client beacons don't) and the client asset
  * beacons (pdf/map/video).
  */
@@ -75,31 +53,12 @@ export async function logBrochureOpen(opts: {
     const lead = leadRes.docs[0] as Lead | undefined
 
     let firstEver = false
-    let notify = false
     if (asset === 'page') {
       const total = await payload.count({
         collection: 'link-opens',
         where: { and: [{ brochureId: { equals: opts.brochureId } }, { asset: { equals: 'page' } }] },
       })
       firstEver = (total?.totalDocs ?? 0) === 0
-
-      const cooldown = cooldownMs()
-      if (cooldown <= 0) {
-        notify = true
-      } else {
-        const since = new Date(Date.now() - cooldown).toISOString()
-        const recent = await payload.count({
-          collection: 'link-opens',
-          where: {
-            and: [
-              { brochureId: { equals: opts.brochureId } },
-              { asset: { equals: 'page' } },
-              { createdAt: { greater_than_equal: since } },
-            ],
-          },
-        })
-        notify = (recent?.totalDocs ?? 0) === 0
-      }
     }
 
     await payload.create({
@@ -132,7 +91,7 @@ export async function logBrochureOpen(opts: {
       // before this shipped is still sitting at Uncontacted, and the next time
       // they look at it they should move. Advancing is a no-op once they have.
       await advanceLeadStatus(payload, lead.id, 'engaged')
-      if (notify && process.env.NTFY_TOPIC) {
+      if (process.env.NTFY_TOPIC) {
         const project = lead.sourceName || lead.brochureHeadline || 'their brochure'
         const base = getServerSideURL().replace(/\/$/, '')
         await sendNtfy({
@@ -140,7 +99,7 @@ export async function logBrochureOpen(opts: {
           message: `${lead.name} ${firstEver ? 'just opened' : 'came back to'} ${project}. Good moment to call.`,
           priority: 'high',
           tags: firstEver ? 'eyes' : 'fire',
-          clickUrl: `${base}/admin/collections/leads/${lead.id}`,
+          clickUrl: `${base}/leads-dashboard/${lead.id}`,
         })
       }
     }

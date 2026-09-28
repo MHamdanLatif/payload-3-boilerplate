@@ -79,6 +79,7 @@ export function LeadFollowUp({
         <label className="block text-sm">
           Conversation notes
           <textarea
+            aria-label="Conversation notes"
             className={field}
             rows={6}
             value={text}
@@ -90,6 +91,7 @@ export function LeadFollowUp({
         <label className="block text-sm">
           Follow-up reminder
           <select
+            aria-label="Follow-up reminder"
             className={field}
             value={enabled ? 'scheduled' : 'none'}
             disabled={busy}
@@ -106,6 +108,7 @@ export function LeadFollowUp({
           <label className="block text-sm">
             Reminder date and time (PKT, UTC+5)
             <input
+              aria-label="Reminder date and time (PKT, UTC+5)"
               type="datetime-local"
               required
               className={field}

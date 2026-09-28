@@ -2,8 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
-import { seedPaymentHeads } from './FeaturedProjects/hooks/seedPaymentHeads'
-import { LOCATION_OPTIONS, UNIT_TYPE_OPTIONS } from './FeaturedProjects'
+import { LOCATION_OPTIONS } from './FeaturedProjects'
 
 /**
  * Collapse a URL segment to a comparison key: lowercase, letters and digits only.
@@ -48,7 +47,6 @@ export const MarketedProjects: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      seedPaymentHeads,
       // Derive the lookup key from whatever casing the editor typed.
       ({ data }) => {
         if (data && typeof data.slug === 'string') {
@@ -252,168 +250,23 @@ export const MarketedProjects: CollectionConfig = {
       admin: { description: 'Paste only the `src` URL from a Google Maps "Embed a map" iframe.' },
     },
     {
-      name: 'unitTypes',
+      name: 'availableUnits',
       type: 'array',
-      label: 'Unit Types',
-      labels: { singular: 'Unit Type', plural: 'Unit Types' },
+      label: 'Available Units',
+      labels: { singular: 'Unit', plural: 'Units' },
       admin: {
-        description:
-          'Rendered as the Available Units table, and it drives the "interested in" dropdown on both forms. Independent of the organic project — change a price here and only this page changes.',
+        description: 'Used in the hero availability line and the enquiry form. Drag rows to change their order.',
       },
       fields: [
-        { name: 'name', type: 'text', label: 'Unit Name (optional)' },
+        { name: 'name', type: 'text', label: 'Name' },
         {
           name: 'type',
-          type: 'select',
+          type: 'text',
           required: true,
-          options: UNIT_TYPE_OPTIONS.map((v) => ({ label: v, value: v })),
+          label: 'Type',
+          admin: { description: 'e.g. 2 Bed DD / 3 Bed Lounge or 3 Bed Drawing (Duplex).' },
         },
-        { name: 'flatLayout', type: 'upload', relationTo: 'media', label: 'Flat Layout' },
-        {
-          name: 'isDuplex',
-          type: 'checkbox',
-          label: 'Duplex (two-level)',
-          defaultValue: false,
-          admin: {
-            description:
-              'Tick if this unit is a two-level duplex. Appends "(Duplex)" to this configuration in the hero availability line.',
-          },
-        },
-        { name: 'rooms', type: 'number', required: true, label: 'Rooms' },
-        { name: 'price', type: 'number', label: 'Price (PKR)', required: true },
-        { name: 'areaSqFt', type: 'number', label: 'Area (sq. ft.)' },
-        { name: 'loanAmount', type: 'number', label: 'Fixed Loan Amount (PKR)' },
-        {
-          name: 'defaultPlan',
-          type: 'group',
-          label: 'Builder Default Payment Plan',
-          fields: [
-            { name: 'downPaymentPct', type: 'number', label: 'Down Payment (%)', min: 10, max: 100 },
-            { name: 'possessionPct', type: 'number', label: 'Possession (%)', min: 0, max: 5 },
-            {
-              name: 'installments',
-              type: 'array',
-              label: 'Default Installments',
-              labels: { singular: 'Installment', plural: 'Installments' },
-              // Same 63-char Postgres identifier problem as `fp_unit_default_inst`
-              // on FeaturedProjects: the generated
-              // `enum_marketed_projects_unit_types_default_plan_installments_frequency`
-              // is 69 characters and would be silently truncated into a collision.
-              dbName: 'mp_unit_default_inst',
-              fields: [
-                {
-                  name: 'frequency',
-                  type: 'select',
-                  required: true,
-                  options: [
-                    { label: 'Monthly', value: 'Monthly' },
-                    { label: 'Quarterly', value: 'Quarterly' },
-                    { label: 'Half-Yearly', value: 'HalfYearly' },
-                  ],
-                },
-                { name: 'amount', type: 'number', required: true, label: 'Amount per period (PKR)' },
-                { name: 'locked',
-                  label: 'Keep builder amount',
-                  type: 'checkbox', defaultValue: true },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: 'paymentPlan',
-      type: 'group',
-      label: 'Payment Plan Configuration',
-      admin: {
-        description:
-          'Guardrails for the calculator on this page. Uncheck `enabled` to hide the calculator section entirely.',
-      },
-      fields: [
-        { name: 'enabled', type: 'checkbox', defaultValue: true },
-        { name: 'priceOverride', type: 'number', label: 'Total Price Override (PKR)' },
-        {
-          name: 'totalDurationMonths',
-          type: 'number',
-          required: true,
-          defaultValue: 36,
-          min: 6,
-          max: 84,
-        },
-        {
-          name: 'downPaymentMinPct',
-          type: 'number',
-          required: true,
-          defaultValue: 10,
-          min: 0,
-          max: 90,
-          label: 'Down Payment Minimum (%)',
-        },
-        {
-          name: 'downPaymentMaxPct',
-          type: 'number',
-          required: true,
-          defaultValue: 30,
-          min: 0,
-          max: 95,
-          label: 'Down Payment Maximum (%)',
-        },
-        {
-          name: 'possessionPct',
-          type: 'number',
-          required: true,
-          defaultValue: 5,
-          min: 0,
-          max: 5,
-          label: 'Possession Payment (%)',
-        },
-        {
-          name: 'paymentHeads',
-          type: 'array',
-          label: 'Payment Heads',
-          // `marketed_projects_payment_plan_payment_heads_parent_id_idx` is 62 of
-          // the 63 characters Postgres allows. Shortened pre-emptively so a later
-          // rename cannot break the schema.
-          dbName: 'mp_payment_heads',
-          admin: { initCollapsed: true },
-          fields: [
-            { name: 'name', type: 'text', required: true },
-            {
-              name: 'category',
-              type: 'select',
-              required: true,
-              options: [
-                { label: 'Initial Payment', value: 'Initial Payment' },
-                { label: 'Time-Based', value: 'Time-Based' },
-                { label: 'Grey Structure', value: 'Grey Structure' },
-                { label: 'Finishing', value: 'Finishing' },
-                { label: 'Possession', value: 'Possession' },
-              ],
-            },
-            { name: 'enabled', type: 'checkbox', defaultValue: true },
-            { name: 'isCustom', type: 'checkbox', defaultValue: false },
-            {
-              name: 'numberOfSlabs',
-              type: 'number',
-              min: 1,
-              max: 50,
-              label: 'Number of Slabs',
-              admin: {
-                condition: (_, siblingData) =>
-                  siblingData?.category === 'Grey Structure' &&
-                  typeof siblingData?.name === 'string' &&
-                  /\bslab\b/i.test(siblingData.name),
-              },
-            },
-          ],
-        },
-        {
-          name: 'projectLogo',
-          type: 'upload',
-          relationTo: 'media',
-          label: 'Project / Builder Logo for PDF',
-        },
-        { name: 'planDisclaimer', type: 'textarea', label: 'Per-Project Disclaimer (PDF)' },
+        { name: 'areaSqFt', type: 'number', label: 'Area (sq ft)', min: 1 },
       ],
     },
   ],

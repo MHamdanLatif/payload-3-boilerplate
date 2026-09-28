@@ -54,7 +54,10 @@ export async function GET(req: Request) {
   const source = sp.get('source')
 
   const and: Where[] = []
-  if (from) and.push({ createdAt: { greater_than_equal: new Date(`${from}T00:00:00+05:00`).toISOString() } })
+  if (from)
+    and.push({
+      createdAt: { greater_than_equal: new Date(`${from}T00:00:00+05:00`).toISOString() },
+    })
   if (to) {
     const end = new Date(`${to}T23:59:59.999+05:00`)
     and.push({ createdAt: { less_than_equal: end.toISOString() } })
@@ -93,18 +96,47 @@ export async function GET(req: Request) {
   }
 
   const header = [
-    'Name', 'Phone', 'Email', 'Status', 'Reason', 'Acquisition Source',
-    'Conversion Surface', 'First Touch Campaign', 'First Touch Content',
-    'Latest Touch Source', 'Legacy Source Tag', 'Project', 'Interested Unit',
-    'Property Type', 'Budget', 'Created (PKT)', 'Brochure Sent (PKT)',
-    'Brochure Opened (PKT)', 'Opens', 'Time on Page', 'Notes',
+    'Name',
+    'Phone',
+    'Email',
+    'Status',
+    'Reason',
+    'Acquisition Source',
+    'Conversion Surface',
+    'First Touch Campaign',
+    'First Touch Content',
+    'Latest Touch Source',
+    'Legacy Source Tag',
+    'Project',
+    'Interested Unit',
+    'Property Type',
+    'Budget',
+    'Created (PKT)',
+    'Brochure Sent (PKT)',
+    'Brochure Opened (PKT)',
+    'Opens',
+    'Time on Page',
+    'Notes',
   ]
 
   const rows = leads.map((l) => [
-    l.name, l.phone, l.email, statusLabel(l.status), l.unqualifiedReason,
-    l.acquisitionSource, l.conversionSurface, l.firstTouchCampaign, l.firstTouchContent,
-    l.latestTouchSource, sourceOf(l), l.sourceName, l.interestedUnitType,
-    l.propertyType, l.budget, fmtDateTime(l.createdAt), fmtDateTime(l.brochureSentAt),
+    l.name,
+    l.phone,
+    l.email,
+    statusLabel(l.status),
+    l.unqualifiedReason,
+    l.acquisitionSource,
+    l.conversionSurface,
+    l.firstTouchCampaign,
+    l.firstTouchContent,
+    l.latestTouchSource,
+    sourceOf(l),
+    l.sourceName,
+    l.interestedUnitType,
+    l.propertyType,
+    l.budget,
+    fmtDateTime(l.createdAt),
+    fmtDateTime(l.brochureSentAt),
     fmtDateTime(l.brochureOpenedAt),
     l.brochureId ? (opens.get(l.brochureId) ?? 0) : 0,
     fmtDuration(l.brochureId ? (dwell.get(l.brochureId) ?? 0) : 0),
