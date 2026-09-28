@@ -123,6 +123,8 @@ function api({ user = { id: 1 }, owner, disabled = false } = {}) {
     sends = []
   const payload = {
     auth: async () => ({ user }),
+    findGlobal: async () => ({ automaticUncontactedReminders: true }),
+    updateGlobal: async (v) => writes.push(v),
     find: async () => ({ docs: owner ? [{ id: 2, owner }] : [] }),
     create: async (v) => writes.push(v),
     update: async (v) => writes.push(v),
@@ -163,7 +165,10 @@ test('notification API requires login, same origin, and subscription ownership',
   for (const method of ['POST', 'DELETE'])
     assert.equal((await other.route[method](other.request(method))).status, 409)
   assert.equal(other.writes.length, 0)
-  assert.deepEqual(await (await own.route.GET(own.request('GET'))).json(), { publicKey: 'public' })
+  assert.deepEqual(await (await own.route.GET(own.request('GET'))).json(), {
+    publicKey: 'public',
+    automaticReminders: true,
+  })
   assert.equal((await own.route.POST(own.request('POST'))).status, 200)
   assert.equal(own.writes[0].data.owner, 1)
 })
@@ -224,4 +229,123 @@ test('worker shows branded actions and opens the signed brochure URL, blocking e
   })
   await pending
   assert.equal(opened[1], 'https://crm.test/leads-dashboard')
+})
+
+test('queue retries only unconfirmed devices and uses a stable notification tag', async () => {
+  const a = endpoint + '-a',
+    b = endpoint + '-b'
+  const docs = [
+    { id: 1, owner: 7, endpoint: a, ...subscription.keys },
+    { id: 2, owner: 7, endpoint: b, ...subscription.keys },
+  ]
+  const f = sender({ docs })
+  const confirmed = createHash('sha256').update(a).digest('hex')
+  const delivery = {
+    id: 44,
+    exclude: [confirmed],
+    receipt: (hash) => '/api/crm/push/receipt?id=44&device=' + hash,
+  }
+  const result = await f.push.sendCrmPush(
+    f.payload,
+    { title: 'New Lead', message: 'Test' },
+    undefined,
+    delivery,
+  )
+  assert.equal(result.pendingDevices, 1)
+  assert.equal(f.sends.length, 1)
+  assert.equal(f.sends[0][0].endpoint, b)
+  assert.equal(JSON.parse(f.sends[0][1]).tag, 'lead-event-44')
+  assert.equal(f.sends[0][2].TTL, 300)
+  delivery.exclude.push(createHash('sha256').update(b).digest('hex'))
+  const complete = await f.push.sendCrmPush(
+    f.payload,
+    { title: 'New Lead', message: 'Test' },
+    undefined,
+    delivery,
+  )
+  assert.equal(complete.pendingDevices, 0)
+  assert.equal(complete.ok, true)
+  assert.equal(f.sends.length, 1)
+})
+
+test('automatic reminder option is authenticated and defaults enabled', async () => {
+  const f = api()
+  const response = await f.route.PATCH(f.request('PATCH', { automaticReminders: false }))
+  assert.equal(response.status, 200)
+  assert.equal(f.writes[0].data.automaticUncontactedReminders, false)
+  assert.equal(f.writes[0].overrideAccess, false)
+  const anonymous = api({ user: null })
+  assert.equal(
+    (await anonymous.route.PATCH(anonymous.request('PATCH', { automaticReminders: false }))).status,
+    401,
+  )
+})
+
+test('worker confirms only successfully displayed notifications', async () => {
+  const handlers = {},
+    calls = []
+  let fail = false,
+    pending
+  const self = {
+    location: { origin: 'https://crm.test' },
+    addEventListener: (name, fn) => {
+      handlers[name] = fn
+    },
+    registration: {
+      showNotification: async () => {
+        if (fail) throw Error('Permission denied')
+        calls.push('display')
+      },
+    },
+  }
+  vm.runInNewContext(readFileSync('public/leads-dashboard/sw.js', 'utf8'), {
+    self,
+    URL,
+    fetch: async (url) => {
+      calls.push(url)
+    },
+  })
+  const event = {
+    data: {
+      json: () => ({
+        title: 'New lead',
+        tag: 'lead-event-3',
+        receipt: '/api/crm/push/receipt?id=3',
+      }),
+    },
+    waitUntil: (p) => {
+      pending = p
+    },
+  }
+  handlers.push(event)
+  await pending
+  assert.deepEqual(calls, ['display', '/api/crm/push/receipt?id=3'])
+  fail = true
+  handlers.push(event)
+  await assert.rejects(pending)
+  assert.equal(calls.length, 2)
+})
+
+test('display receipts require an action-scoped device signature', async () => {
+  const writes = []
+  const route = load(
+    'src/app/api/crm/push/receipt/route.ts',
+    {
+      payload: {
+        getPayload: async () => ({ db: { drizzle: { execute: async (q) => writes.push(q) } } }),
+      },
+      '@payload-config': {},
+      '@payloadcms/db-postgres': { sql: (parts, ...values) => ({ text: parts.join('?'), values }) },
+      '@/lib/lead-action-link': {
+        verifyLeadAction: (id, action, sig) =>
+          id === '3' && action === 'push-receipt:' + 'a'.repeat(64) && sig === 'valid',
+      },
+    },
+    { Response },
+  )
+  const url = 'https://crm.test/api/crm/push/receipt?id=3&device=' + 'a'.repeat(64)
+  assert.equal((await route.POST(new Request(url))).status, 403)
+  assert.equal(writes.length, 0)
+  assert.equal((await route.POST(new Request(url + '&sig=valid'))).status, 204)
+  assert.equal(writes.length, 1)
 })

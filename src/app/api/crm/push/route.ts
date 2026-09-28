@@ -24,15 +24,30 @@ async function handle(req: Request) {
   if (!user) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 })
   try {
     if (req.method === 'GET') {
+      const settings = await payload.findGlobal({ slug: 'crm-settings', depth: 0 })
+      const automaticReminders = settings.automaticUncontactedReminders !== false
       if (!crmPushConfigured())
-        return NextResponse.json({ disabled: true }, { headers: { 'Cache-Control': 'no-store' } })
+        return NextResponse.json(
+          { disabled: true, automaticReminders },
+          { headers: { 'Cache-Control': 'no-store' } },
+        )
       const keys = await getPushKeys(payload)
       return NextResponse.json(
-        { publicKey: keys.publicKey },
+        { publicKey: keys.publicKey, automaticReminders },
         { headers: { 'Cache-Control': 'no-store' } },
       )
     }
     const body = await req.json()
+    if (req.method === 'PATCH') {
+      if (typeof body?.automaticReminders !== 'boolean') throw Error('Invalid reminder setting.')
+      await payload.updateGlobal({
+        slug: 'crm-settings',
+        data: { automaticUncontactedReminders: body.automaticReminders },
+        overrideAccess: false,
+        user,
+      })
+      return NextResponse.json({ ok: true })
+    }
     if (!validPushEndpoint(body?.endpoint)) throw Error('Invalid notification subscription.')
     const hash = endpointHash(body.endpoint)
     const existing = await payload.find({
@@ -94,3 +109,4 @@ async function handle(req: Request) {
 export const GET = handle
 export const POST = handle
 export const DELETE = handle
+export const PATCH = handle

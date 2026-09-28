@@ -82,6 +82,7 @@ export interface Config {
     leads: Lead;
     'link-opens': LinkOpen;
     'push-subscriptions': PushSubscription;
+    'lead-notifications': LeadNotification;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -108,6 +109,7 @@ export interface Config {
     leads: LeadsSelect<false> | LeadsSelect<true>;
     'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
     'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
+    'lead-notifications': LeadNotificationsSelect<false> | LeadNotificationsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -1786,6 +1788,34 @@ export interface PushSubscription {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lead-notifications".
+ */
+export interface LeadNotification {
+  id: number;
+  eventKey: string;
+  lead?: (number | null) | Lead;
+  kind: string;
+  dueAt: string;
+  expiresAt: string;
+  retryAt?: string | null;
+  claim?: string | null;
+  finishedAt?: string | null;
+  attempts?: number | null;
+  receipts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  deliveryStatus?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1940,6 +1970,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'push-subscriptions';
         value: number | PushSubscription;
+      } | null)
+    | ({
+        relationTo: 'lead-notifications';
+        value: number | LeadNotification;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2771,6 +2805,25 @@ export interface PushSubscriptionsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lead-notifications_select".
+ */
+export interface LeadNotificationsSelect<T extends boolean = true> {
+  eventKey?: T;
+  lead?: T;
+  kind?: T;
+  dueAt?: T;
+  expiresAt?: T;
+  retryAt?: T;
+  claim?: T;
+  finishedAt?: T;
+  attempts?: T;
+  receipts?: T;
+  deliveryStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
@@ -3057,6 +3110,11 @@ export interface Footer {
 export interface CrmSetting {
   id: number;
   /**
+   * Notify at 30 minutes and 2 hours after creation if still Uncontacted. Separate from manually scheduled follow-ups.
+   */
+  automaticUncontactedReminders?: boolean | null;
+  notificationStartAt?: string | null;
+  /**
    * Sent via the “Send File” button. Placeholders: {name}, {project}, {link}. The lead reviews and taps send in WhatsApp themselves.
    */
   whatsappMessageTemplate?: string | null;
@@ -3125,6 +3183,8 @@ export interface FooterSelect<T extends boolean = true> {
  * via the `definition` "crm-settings_select".
  */
 export interface CrmSettingsSelect<T extends boolean = true> {
+  automaticUncontactedReminders?: T;
+  notificationStartAt?: T;
   whatsappMessageTemplate?: T;
   updatedAt?: T;
   createdAt?: T;

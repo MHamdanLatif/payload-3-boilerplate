@@ -81,7 +81,8 @@ export async function sendCrmPush(
   payload: Payload,
   message: CrmPushMessage,
   only?: { owner: number; endpointHash: string },
-): Promise<{ ok: boolean; status: string }> {
+  delivery?: { id: number; exclude: string[]; receipt: (hash: string) => string },
+): Promise<{ ok: boolean; status: string; pendingDevices?: number }> {
   if (!crmPushConfigured()) return { ok: false, status: 'Notifications disabled' }
   try {
     const where: Where | undefined = only
@@ -98,26 +99,42 @@ export async function sendCrmPush(
     })
     if (!subscriptions.docs.length)
       return { ok: false, status: 'No devices enabled; enable notifications in the CRM' }
+    const targets = subscriptions.docs.filter(
+      (device) =>
+        device.owner &&
+        validPushEndpoint(device.endpoint) &&
+        !delivery?.exclude.includes(endpointHash(device.endpoint)),
+    )
+    if (delivery && targets.length === 0 && delivery.exclude.length > 0)
+      return { ok: true, status: 'Display confirmed', pendingDevices: 0 }
     const keys = await getPushKeys(payload)
-    const body = JSON.stringify({
+    const body = {
       title: message.title.slice(0, 100),
       body: message.message.slice(0, 500),
       url: message.clickUrl || '/leads-dashboard',
       actions: message.actions || [],
-    })
+    }
     let sent = 0
-    for (let offset = 0; offset < subscriptions.docs.length; offset += 5) {
+    for (let offset = 0; offset < targets.length; offset += 5) {
       await Promise.all(
-        subscriptions.docs.slice(offset, offset + 5).map(async (device) => {
+        targets.slice(offset, offset + 5).map(async (device) => {
           if (!device.owner || !validPushEndpoint(device.endpoint)) return
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
               await webpush.sendNotification(
                 { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
-                body,
+                JSON.stringify({
+                  ...body,
+                  ...(delivery
+                    ? {
+                        tag: `lead-event-${delivery.id}`,
+                        receipt: delivery.receipt(endpointHash(device.endpoint)),
+                      }
+                    : {}),
+                }),
                 {
                   vapidDetails: { subject: getServerSideURL(), ...keys },
-                  TTL: 86400,
+                  TTL: delivery ? 300 : 86400,
                   urgency: message.priority === 'low' ? 'low' : 'high',
                   timeout: 6000,
                 },
@@ -144,6 +161,7 @@ export async function sendCrmPush(
     }
     return {
       ok: sent > 0,
+      pendingDevices: targets.length,
       status: sent
         ? `Accepted by push service for ${sent}/${subscriptions.docs.length} devices`
         : 'Push service rejected delivery; enable notifications again',

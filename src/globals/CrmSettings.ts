@@ -24,6 +24,22 @@ export const CrmSettings: GlobalConfig = {
   },
   fields: [
     {
+      name: 'automaticUncontactedReminders',
+      type: 'checkbox',
+      defaultValue: true,
+      label: 'Automatic Uncontacted lead reminders',
+      admin: {
+        description:
+          'Notify at 30 minutes and 2 hours after creation if still Uncontacted. Separate from manually scheduled follow-ups.',
+      },
+    },
+    {
+      name: 'notificationStartAt',
+      type: 'date',
+      admin: { hidden: true },
+      access: { update: () => false },
+    },
+    {
       name: 'whatsappMessageTemplate',
       type: 'textarea',
       label: 'WhatsApp brochure message',

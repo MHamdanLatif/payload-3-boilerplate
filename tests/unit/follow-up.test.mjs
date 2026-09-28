@@ -66,6 +66,7 @@ function deliveryFixture({
   const { deliverFollowUpReminders } = load('src/lib/follow-up-reminders.ts', {
     'node:crypto': { randomUUID: () => 'lease-123' },
     '@payloadcms/db-postgres': { sql: (parts, ...values) => ({ text: parts.join('?'), values }) },
+    './lead-notification-queue': { deliverLeadNotifications: async () => {} },
     './crm-push': {
       crmPushConfigured: () => configured,
       sendCrmPush: async (_payload, message) => {

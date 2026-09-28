@@ -1,13 +1,10 @@
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 import type { Lead } from '@/payload-types'
-import { getServerSideURL } from '@/utilities/getURL'
-import { sendCrmPush } from '@/lib/crm-push'
-import { signLeadAction } from '@/lib/lead-action-link'
 import { sendCapiEvent } from '@/lib/meta-capi'
 
 /**
  * The heart of the native CRM.
- *   • On CREATE  → CRM app notification to the owner (new lead: name, project, source).
+ * New-lead notifications and automatic reminders run in the durable background queue.
  *                  The brochure link is sent to the lead manually via the
  *                  "Send File" button (wa.me), so no auto-send / Meta charges.
  *   • On UPDATE  → when status flips to qualified/junk, push a Meta CAPI event so
@@ -24,16 +21,15 @@ export const leadAfterChange: CollectionAfterChangeHook<Lead> = ({
 }) => {
   if (context?.skipLeadHooks) return doc
 
-  // Detach all outbound work (Meta CAPI, CRM push) from the save. afterChange runs
+  // New-lead notifications are reconciled durably from committed lead records.
+  // Detach Meta CAPI from the save. afterChange runs
   // inside the save request, so awaiting a slow network call here makes the
   // admin "Save" spin for seconds (e.g. qualifying a lead waited on the CAPI
   // POST). On our long-running Railway server the detached promise finishes
   // after the response; the lead's log fields update a moment later.
   void (async () => {
     try {
-      if (operation === 'create') {
-        await onCreate(doc, req.payload)
-      } else if (operation === 'update') {
+      if (operation === 'update') {
         await onStatusChange(doc, previousDoc, req.payload)
       }
     } catch (e) {
@@ -46,60 +42,6 @@ export const leadAfterChange: CollectionAfterChangeHook<Lead> = ({
 
 function nowIso(): string {
   return new Date().toISOString()
-}
-
-async function onCreate(doc: Lead, payload: Payload): Promise<void> {
-  const base = getServerSideURL().replace(/\/$/, '')
-  const adminUrl = `${base}/leads-dashboard/${doc.id}`
-  const project = doc.sourceName || doc.sourceSlug || doc.brochureHeadline || 'general enquiry'
-  const source = doc.metaAdName || doc.source || doc.sourceKind || 'website'
-  const ts = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })
-
-  // A one-tap "Send brochure" button on the notification itself.
-  //
-  // The alert already reaches the owner within seconds; what took the time was
-  // opening the CRM to act on it. This closes that gap with no Meta setup at
-  // all: the link records the send and advances the lead to Details Sent, then
-  // hands off to WhatsApp with the message pre-typed for review.
-  //
-  // Signed, because a push notification carries no session. Offered only when
-  // the lead can actually be messaged — a button that leads nowhere is worse
-  // than no button.
-  const canSend = Boolean(doc.phone && doc.brochureId)
-  const actions: { action: string; title: string; url: string }[] = []
-  if (canSend)
-    actions.push({
-      action: 'send-brochure',
-      title: 'Send brochure',
-      url: `${base}/api/leads/${doc.id}/send-brochure?sig=${signLeadAction(doc.id, 'send-brochure')}`,
-    })
-  if (doc.phone)
-    actions.push({
-      action: 'whatsapp',
-      title: 'WhatsApp',
-      url: `${base}/api/leads/${doc.id}/whatsapp?sig=${signLeadAction(doc.id, 'whatsapp')}`,
-    })
-
-  // Free owner alert via CRM push (replaces the WhatsApp Cloud API notification).
-  const res = await sendCrmPush(payload, {
-    title: 'New Lead',
-    message: `${doc.name} — ${project}\n📞 ${doc.phone}\n📍 ${source}\n🕐 ${ts}`,
-    priority: 'high',
-    tags: 'bell',
-    clickUrl: adminUrl,
-    actions,
-  })
-
-  await payload.update({
-    collection: 'leads',
-    id: doc.id,
-    overrideAccess: true,
-    context: { skipLeadHooks: true },
-    data: {
-      ownerNotifiedAt: res.ok ? nowIso() : undefined,
-      ownerNotifyStatus: `CRM push: ${res.status}`,
-    },
-  })
 }
 
 /**

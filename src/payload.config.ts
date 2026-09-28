@@ -1,3 +1,4 @@
+import { LeadNotifications } from './collections/LeadNotifications'
 import { PushSubscriptions } from './collections/PushSubscriptions'
 import { CrmPushSettings } from './globals/CrmPushSettings'
 import { postgresAdapter } from '@payloadcms/db-postgres'
@@ -92,6 +93,7 @@ export default buildConfig({
     Leads,
     LinkOpens,
     PushSubscriptions,
+    LeadNotifications,
   ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer, CrmSettings, CrmPushSettings],

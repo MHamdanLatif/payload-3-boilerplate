@@ -1,3 +1,4 @@
+import { deliverLeadNotifications } from './lead-notification-queue'
 import { randomUUID } from 'node:crypto'
 import { sql } from '@payloadcms/db-postgres'
 import type { Payload } from 'payload'
@@ -50,7 +51,16 @@ export function startFollowUpReminders(getPayloadInstance: () => Promise<Payload
     if (running) return
     running = true
     try {
-      await deliverFollowUpReminders(await getPayloadInstance())
+      const payload = await getPayloadInstance()
+      // A failure in one queue must not stop the other.
+      await Promise.allSettled([
+        deliverFollowUpReminders(payload),
+        deliverLeadNotifications(payload),
+      ]).then((results) => {
+        for (const result of results)
+          if (result.status === 'rejected')
+            console.error('[crm-notifications] Delivery pass failed')
+      })
     } catch (error) {
       console.error('[follow-up-reminders] Delivery pass failed:', error)
     } finally {

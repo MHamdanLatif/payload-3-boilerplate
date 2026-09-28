@@ -29,6 +29,7 @@ export async function disableCrmNotifications() {
 export function CrmNotifications() {
   const [supported, setSupported] = useState(false)
   const [key, setKey] = useState('')
+  const [automaticReminders, setAutomaticReminders] = useState<boolean | null>(null)
   const [enabled, setEnabled] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -49,6 +50,7 @@ export function CrmNotifications() {
         const data = await res.json()
         if (!res.ok) throw Error(data.error || 'Could not load notification settings.')
         if (!active) return
+        setAutomaticReminders(data.automaticReminders !== false)
         if (data.disabled) {
           setMessage('Notifications are disabled on the server.')
           return
@@ -124,6 +126,33 @@ export function CrmNotifications() {
       <p className="mt-2 text-sm">
         New leads, brochure opens and follow-up reminders on this device.
       </p>
+      {automaticReminders !== null && (
+        <label className="flex items-start gap-2 mt-3 text-sm">
+          <input
+            type="checkbox"
+            checked={automaticReminders}
+            disabled={busy}
+            onChange={async (event) => {
+              const checked = event.target.checked
+              setBusy(true)
+              try {
+                await request('PATCH', { automaticReminders: checked })
+                setAutomaticReminders(checked)
+                setMessage(
+                  checked
+                    ? 'Automatic reminders enabled for new leads.'
+                    : 'Automatic reminders disabled. Your manual reminders are unchanged.',
+                )
+              } catch (error) {
+                setMessage((error as Error).message)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          />
+          Automatic reminders at 30 minutes and 2 hours while a new lead is Uncontacted.
+        </label>
+      )}
       <div className="flex flex-wrap gap-3 mt-3">
         {supported && !enabled && (
           <button className="crm-button" disabled={busy || !key} onClick={enable}>
