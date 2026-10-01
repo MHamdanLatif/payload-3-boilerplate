@@ -25,7 +25,10 @@ export function buildBrochureMessage({
   project?: string | null
   link: string
 }): string {
-  const firstName = String(name ?? '').trim().split(/\s+/)[0] || 'there'
+  const firstName =
+    String(name ?? '')
+      .trim()
+      .split(/\s+/)[0] || 'there'
   return (template || DEFAULT_BROCHURE_TEMPLATE)
     .replaceAll('{name}', firstName)
     .replaceAll('{project}', String(project || 'your'))
@@ -38,8 +41,15 @@ export function buildBrochureMessage({
  * Nothing is sent by this: the owner still reviews and taps send inside
  * WhatsApp, which is what keeps this free of Meta's per-message charges.
  */
-export function whatsappSendUrl(phone: string, message: string): string {
-  return `https://wa.me/${String(phone).replace(/\D/g, '')}?text=${encodeURIComponent(message)}`
+export function whatsappSendUrl(phone: string, message: string, userAgent = ''): string {
+  const number = String(phone).replace(/\D/g, '')
+  const text = encodeURIComponent(message)
+  const web = `https://wa.me/${number}?text=${text}`
+  // Chrome uses the web fallback when WhatsApp Business is unavailable.
+  if (/Android/i.test(userAgent)) {
+    return `intent://send?phone=${number}&text=${text}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent(web)};end`
+  }
+  return web
 }
 
 /** The lead's own trackable brochure page. */

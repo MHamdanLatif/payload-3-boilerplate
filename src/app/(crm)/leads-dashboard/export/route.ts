@@ -1,3 +1,9 @@
+import {
+  leadReportLabel,
+  leadChannelLabel,
+  leadFormLabel,
+  leadProjectLabel,
+} from '@/lib/lead-labels'
 import { NextResponse } from 'next/server'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
@@ -40,7 +46,7 @@ const fmtDuration = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
-const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
+const sourceOf = leadReportLabel
 
 export async function GET(req: Request) {
   const payload = await getPayload({ config })
@@ -125,13 +131,13 @@ export async function GET(req: Request) {
     l.email,
     statusLabel(l.status),
     l.unqualifiedReason,
-    l.acquisitionSource,
-    l.conversionSurface,
+    leadChannelLabel(l),
+    leadFormLabel(l),
     l.firstTouchCampaign,
     l.firstTouchContent,
     l.latestTouchSource,
-    sourceOf(l),
-    l.sourceName,
+    l.source,
+    leadProjectLabel(l),
     l.interestedUnitType,
     l.propertyType,
     l.budget,

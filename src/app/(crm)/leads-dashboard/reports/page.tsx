@@ -1,3 +1,4 @@
+import { leadReportLabel } from '@/lib/lead-labels'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers as nextHeaders } from 'next/headers'
@@ -27,7 +28,7 @@ const fmtDate = (d: string | null | undefined) =>
         timeZone: 'Asia/Karachi',
       })
     : '—'
-const sourceOf = (l: Lead) => l.metaAdName || l.source || l.sourceKind || 'unknown'
+const sourceOf = leadReportLabel
 
 export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
   const payload = await getPayload({ config })
@@ -250,7 +251,9 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
 
         {/* Source funnel */}
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
-          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Source / campaign funnel</p>
+          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">
+            Project, acquisition source & enquiry form
+          </p>
           <table className="mt-2 w-full min-w-[520px]">
             <thead>
               <tr className="border-b border-brand-deep/10">

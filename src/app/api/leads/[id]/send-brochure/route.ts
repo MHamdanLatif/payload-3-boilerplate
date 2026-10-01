@@ -5,11 +5,7 @@ import type { Lead } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 import { verifyLeadAction } from '@/lib/lead-action-link'
 import { advanceLeadStatus } from '@/lib/lead-auto-status'
-import {
-  brochureLink,
-  buildBrochureMessage,
-  whatsappSendUrl,
-} from '@/lib/brochure-message'
+import { brochureLink, buildBrochureMessage, whatsappSendUrl } from '@/lib/brochure-message'
 
 /**
  * One-tap brochure send, from the new-lead push notification.
@@ -84,7 +80,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     })
     await advanceLeadStatus(payload, id, 'details-sent')
 
-    return NextResponse.redirect(whatsappSendUrl(lead.phone, message), 302)
+    return NextResponse.redirect(
+      whatsappSendUrl(lead.phone, message, req.headers.get('user-agent') || ''),
+      302,
+    )
   } catch (e) {
     console.warn('[leads/send-brochure] failed:', (e as Error).message)
     return NextResponse.redirect(adminUrl, 302)

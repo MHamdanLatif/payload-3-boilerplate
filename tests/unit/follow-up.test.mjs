@@ -64,6 +64,7 @@ function deliveryFixture({
   const calls = [],
     messages = []
   const { deliverFollowUpReminders } = load('src/lib/follow-up-reminders.ts', {
+    './lead-labels': load('src/lib/lead-labels.ts', {}),
     'node:crypto': { randomUUID: () => 'lease-123' },
     '@payloadcms/db-postgres': { sql: (parts, ...values) => ({ text: parts.join('?'), values }) },
     './lead-notification-queue': { deliverLeadNotifications: async () => {} },

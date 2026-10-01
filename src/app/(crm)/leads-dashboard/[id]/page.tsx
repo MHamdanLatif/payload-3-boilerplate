@@ -1,3 +1,7 @@
+import { BrochureWhatsAppLink } from '@/components/crm/BrochureWhatsAppLink'
+import { brochureLink, buildBrochureMessage } from '@/lib/brochure-message'
+import { getServerSideURL } from '@/utilities/getURL'
+import { leadProjectLabel, leadSourceLabel } from '@/lib/lead-labels'
 import { LeadEditor } from '@/components/crm/LeadEditor'
 import { crmProjects } from '@/lib/crm-server'
 import { signLeadAction } from '@/lib/lead-action-link'
@@ -110,6 +114,16 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
   rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
   const projects = await crmProjects()
+  const settings = lead.brochureId
+    ? await payload.findGlobal({ slug: 'crm-settings', depth: 0 }).catch(() => null)
+    : null
+  const link = brochureLink(getServerSideURL(), lead.brochureId || '')
+  const message = buildBrochureMessage({
+    template: settings?.whatsappMessageTemplate,
+    name: lead.name,
+    project: lead.sourceName || lead.brochureHeadline,
+    link,
+  })
   const phone = parsePhoneNumberFromString(lead.phone, 'PK')
   const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
   const td = 'px-3 py-3 text-sm text-brand-deep align-top'
@@ -124,8 +138,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
         <p className="crm-eyebrow mt-6">Client record</p>
         <h1 className="crm-title">{lead.name}</h1>
         <p className="crm-muted mt-2 mb-5">
-          {lead.sourceName || lead.brochureHeadline || 'General enquiry'} ·{' '}
-          {lead.source || lead.acquisitionSource || 'Website'}
+          {leadProjectLabel(lead)} · {leadSourceLabel(lead)}
         </p>
         <LeadEditor
           key={lead.id}
@@ -161,19 +174,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
             </>
           )}
           {phone?.isValid() && lead.brochureId && (
-            <a
-              className="crm-button col-span-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              href={
-                '/api/leads/' +
-                lead.id +
-                '/send-brochure?sig=' +
-                signLeadAction(lead.id, 'send-brochure')
-              }
-            >
-              Prepare brochure in WhatsApp
-            </a>
+            <BrochureWhatsAppLink id={lead.id} phone={phone.number} message={message} link={link} />
           )}
         </div>
         <p className="crm-muted mt-3">

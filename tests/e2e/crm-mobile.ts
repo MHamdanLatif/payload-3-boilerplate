@@ -31,6 +31,56 @@ export async function verifyMobileCrm(page: Page) {
   expect(lead.conversionSurface).toBe('crm-manual')
   expect(lead.acquisitionSource).toBe('referral')
   expect(lead.brochureId).toBeTruthy()
+
+  await expect(page.getByText(/Referral.*CRM: manually added/)).toBeVisible()
+  await page.request.patch('/api/leads/' + id, {
+    data: {
+      acquisitionSource: 'meta-ads',
+      source: 'marketed-project-landing:hero',
+      conversionSurface: 'marketed-hero-form',
+    },
+  })
+  await page.evaluate(() => sessionStorage.setItem('test-android-brochure', 'true'))
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('test-android-brochure')) {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile',
+      })
+    }
+  })
+  await page.reload()
+  const brochure = page.getByRole('link', { name: 'Prepare brochure in WhatsApp' })
+  await expect(brochure).toHaveAttribute(
+    'href',
+    /^intent:\/\/send\?phone=923001234567&text=.*package=com.whatsapp.w4b;/,
+  )
+  const appLink = await brochure.getAttribute('href')
+  expect(decodeURIComponent(appLink!)).toContain('Mobile CRM Test')
+  expect(decodeURIComponent(appLink!)).toContain('/brochure/' + lead.brochureId)
+  // The test machine has no WhatsApp: stop navigation but exercise logging.
+  await brochure.evaluate((el) => el.addEventListener('click', (event) => event.preventDefault()))
+  await brochure.click()
+  await expect
+    .poll(async () => (await (await page.request.get('/api/leads/' + id)).json()).status)
+    .toBe('details-sent')
+  await page.goto('/leads-dashboard/reports')
+  const reportOption = page.getByRole('option', {
+    name: /Mobile CRM Test.*Paid.*Meta ads.*Marketing page: top/,
+  })
+  const reportLabel = await reportOption.textContent()
+  expect(reportLabel).toBeTruthy()
+  await page.getByLabel('Source', { exact: true }).selectOption({ label: reportLabel! })
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  const csvResponse = await page.request.get(
+    (await page.getByRole('link', { name: /Download CSV/ }).getAttribute('href')) || '',
+  )
+  const csv = await csvResponse.text()
+  expect(csv).toContain('Mobile CRM Buyer')
+  expect(csv).toContain('Marketing page: top (hero) form')
+  await page.evaluate(() => sessionStorage.removeItem('test-android-brochure'))
+  await page.goto('/leads-dashboard/' + id)
+  await expect(page.getByText(/Paid.*Meta ads.*Marketing page: top/)).toBeVisible()
   await page.getByLabel('Lead status', { exact: true }).selectOption('closed-won')
   await expect(page.getByText('Changes saved.')).toBeVisible()
   await page.getByRole('link', { name: 'Edit details', exact: true }).click()

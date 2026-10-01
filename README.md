@@ -211,3 +211,11 @@ corepack pnpm test:e2e
 The unit suite covers allocation invariants, rounding, project constraints, Auto DP PDF parity and separate charges. The Docker/PostgreSQL Playwright suite includes the admin-only route, price adjustments, PDF download, public amount choices and stable unit selection alongside onboarding, seeding and comments. It requires Docker and Playwright Chromium (`corepack pnpm exec playwright install chromium`). Test-server environment overrides disable Meta CAPI and CRM push delivery.
 
 Website enquiries and payment-plan PDF leads are stored in the native CRM. Privyr forwarding has been removed, including from PDF requests. `PRIVYR_WEBHOOK_URL` is no longer read and can be removed from deployment settings. Existing Privyr history fields are retained but hidden in the admin.
+
+### CRM lead labels and WhatsApp brochures
+
+Lead cards, client records, reports, CSV exports and lead/reminder notifications display the project, acquisition channel (for example Paid - Meta ads or Organic - Google search), and the form or download used. Historical source tags remain stored unchanged. A marketing page alone does not prove paid acquisition: missing attribution displays as Source not recorded, and direct visits remain distinct from organic search. Report source filters group by project, channel and form.
+
+On Android, the mobile CRM brochure button links directly to WhatsApp Business with the prepared message, with a WhatsApp website fallback if the app cannot open. Desktop and iPhone retain the website link. The action is logged through the existing authenticated endpoint; the user still reviews and taps Send in WhatsApp. Chrome controls app-launch confirmation, so a physical Android check is needed to confirm the device-specific experience. Notification brochure actions also use the Android intent when the request identifies Android.
+
+Label, notification and Android-link regression checks: `node --test tests/unit/lead-labels.test.mjs tests/unit/follow-up.test.mjs`. Run `corepack pnpm test:e2e` for the full CRM, onboarding, seeding and comment workflow.

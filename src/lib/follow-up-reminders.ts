@@ -1,3 +1,4 @@
+import { leadProjectLabel, leadSourceLabel } from './lead-labels'
 import { deliverLeadNotifications } from './lead-notification-queue'
 import { randomUUID } from 'node:crypto'
 import { sql } from '@payloadcms/db-postgres'
@@ -26,7 +27,7 @@ export async function deliverFollowUpReminders(payload: Payload) {
     if (lead.followUpClaim !== claim || !lead.followUpAt) continue
     const response = await sendCrmPush(payload, {
       title: 'Follow-up reminder',
-      message: `Follow up with ${lead.name}\n${lead.phone}\n${lead.sourceName || 'General enquiry'}\nScheduled: ${new Date(lead.followUpAt).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })} PKT`,
+      message: `Follow up with ${lead.name}\n${lead.phone}\n${leadProjectLabel(lead)}\n${leadSourceLabel(lead)}\nScheduled: ${new Date(lead.followUpAt).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })} PKT`,
       priority: 'high',
       tags: 'alarm_clock',
       clickUrl: `${getServerSideURL().replace(/\/$/, '')}/leads-dashboard/${lead.id}`,

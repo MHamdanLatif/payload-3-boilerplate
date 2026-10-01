@@ -1,3 +1,4 @@
+import { leadProjectLabel, leadSourceLabel } from './lead-labels'
 import type { Lead } from '@/payload-types'
 import type { CrmPushMessage } from './crm-push'
 import { getServerSideURL } from '@/utilities/getURL'
@@ -25,7 +26,7 @@ export function leadNotificationMessage(lead: Lead, kind: string): CrmPushMessag
         ? 'Uncontacted lead: 30-minute reminder'
         : 'Uncontacted lead: 2-hour reminder'
       : 'New Lead',
-    message: `${lead.name} - ${lead.sourceName || lead.brochureHeadline || 'General enquiry'}\n${lead.phone}\n${reminder ? 'Still Uncontacted. Please follow up.' : lead.metaAdName || lead.source || 'website'}`,
+    message: `${lead.name} - ${leadProjectLabel(lead)}\n${lead.phone}\n${leadSourceLabel(lead)}${lead.metaAdName ? `\nAd: ${lead.metaAdName}` : ''}${reminder ? '\nStill Uncontacted. Please follow up.' : ''}`,
     priority: 'high',
     clickUrl: `${base}/leads-dashboard/${lead.id}`,
     actions,

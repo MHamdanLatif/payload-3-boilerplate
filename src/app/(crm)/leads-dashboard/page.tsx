@@ -1,3 +1,4 @@
+import { leadProjectLabel, leadSourceLabel } from '@/lib/lead-labels'
 import Link from 'next/link'
 import type { Where } from 'payload'
 import { Phone, MessageCircle, ArrowUpRight, Search } from 'lucide-react'
@@ -69,6 +70,10 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
         sourceName: true,
         source: true,
         acquisitionSource: true,
+        conversionSurface: true,
+        sourceKind: true,
+        metaAdName: true,
+        brochureHeadline: true,
         currentInterestedProject: true,
         followUpAt: true,
         followUpSentAt: true,
@@ -178,8 +183,8 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
                 <option value="whatsapp">WhatsApp</option>
                 <option value="call">Call</option>
                 <option value="referral">Referral</option>
-                <option value="meta-ads">Meta ads</option>
-                <option value="google-organic">Google search</option>
+                <option value="meta-ads">Paid - Meta ads</option>
+                <option value="google-organic">Organic - Google search</option>
               </select>
             </label>
             <div className="flex items-end gap-3">
@@ -234,12 +239,15 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
                     {statusLabel(lead.status)}
                   </span>
                 </div>
-                <p className="crm-muted mt-1">{project || lead.sourceName || 'General enquiry'}</p>
+                <p className="crm-muted mt-1">
+                  {leadProjectLabel(lead)}
+                  {project && project !== lead.sourceName
+                    ? ` | Currently interested in: ${project}`
+                    : ''}
+                </p>
                 <p className="text-sm mt-3">{lead.phone}</p>
                 <div className="crm-row mt-4">
-                  <span className="crm-muted">
-                    {lead.source || lead.acquisitionSource || 'Website'}
-                  </span>
+                  <span className="crm-muted">{leadSourceLabel(lead)}</span>
                   <span className="crm-badge">
                     {lead.brochureOpenedAt ? 'Brochure opened' : 'Not opened yet'}
                   </span>
