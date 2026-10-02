@@ -10,7 +10,7 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
-    return [{
+    return [{ source: '/finance/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }, ...['finance-deals', 'finance-receipts', 'finance-receivables', 'finance-expenses'].map(slug => ({ source: `/api/${slug}/:path*`, headers: [{ key: 'Cache-Control', value: 'private, no-store' }, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }] })), {
       source: '/leads-dashboard/sw.js',
       headers: [
         { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },

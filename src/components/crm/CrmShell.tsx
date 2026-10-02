@@ -9,10 +9,11 @@ type InstallPrompt = Event & {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: string }>
 }
-export function CrmShell({ children }: { children: React.ReactNode }) {
+export function CrmShell({ children, canFinance = false }: { children: React.ReactNode; canFinance?: boolean }) {
   const path = usePathname()
   const router = useRouter()
   const login = path.endsWith('/login')
+  const finance = path.startsWith('/finance')
   const [install, setInstall] = useState<InstallPrompt | null>(null)
   const [offline, setOffline] = useState(false)
   const [hint, setHint] = useState('')
@@ -92,6 +93,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           <span>CRM</span>
         </Link>
         <div className="flex items-center">
+          {canFinance && <Link href="/finance" className="px-3">Finance</Link>}
           {!standalone && (
             <button
               onClick={async () => {
@@ -138,9 +140,9 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       )}
-      {!login && <CrmNotifications />}
+      {!login && !finance && <CrmNotifications />}
       {children}
-      {!login && (
+      {!login && !finance && (
         <nav className="crm-nav" aria-label="CRM navigation">
           <Link className={path === '/leads-dashboard' ? 'active' : ''} href="/leads-dashboard">
             <Users size={20} />

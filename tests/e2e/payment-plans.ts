@@ -97,7 +97,7 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
   await publicPage.getByRole('button', { name: 'Download PDF Plan' }).click()
   await expect(publicPage.getByRole('dialog')).toBeVisible()
   await publicPage.getByPlaceholder("As you'd like the plan addressed").fill('E2E Buyer')
-  await publicPage.getByPlaceholder('3XX XXXXXXX').fill('+923001234567')
+  await publicPage.getByRole('dialog').getByPlaceholder('3XX XXXXXXX').fill('+923001234567')
   const requestPromise = publicPage.waitForRequest(
     (r) => r.url().endsWith('/api/payment-plan/pdf') && r.method() === 'POST',
   )

@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
   // `/api/media/` is explicitly allowed (media files referenced in the sitemap)
   // — a longer, more specific rule wins over the `/api/` disallow.
   const allow = ['/', '/properties', '/projects/', '/listings/', '/blog', '/blog/', '/api/media/']
-  const disallow = ['/admin', '/api/', '/next/', '/thank-you']
+  const disallow = ['/admin', '/api/', '/next/', '/thank-you', '/finance']
 
   return {
     rules: [

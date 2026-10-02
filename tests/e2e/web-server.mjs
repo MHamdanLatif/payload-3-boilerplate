@@ -80,6 +80,7 @@ async function main() {
   await waitForPort(postgresPort)
 
   run('corepack', ['pnpm', 'deps:native'])
+  run('corepack', ['pnpm', 'payload', 'run', './tests/e2e/setup-db.ts'])
   run('corepack', ['pnpm', 'build'])
 
   const app = isWindows

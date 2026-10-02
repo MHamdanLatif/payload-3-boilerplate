@@ -1,6 +1,7 @@
 import { verifyMobileCrm } from './crm-mobile'
 import { verifyPaymentPlans } from './payment-plans'
 import { verifyFollowUp } from './follow-up'
+import { verifyFinance } from './finance'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 
@@ -261,4 +262,10 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
   }
 
   await publicContext.close()
+})
+
+test('finance authorization, ledger calculations and responsive dashboard', async ({ page, browser }) => {
+  test.setTimeout(180000)
+  expect((await page.request.post('/api/users/login', { data: { email: adminEmail, password: adminPassword } })).ok()).toBeTruthy()
+  await verifyFinance(page, browser)
 })

@@ -120,7 +120,7 @@ export async function verifyMobileCrm(page: Page) {
   })
   const reportLabel = await reportOption.textContent()
   expect(reportLabel).toBeTruthy()
-  await page.getByLabel('Source', { exact: true }).selectOption({ label: reportLabel! })
+  await page.locator('select[name="source"]').selectOption({ label: reportLabel! })
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   const csvResponse = await page.request.get(
     (await page.getByRole('link', { name: /Download CSV/ }).getAttribute('href')) || '',

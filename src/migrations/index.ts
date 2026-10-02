@@ -1,3 +1,4 @@
+import * as finance from './20261002_000000_finance'
 import * as leadNotificationQueue from './20260928_000001_lead_notification_queue'
 import * as crmPush from './20260928_000000_crm_push'
 import * as paymentPlanFrequency from './20260911_000000_payment_plan_frequency'
@@ -96,4 +97,5 @@ export const migrations = [
   { up: marketedAvailableUnits.up, down: marketedAvailableUnits.down, name: '20260926_000001_marketed_available_units' },
   { up: crmPush.up, down: crmPush.down, name: '20260928_000000_crm_push' },
   { up: leadNotificationQueue.up, down: leadNotificationQueue.down, name: '20260928_000001_lead_notification_queue' },
+  { up: finance.up, down: finance.down, name: '20261002_000000_finance' },
 ];

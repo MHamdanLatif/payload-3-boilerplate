@@ -83,6 +83,10 @@ export interface Config {
     'link-opens': LinkOpen;
     'push-subscriptions': PushSubscription;
     'lead-notifications': LeadNotification;
+    'finance-deals': FinanceDeal;
+    'finance-receipts': FinanceReceipt;
+    'finance-receivables': FinanceReceivable;
+    'finance-expenses': FinanceExpense;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -110,6 +114,10 @@ export interface Config {
     'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
     'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
     'lead-notifications': LeadNotificationsSelect<false> | LeadNotificationsSelect<true>;
+    'finance-deals': FinanceDealsSelect<false> | FinanceDealsSelect<true>;
+    'finance-receipts': FinanceReceiptsSelect<false> | FinanceReceiptsSelect<true>;
+    'finance-receivables': FinanceReceivablesSelect<false> | FinanceReceivablesSelect<true>;
+    'finance-expenses': FinanceExpensesSelect<false> | FinanceExpensesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -519,6 +527,11 @@ export interface Post {
  */
 export interface User {
   id: number;
+  financeAccess?: boolean | null;
+  /**
+   * May grant finance access and manage other users.
+   */
+  financeAdmin?: boolean | null;
   name?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1815,6 +1828,125 @@ export interface LeadNotification {
   createdAt: string;
 }
 /**
+ * Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-deals".
+ */
+export interface FinanceDeal {
+  id: number;
+  lead?: (number | null) | Lead;
+  clientName: string;
+  contact?: string | null;
+  project: number | FeaturedProject;
+  unitNumber: string;
+  unitType?: string | null;
+  configuration?: string | null;
+  sizeSqft?: number | null;
+  dateClosed: string;
+  saleValue: number;
+  bookingAmount?: number | null;
+  bookingPercentage: number;
+  requiredBookingPercentage?: number | null;
+  expectedEligibilityDate?: string | null;
+  salesperson?: (number | null) | User;
+  calculationType: 'percentage' | 'fixed';
+  commissionRate?: number | null;
+  fixedCommission?: number | null;
+  trigger: 'threshold' | 'booking' | 'milestone' | 'manual';
+  milestoneDescription?: string | null;
+  milestoneReached?: boolean | null;
+  claimed?: boolean | null;
+  cancelled?: boolean | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-receipts".
+ */
+export interface FinanceReceipt {
+  id: number;
+  deal: number | FinanceDeal;
+  receivable?: (number | null) | FinanceReceivable;
+  date: string;
+  amount: number;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  receivedFrom?: string | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude this entry from totals. A reason is required. This cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-receivables".
+ */
+export interface FinanceReceivable {
+  id: number;
+  deal: number | FinanceDeal;
+  date: string;
+  amount: number;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude this entry from totals. A reason is required. This cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-expenses".
+ */
+export interface FinanceExpense {
+  id: number;
+  date: string;
+  amount: number;
+  /**
+   * Meta Ads, Digital Advertising, Marketing, Website / Hosting, CRM / Software, Office, Salaries, Sales / Referral Commission, Travel / Fuel, Printing, Photography / Video, Client Entertainment, Professional Fees, Utilities, Miscellaneous. New categories may be entered directly.
+   */
+  category: string;
+  project?: (number | null) | FeaturedProject;
+  description: string;
+  paymentMethod?: string | null;
+  vendor?: string | null;
+  recurring?: boolean | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude this entry from totals. A reason is required. This cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -1974,6 +2106,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'lead-notifications';
         value: number | LeadNotification;
+      } | null)
+    | ({
+        relationTo: 'finance-deals';
+        value: number | FinanceDeal;
+      } | null)
+    | ({
+        relationTo: 'finance-receipts';
+        value: number | FinanceReceipt;
+      } | null)
+    | ({
+        relationTo: 'finance-receivables';
+        value: number | FinanceReceivable;
+      } | null)
+    | ({
+        relationTo: 'finance-expenses';
+        value: number | FinanceExpense;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2314,6 +2462,8 @@ export interface CategoriesSelect<T extends boolean = true> {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  financeAccess?: T;
+  financeAdmin?: T;
   name?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -2819,6 +2969,101 @@ export interface LeadNotificationsSelect<T extends boolean = true> {
   attempts?: T;
   receipts?: T;
   deliveryStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-deals_select".
+ */
+export interface FinanceDealsSelect<T extends boolean = true> {
+  lead?: T;
+  clientName?: T;
+  contact?: T;
+  project?: T;
+  unitNumber?: T;
+  unitType?: T;
+  configuration?: T;
+  sizeSqft?: T;
+  dateClosed?: T;
+  saleValue?: T;
+  bookingAmount?: T;
+  bookingPercentage?: T;
+  requiredBookingPercentage?: T;
+  expectedEligibilityDate?: T;
+  salesperson?: T;
+  calculationType?: T;
+  commissionRate?: T;
+  fixedCommission?: T;
+  trigger?: T;
+  milestoneDescription?: T;
+  milestoneReached?: T;
+  claimed?: T;
+  cancelled?: T;
+  notes?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-receipts_select".
+ */
+export interface FinanceReceiptsSelect<T extends boolean = true> {
+  deal?: T;
+  receivable?: T;
+  date?: T;
+  amount?: T;
+  paymentMethod?: T;
+  reference?: T;
+  receivedFrom?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-receivables_select".
+ */
+export interface FinanceReceivablesSelect<T extends boolean = true> {
+  deal?: T;
+  date?: T;
+  amount?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-expenses_select".
+ */
+export interface FinanceExpensesSelect<T extends boolean = true> {
+  date?: T;
+  amount?: T;
+  category?: T;
+  project?: T;
+  description?: T;
+  paymentMethod?: T;
+  vendor?: T;
+  recurring?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

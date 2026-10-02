@@ -23,6 +23,7 @@ import { Leads } from './collections/Leads'
 import { LinkOpens } from './collections/LinkOpens'
 import { PropertyListings } from './collections/PropertyListings'
 import { Users } from './collections/Users'
+import { FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses } from './collections/Finance'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { CrmSettings } from './globals/CrmSettings'
@@ -94,6 +95,7 @@ export default buildConfig({
     LinkOpens,
     PushSubscriptions,
     LeadNotifications,
+    FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses,
   ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer, CrmSettings, CrmPushSettings],
