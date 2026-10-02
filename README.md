@@ -146,6 +146,8 @@ Before deploying, apply `20260926_000000_marketed_project_amenities` using `core
 
 ### Mobile CRM (Android)
 
+The **Brochures** tab lists leads whose personal brochure links were opened in the past seven days, newest activity first. Each card shows the open count, recorded foreground reading time, last-opened time in PKT, and a **Repeat viewer** badge for multiple opens within that window. Expand **Visit durations** for individual visits or tap the name to open the lead. Missing durations are labeled as not captured; shared links are attributed to their owning lead.
+
 Open `/leads-dashboard` for the mobile-first CRM. In Chrome on Samsung, sign in with your existing CMS account and tap **Install app** (or use Chrome's **Add to Home screen > Install app**). The installed **Lateef CRM** opens directly to your leads. It uses the existing backend and database, with no separate app server or store account. The CRM has its own layout without the public website navigation or marketing trackers.
 
 **Add lead** asks only for name, phone, project, and WhatsApp/Call/Referral. Phone numbers are normalized with Pakistan as the default country. The server fills the project name/slug, acquisition relationships, manual conversion surface, and brochure assets via the existing lead hooks. Calls retain `source=call` and use the existing `manual` acquisition category; WhatsApp and referrals use their matching categories. The mobile lead forms use the existing lead schema; app notifications require the migration below.

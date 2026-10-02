@@ -3,7 +3,7 @@ import { CrmNotifications, disableCrmNotifications } from './CrmNotifications'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Users, Plus, BarChart3, Clock } from 'lucide-react'
+import { Users, Plus, BarChart3, Clock, Eye } from 'lucide-react'
 
 type InstallPrompt = Event & {
   prompt: () => Promise<void>
@@ -149,6 +149,14 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           <Link href="/leads-dashboard?view=followups">
             <Clock size={20} />
             Follow-ups
+          </Link>
+          <Link
+            className={path === '/leads-dashboard/brochures' ? 'active' : ''}
+            aria-current={path === '/leads-dashboard/brochures' ? 'page' : undefined}
+            href="/leads-dashboard/brochures"
+          >
+            <Eye size={20} />
+            Brochures
           </Link>
           <Link className="add" href="/leads-dashboard/new">
             <Plus size={20} />

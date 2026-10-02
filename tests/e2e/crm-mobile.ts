@@ -32,6 +32,56 @@ export async function verifyMobileCrm(page: Page) {
   expect(lead.acquisitionSource).toBe('referral')
   expect(lead.brochureId).toBeTruthy()
 
+  // Only page opens in the rolling seven-day window count, including legacy
+  // events without a lead relationship. More than the default API page size
+  // ensures the viewer list does not silently truncate activity.
+  const openIds: number[] = []
+  for (let index = 0; index < 12; index++) {
+    const response = await page.request.post('/api/link-opens', {
+      data: {
+        brochureId: lead.brochureId,
+        ...(index ? { lead: id } : {}),
+        asset: 'page',
+        dwellMs: index === 0 ? null : 10000,
+        createdAt: new Date(Date.now() - (index + 1) * 60000).toISOString(),
+      },
+    })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    openIds.push((await response.json()).doc.id)
+  }
+  for (const data of [
+    { asset: 'page', createdAt: new Date(Date.now() - 8 * 86400_000).toISOString() },
+    { asset: 'pdf1', createdAt: new Date().toISOString() },
+  ]) {
+    const response = await page.request.post('/api/link-opens', {
+      data: { ...data, lead: id, brochureId: lead.brochureId, dwellMs: 900000 },
+    })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    openIds.push((await response.json()).doc.id)
+  }
+  await page
+    .getByRole('navigation', { name: 'CRM navigation' })
+    .getByRole('link', { name: 'Brochures', exact: true })
+    .click()
+  await expect(page.getByRole('heading', { name: 'Brochure viewers', exact: true })).toBeVisible()
+  const viewer = page
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name: 'Mobile CRM Buyer', exact: true }) })
+  await expect(viewer.getByText('Repeat viewer', { exact: true })).toBeVisible()
+  await expect(
+    viewer.getByText('12 opens · 1m and 50s recorded reading time', { exact: true }),
+  ).toBeVisible()
+  await expect(viewer.getByText('Duration available for 11 of 12 visits.')).toBeVisible()
+  await viewer.getByText('Visit durations', { exact: true }).click()
+  await expect(viewer.getByRole('listitem')).toHaveCount(12)
+  await expect(viewer.getByText('Duration not captured', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
+  await viewer.getByRole('link').click()
+  await expect(page).toHaveURL(new RegExp('/leads-dashboard/' + id + '$'))
+  for (const openId of openIds) await page.request.delete('/api/link-opens/' + openId)
+
   await expect(page.getByText(/Referral.*CRM: manually added/)).toBeVisible()
   await page.request.patch('/api/leads/' + id, {
     data: {
