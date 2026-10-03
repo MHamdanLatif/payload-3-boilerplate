@@ -1,3 +1,4 @@
+import { RemoveEntry } from '@/components/finance/RemoveEntry'
 import { positiveID } from '@/lib/finance-query'
 import { pageNumber } from '@/lib/finance-query'
 import Link from 'next/link'
@@ -16,15 +17,15 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
   const p = await searchParams,
     page = pageNumber(p),
     project = positiveID(param(p, 'project'))
-  const where = sql`${dateWhere('e.date', period(p))} AND (${param(p, 'category')}='' OR e.category=${param(p, 'category')}) AND (${project}=0 OR e.project_id=${project})`
+  const where = sql`${dateWhere('e.date', period(p))} AND (${param(p, 'category')}='' OR e.category=${param(p, 'category')}) AND (${project}=0 OR COALESCE(d.project_id,e.project_id)=${project})`
   const rows = await financeQuery(
-    sql`SELECT e.*,p.title AS project_name,count(*) OVER() AS total_count FROM finance_expenses e LEFT JOIN featured_projects p ON p.id=e.project_id WHERE ${where} ORDER BY e.date DESC,e.id DESC LIMIT 25 OFFSET ${(page - 1) * 25}`,
+    sql`SELECT e.*,COALESCE(d.project_name,p.title) AS project_name,d.client_name,count(*) OVER() AS total_count FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id LEFT JOIN featured_projects p ON p.id=e.project_id WHERE ${where} ORDER BY e.date DESC,e.id DESC LIMIT 25 OFFSET ${(page - 1) * 25}`,
   )
   const breakdown = await financeQuery(
-    sql`SELECT e.category,COALESCE(p.title,'Business overhead') AS project_name,to_char(e.date AT TIME ZONE 'Asia/Karachi','YYYY-MM') AS month,SUM(e.amount) AS total FROM finance_expenses e LEFT JOIN featured_projects p ON p.id=e.project_id WHERE ${where} AND NOT COALESCE(e.voided,false) GROUP BY e.category,p.title,month ORDER BY month DESC,total DESC LIMIT 100`,
+    sql`SELECT e.category,COALESCE(d.project_name,p.title,'General expense') AS project_name,to_char(e.date AT TIME ZONE 'Asia/Karachi','YYYY-MM') AS month,SUM(e.amount) AS total FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id LEFT JOIN featured_projects p ON p.id=e.project_id WHERE ${where} AND NOT COALESCE(e.voided,false) GROUP BY e.category,d.project_name,p.title,month ORDER BY month DESC,total DESC LIMIT 100`,
   )
   const [totals] = await financeQuery(
-    sql`SELECT SUM(e.amount) AS selected, (SELECT SUM(amount) FROM finance_expenses WHERE NOT COALESCE(voided,false) AND ${dateWhere('date', period({}))}) AS current FROM finance_expenses e WHERE ${where} AND NOT COALESCE(e.voided,false)`,
+    sql`SELECT SUM(e.amount) AS selected, (SELECT SUM(amount) FROM finance_expenses WHERE NOT COALESCE(voided,false) AND ${dateWhere('date', period({}))}) AS current FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id WHERE ${where} AND NOT COALESCE(e.voided,false)`,
   )
   const { payload, user } = await financeSession(),
     projects = await payload.find({
@@ -100,7 +101,6 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
               <th>Project</th>
               <th>Description</th>
               <th>Amount</th>
-              <th>Recurring</th>
               <th>Status</th>
               <th />
             </tr>
@@ -110,13 +110,21 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
               <tr key={r.id}>
                 <td>{displayDate(r.date)}</td>
                 <td>{r.category}</td>
-                <td>{r.project_name || 'Business overhead'}</td>
+                <td>
+                  {r.deal_id ? (
+                    <Link href={`/finance/deals/${r.deal_id}`}>
+                      {r.client_name} · {r.project_name}
+                    </Link>
+                  ) : (
+                    r.project_name || 'General expense'
+                  )}
+                </td>
                 <td>{r.description}</td>
                 <td>{rupees(r.amount)}</td>
-                <td>{r.recurring ? 'Yes' : 'No'}</td>
                 <td>{r.voided ? 'Voided' : 'Posted'}</td>
                 <td>
                   <Link href={`/admin/collections/finance-expenses/${r.id}`}>Notes / void</Link>
+                  <RemoveEntry kind="expenses" id={r.id} />
                 </td>
               </tr>
             ))}

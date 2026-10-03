@@ -16,7 +16,7 @@ export default async function Receivables({
   )
   return (
     <>
-      <h2>Receivable schedule</h2>
+      <h2>Expected commission</h2>
       <PeriodFilter params={p} />
       <form className="finance-filters">
         <input type="hidden" name="period" value="all" />
@@ -24,11 +24,9 @@ export default async function Receivables({
           Status
           <select name="status" defaultValue={param(p, 'status')}>
             <option value="">All</option>
-            {['Expected', 'Due', 'Partially Received', 'Received', 'Overdue', 'Cancelled'].map(
-              (s) => (
-                <option key={s}>{s}</option>
-              ),
-            )}
+            {['Expected', 'Due', 'Overdue'].map((s) => (
+              <option key={s}>{s}</option>
+            ))}
           </select>
         </label>
         <button className="finance-button">Filter all dates</button>
@@ -36,8 +34,8 @@ export default async function Receivables({
       <ScheduleTable rows={rows} />
       <Pager params={p} page={page} total={Number(rows[0]?.total_count || 0)} />
       <p>
-        Add expected payments from a deal. Revise by voiding the old entry with a reason and adding
-        its replacement.
+        Remaining commission appears automatically here. Record a payment or change the expected
+        date from the deal.
       </p>
       <a download href="/finance/export?kind=receivables">
         Export all receivables (CSV)

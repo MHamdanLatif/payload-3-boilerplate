@@ -1,9 +1,10 @@
-import assert from 'node:assert/strict'
+﻿import assert from 'node:assert/strict'
 import { getPayload } from 'payload'
 import { sql } from '@payloadcms/db-postgres'
 import config from '../../src/payload.config'
 import { financeCTE } from '../../src/lib/finance-query'
-import { up } from '../../src/migrations/20261002_000000_finance'
+import { up as original } from '../../src/migrations/20261002_000000_finance'
+import { up } from '../../src/migrations/20261003_000000_simple_finance'
 
 const url = new URL(process.env.DATABASE_URI || '')
 assert.ok(
@@ -15,118 +16,84 @@ const rollback = new Error('rollback finance validation')
 try {
   await payload.db.drizzle.transaction(async (tx) => {
     await tx.execute(sql`CREATE SCHEMA finance_validation; SET LOCAL search_path TO finance_validation;
-      CREATE TABLE users(id serial PRIMARY KEY); INSERT INTO users DEFAULT VALUES; INSERT INTO users DEFAULT VALUES;
+      CREATE TABLE users(id serial PRIMARY KEY); INSERT INTO users DEFAULT VALUES;
       CREATE TABLE leads(id serial PRIMARY KEY);
-      CREATE TABLE featured_projects(id serial PRIMARY KEY,title varchar); INSERT INTO featured_projects(title) VALUES('Finance test');
+      CREATE TABLE featured_projects(id serial PRIMARY KEY,title varchar); INSERT INTO featured_projects(title) VALUES('Featured');
       CREATE TABLE payload_locked_documents_rels(id serial PRIMARY KEY);`)
-    const args = { payload: { db: { drizzle: tx } } } as unknown as Parameters<typeof up>[0]
-    await up(args)
-    await up(args)
-    const admins = await tx.execute(sql`SELECT id FROM users WHERE finance_admin=true`)
-    assert.deepEqual(
-      admins.rows.map((r) => r.id),
-      [1],
-      'Migration grants only the oldest existing user and is repeatable',
-    )
+    await original({ payload: { db: { drizzle: tx } } } as any)
     await tx.execute(sql`INSERT INTO finance_deals(client_name,project_id,unit_number,date_closed,sale_value,booking_percentage,required_booking_percentage,commission_rate,trigger)
-      VALUES('Client',1,'101','2026-09-10 00:00:00+05',20000000,10,20,2,'threshold')`)
+      VALUES('Legacy',1,'101','2026-09-10',20000000,10,20,2,'threshold');
+      INSERT INTO finance_receivables(deal_id,date,amount) VALUES(1,'2026-10-15',400000);`)
+    await up({ db: tx } as any)
+    await up({ db: tx } as any)
     const deal = async () =>
-      (
-        await tx.execute(
-          sql`${financeCTE} SELECT commission,eligible,conditional,received,outstanding,status FROM deals WHERE id=1`,
-        )
-      ).rows[0] as Record<string, any>
+      (await tx.execute(sql`${financeCTE} SELECT * FROM deals WHERE id=1`)).rows[0] as Record<
+        string,
+        any
+      >
     let d = await deal()
-    assert.equal(Number(d.commission), 400000)
-    assert.equal(Number(d.eligible), 0)
-    assert.equal(Number(d.conditional), 400000)
-    assert.equal(Number(d.outstanding), 0)
-    await tx.execute(sql`UPDATE finance_deals SET booking_percentage=20 WHERE id=1`)
-    d = await deal()
-    assert.equal(Number(d.outstanding), 400000)
-    await tx.execute(
-      sql`INSERT INTO finance_receivables(deal_id,date,amount) VALUES(1,'2020-09-15',200000),(1,'2020-10-15',200000)`,
+    assert.equal(
+      Number(d.commission),
+      400000,
+      'Percentage legacy commission preserved as a fixed amount',
     )
-    let schedules = (
-      await tx.execute(sql`${financeCTE} SELECT id,unpaid,status FROM schedules ORDER BY id`)
-    ).rows
-    assert.equal(schedules[0].status, 'Overdue')
-    await tx.execute(
-      sql`INSERT INTO finance_receipts(deal_id,date,amount) VALUES(1,'2026-10-05 00:00:00+05',150000)`,
+    assert.equal(
+      Number(d.outstanding),
+      400000,
+      'Client payment thresholds no longer gate commission',
     )
+    assert.ok(d.expected_payment_date, 'Legacy expected date preserved')
+    await tx.execute(sql`INSERT INTO finance_receipts(deal_id,date,amount) VALUES(1,'2026-10-05',150000);
+      UPDATE finance_deals SET expected_payment_date='2026-11-15' WHERE id=1;`)
     d = await deal()
-    assert.equal(Number(d.received), 150000)
     assert.equal(Number(d.outstanding), 250000)
-    schedules = (await tx.execute(sql`${financeCTE} SELECT id,unpaid FROM schedules ORDER BY id`))
-      .rows
-    assert.deepEqual(
-      schedules.map((s) => Number(s.unpaid)),
-      [50000, 200000],
-      'Unmatched cash allocates oldest first',
-    )
-    await tx.execute(
-      sql`INSERT INTO finance_receipts(deal_id,receivable_id,date,amount) VALUES(1,2,'2026-10-10 00:00:00+05',200000),(1,NULL,'2026-10-10 00:00:00+05',50000)`,
-    )
-    d = await deal()
-    assert.equal(Number(d.received), 400000)
-    assert.equal(Number(d.outstanding), 0)
-    assert.equal(d.status, 'Fully Received')
-    schedules = (await tx.execute(sql`${financeCTE} SELECT id,unpaid FROM schedules ORDER BY id`))
-      .rows
-    assert.deepEqual(
-      schedules.map((s) => Number(s.unpaid)),
-      [0, 0],
-    )
-    await tx.execute(
-      sql`INSERT INTO finance_expenses(date,amount,category,description) VALUES('2026-10-12 00:00:00+05',100000,'Meta Ads','Campaign')`,
-    )
-    const months = (
-      await tx.execute(sql`${financeCTE} SELECT
-      (SELECT SUM(commission) FROM deals WHERE to_char(date_closed AT TIME ZONE 'Asia/Karachi','YYYY-MM')='2026-09') AS september_generated,
-      (SELECT SUM(amount) FROM finance_receipts WHERE to_char(date AT TIME ZONE 'Asia/Karachi','YYYY-MM')='2026-10') -
-      (SELECT SUM(amount) FROM finance_expenses WHERE to_char(date AT TIME ZONE 'Asia/Karachi','YYYY-MM')='2026-10') AS october_net`)
+    assert.equal(d.status, 'Partially Received')
+    const schedule = (
+      await tx.execute(
+        sql`${financeCTE} SELECT unpaid,to_char(date,'YYYY-MM') AS month FROM schedules WHERE deal_id=1`,
+      )
     ).rows[0]
-    assert.equal(Number(months.september_generated), 400000)
-    assert.equal(Number(months.october_net), 300000)
+    assert.equal(Number(schedule.unpaid), 250000)
+    assert.equal(schedule.month, '2026-11')
+    await tx.execute(
+      sql`INSERT INTO finance_receipts(deal_id,date,amount) VALUES(1,'2026-11-15',250000)`,
+    )
+    assert.equal((await deal()).status, 'Fully Received')
+    assert.equal((await tx.execute(sql`${financeCTE} SELECT * FROM schedules`)).rows.length, 0)
     await tx.execute(
       sql`UPDATE finance_receipts SET voided=true,void_reason='Correction' WHERE id=1`,
     )
-    d = await deal()
-    assert.equal(Number(d.received), 250000)
-    assert.equal(Number(d.outstanding), 150000)
-    await tx.execute(
-      sql`UPDATE finance_deals SET calculation_type='fixed',fixed_commission=300000,trigger='manual',milestone_reached=false WHERE id=1`,
-    )
-    d = await deal()
-    assert.equal(Number(d.commission), 300000)
-    assert.equal(Number(d.eligible), 0)
-    await tx.execute(sql`UPDATE finance_deals SET milestone_reached=true WHERE id=1`)
-    d = await deal()
-    assert.equal(Number(d.outstanding), 50000)
-    await tx.execute(sql`UPDATE finance_deals SET cancelled=true WHERE id=1`)
-    d = await deal()
-    assert.equal(Number(d.outstanding), 0)
-    assert.equal(d.status, 'Cancelled')
-    assert.equal(Number(d.received), 250000)
-    await tx.execute(sql`INSERT INTO finance_deals(client_name,project_id,unit_number,date_closed,sale_value,calculation_type,fixed_commission,trigger)
-      VALUES('Receipt before schedule',1,'102','2026-10-01',10000000,'fixed',250000,'booking');
-      INSERT INTO finance_receipts(deal_id,date,amount,created_at) VALUES(2,'2026-10-01',50000,'2026-10-01');
-      INSERT INTO finance_receivables(deal_id,date,amount,created_at) VALUES(2,'2026-11-01',200000,'2026-10-02');`)
-    let future = (await tx.execute(sql`${financeCTE} SELECT unpaid FROM schedules WHERE deal_id=2`))
-      .rows[0]
     assert.equal(
-      Number(future.unpaid),
-      200000,
-      'Cash received before a new schedule must not reduce that future expectation twice',
+      Number((await deal()).outstanding),
+      150000,
+      'Voiding a receipt restores the balance',
     )
-    await tx.execute(
-      sql`INSERT INTO finance_receipts(deal_id,date,amount,created_at) VALUES(2,'2026-10-03',50000,'2026-10-03')`,
+    await tx.execute(sql`UPDATE finance_deals SET cancelled=true WHERE id=1`)
+    assert.equal(Number((await deal()).outstanding), 0)
+    assert.equal(Number((await deal()).received), 250000, 'Cancellation preserves cash history')
+    await tx.execute(sql`INSERT INTO finance_deals(client_name,other_property,unit_type,date_closed,sale_value,fixed_commission,calculation_type,expected_payment_date)
+      VALUES('Brokerage buyer','DHA resale','Plot','2026-10-01',10000000,200000,'fixed','2026-11-01');
+      INSERT INTO finance_expenses(deal_id,date,amount,category,description) VALUES(2,'2026-10-01',5000,'Travel','Site visit');
+      INSERT INTO finance_expenses(date,amount,category,description) VALUES('2026-10-01',1000,'Meta Ads','General campaign');`)
+    const other = (await tx.execute(sql`${financeCTE} SELECT * FROM deals WHERE id=2`)).rows[0]
+    assert.equal(other.project_name, 'DHA resale')
+    assert.equal(Number(other.outstanding), 200000)
+    assert.equal(
+      Number(
+        (await tx.execute(sql`SELECT SUM(amount) AS amount FROM finance_expenses WHERE deal_id=2`))
+          .rows[0].amount,
+      ),
+      5000,
     )
-    future = (await tx.execute(sql`${financeCTE} SELECT unpaid FROM schedules WHERE deal_id=2`))
-      .rows[0]
-    assert.equal(Number(future.unpaid), 150000)
-    console.log(
-      'Finance migration and PostgreSQL calculation scenarios A–G, allocation, fixed/manual triggers, voids and cancellation passed.',
+    assert.equal(
+      Number(
+        (
+          await tx.execute(
+            sql`SELECT SUM(amount) AS amount FROM finance_expenses WHERE deal_id IS NULL AND project_id IS NULL`,
+          )
+        ).rows[0].amount,
+      ),
+      1000,
     )
     throw rollback
   })
@@ -135,3 +102,6 @@ try {
 } finally {
   await payload.destroy()
 }
+console.log(
+  'Finance migration, legacy preservation, partial/full/void/cancelled payments and brokerage/expense calculations passed.',
+)

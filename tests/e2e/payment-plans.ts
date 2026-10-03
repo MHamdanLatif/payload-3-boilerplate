@@ -86,12 +86,22 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
   ).toBe(400)
 
   await publicPage.goto(`/projects/${project.slug}`)
-  await publicPage.getByLabel('Unit Type', { exact: true }).selectOption(project.unitTypes[1].id)
+  // Wait for the controlled price to update, so SSR controls are not used before hydration.
+  await expect(async () => {
+    await publicPage.getByLabel('Unit Type', { exact: true }).selectOption(project.unitTypes[1].id)
+    await expect(publicPage.getByText('PKR 12,000,000', { exact: true }).first()).toBeVisible({
+      timeout: 2000,
+    })
+  }).toPass({ timeout: 15000 })
   const monthly = publicPage.getByLabel('Monthly amount', { exact: true })
   const displayed = await monthly.inputValue()
   await publicPage.getByLabel('Monthly amount method').selectOption('entered')
   await expect(monthly).toHaveValue(displayed)
+  await expect(monthly).toBeEditable()
   await publicPage.getByLabel('Calculate my down payment from the installment amounts.').check()
+  await expect(
+    publicPage.getByText('Enter what you want to pay per period', { exact: false }),
+  ).toBeVisible()
   await monthly.fill('170000')
   await expect(publicPage.getByRole('button', { name: 'Download PDF Plan' })).toBeEnabled()
   await publicPage.getByRole('button', { name: 'Download PDF Plan' }).click()

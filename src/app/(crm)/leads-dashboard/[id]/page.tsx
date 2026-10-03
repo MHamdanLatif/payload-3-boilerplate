@@ -138,7 +138,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
 
         <p className="crm-eyebrow mt-6">Client record</p>
         <h1 className="crm-title">{lead.name}</h1>
-        {hasFinanceAccess(user) && ['qualified', 'site-visit', 'closed-won'].includes(lead.status || '') && <a className="crm-button inline-block my-3" href={`/finance/entry/deals?lead=${lead.id}`}>Create Finance Deal</a>}
+        {hasFinanceAccess(user) && lead.status === 'closed-won' && <a className="crm-button inline-block my-3" href={`/finance/entry/deals?lead=${lead.id}`}>Finance · Record closed deal</a>}
         <p className="crm-muted mt-2 mb-5">
           {leadProjectLabel(lead)} · {leadSourceLabel(lead)}
         </p>

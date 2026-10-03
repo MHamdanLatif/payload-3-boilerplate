@@ -2,12 +2,13 @@ import {
   APIError,
   type CollectionConfig,
   type Field,
+  type NumberField,
   type RelationshipField,
   type CollectionBeforeChangeHook,
 } from 'payload'
 import { financeAccess } from '@/access/finance'
 
-const money = (name: string, required = true): Field => ({
+const money = (name: string, required = true): NumberField => ({
   name,
   type: 'number',
   min: 0,
@@ -69,18 +70,41 @@ const audit: CollectionBeforeChangeHook = async ({
     if (operation === 'create') {
       data.clientName ||= lead.name
       data.contact ||= lead.phone
-      data.project ||= idOf(
-        lead.closedProject || lead.currentInterestedProject || lead.acquiredProject,
-      )
     }
   }
   if (collection.slug === 'finance-deals') {
-    if (merged.calculationType === 'percentage' && merged.commissionRate == null)
-      throw new APIError('Enter a commission rate.', 400)
-    if (merged.calculationType === 'fixed' && merged.fixedCommission == null)
-      throw new APIError('Enter a fixed commission.', 400)
-    if (merged.trigger === 'threshold' && merged.requiredBookingPercentage == null)
-      throw new APIError('Enter the required booking percentage.', 400)
+    data.calculationType = 'fixed'
+    data.trigger = 'booking'
+    if (merged.fixedCommission == null) throw new APIError('Enter the commission amount.', 400)
+    if (!merged.project && !merged.otherProperty?.trim())
+      throw new APIError('Enter the property name or address.', 400)
+    if (operation === 'create' && !merged.expectedPaymentDate)
+      throw new APIError('Choose the expected commission date.', 400)
+    if (
+      merged.project &&
+      merged.unitTypeKey &&
+      (operation === 'create' ||
+        merged.unitTypeKey !== originalDoc?.unitTypeKey ||
+        String(idOf(merged.project)) !== String(idOf(originalDoc?.project)))
+    ) {
+      const project = await req.payload.findByID({
+        collection: 'featured-projects',
+        id: idOf(merged.project) as number,
+        req,
+        overrideAccess: false,
+        depth: 0,
+      })
+      const unit = project.unitTypes?.find((u) => u.id === merged.unitTypeKey)
+      if (!unit) throw new APIError('Select a unit type belonging to this project.', 400)
+      data.unitType = unit.name || unit.type
+      data.configuration = unit.type
+      data.sizeSqft = unit.areaSqFt ?? null
+    }
+    if (!merged.project) {
+      data.unitTypeKey = null
+      data.configuration = null
+      data.sizeSqft = null
+    } else data.otherProperty = null
   }
   if (merged.deal) {
     const deal = await req.payload.findByID({
@@ -90,6 +114,25 @@ const audit: CollectionBeforeChangeHook = async ({
       overrideAccess: false,
       depth: 0,
     })
+    if (collection.slug === 'finance-expenses' && operation === 'create')
+      data.project = idOf(deal.project) || null
+    if (collection.slug === 'finance-receipts' && operation === 'create') {
+      if (!(merged.amount > 0)) throw new APIError('Enter a payment amount greater than zero.', 400)
+      const receipts = await req.payload.find({
+        collection: 'finance-receipts',
+        where: { and: [{ deal: { equals: deal.id } }, { voided: { not_equals: true } }] },
+        pagination: false,
+        depth: 0,
+        req,
+        overrideAccess: false,
+      })
+      const paid = receipts.docs.reduce((total, r) => total + r.amount, 0)
+      if (
+        Math.round((Number(deal.fixedCommission || 0) - paid - merged.amount) * 100) > 0 &&
+        !merged.nextExpectedDate
+      )
+        throw new APIError('Choose when the remaining commission is expected.', 400)
+    }
     if (deal.cancelled && !merged.voided)
       throw new APIError('This deal is cancelled. Reopen it before adding transactions.', 400)
   }
@@ -112,8 +155,8 @@ const audit: CollectionBeforeChangeHook = async ({
   ) {
     const immutable =
       collection.slug === 'finance-expenses'
-        ? ['amount', 'date', 'project', 'category']
-        : ['amount', 'date', 'deal', 'receivable']
+        ? ['amount', 'date', 'project', 'deal', 'category']
+        : ['amount', 'date', 'deal', 'receivable', 'nextExpectedDate']
     for (const field of immutable)
       if (
         data[field] !== undefined &&
@@ -134,7 +177,7 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
     create: financeAccess,
     read: financeAccess,
     update: financeAccess,
-    delete: () => false,
+    delete: slug === 'finance-receivables' ? () => false : financeAccess,
   },
   admin: {
     group: 'Finance',
@@ -143,7 +186,44 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
       'Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance',
   },
   hooks: {
+    beforeDelete: [
+      async ({ id, req }) => {
+        if (slug !== 'finance-deals') return
+        // Keep deletion atomic, including the deal's dependent ledger entries.
+        for (const collection of [
+          'finance-receipts',
+          'finance-expenses',
+          'finance-receivables',
+        ] as const) {
+          await req.payload.delete({
+            collection,
+            where: { deal: { equals: id } },
+            req,
+            overrideAccess: collection === 'finance-receivables',
+          })
+        }
+      },
+    ],
     beforeChange: [audit],
+    afterChange: [
+      async ({ doc, operation, req }) => {
+        if (
+          slug === 'finance-receipts' &&
+          operation === 'create' &&
+          !doc.voided &&
+          doc.nextExpectedDate
+        ) {
+          await req.payload.update({
+            collection: 'finance-deals',
+            id: idOf(doc.deal) as number,
+            data: { expectedPaymentDate: doc.nextExpectedDate },
+            req,
+            overrideAccess: false,
+          })
+        }
+        return doc
+      },
+    ],
     beforeValidate: [
       async ({ data, operation, req }) => {
         if (slug === 'finance-deals' && operation === 'create' && data?.lead) {
@@ -156,9 +236,6 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
           })
           data.clientName ||= lead.name
           data.contact ||= lead.phone
-          data.project ||= idOf(
-            lead.closedProject || lead.currentInterestedProject || lead.acquiredProject,
-          )
         }
         return data
       },
@@ -202,8 +279,11 @@ export const FinanceDeals = base(
     relationship('lead', 'leads'),
     text('clientName', true),
     text('contact'),
-    relationship('project', 'featured-projects', true),
-    text('unitNumber', true),
+    relationship('project', 'featured-projects'),
+    text('otherProperty'),
+    text('unitTypeKey'),
+    { name: 'expectedPaymentDate', type: 'date', index: true },
+    text('unitNumber'),
     text('unitType'),
     text('configuration'),
     { name: 'sizeSqft', type: 'number', min: 0 },
@@ -221,10 +301,10 @@ export const FinanceDeals = base(
     { name: 'requiredBookingPercentage', type: 'number', min: 0, max: 100, defaultValue: 20 },
     { name: 'expectedEligibilityDate', type: 'date' },
     relationship('salesperson', 'users'),
-    choice('calculationType', ['percentage', 'fixed']),
+    choice('calculationType', ['percentage', 'fixed'], 'fixed'),
     { name: 'commissionRate', type: 'number', min: 0, max: 100 },
-    money('fixedCommission', false),
-    choice('trigger', ['threshold', 'booking', 'milestone', 'manual']),
+    { ...money('fixedCommission', false), label: 'Commission (PKR)' },
+    choice('trigger', ['threshold', 'booking', 'milestone', 'manual'], 'booking'),
     text('milestoneDescription'),
     { name: 'milestoneReached', type: 'checkbox', defaultValue: false },
     { name: 'claimed', type: 'checkbox', defaultValue: false },
@@ -241,7 +321,8 @@ export const FinanceReceipts = base(
   'finance-receipts',
   [
     relationship('deal', 'finance-deals', true),
-    relationship('receivable', 'finance-receivables'),
+    { ...relationship('receivable', 'finance-receivables'), admin: { hidden: true } },
+    { name: 'nextExpectedDate', type: 'date' },
     date('date'),
     money('amount'),
     text('paymentMethod'),
@@ -265,7 +346,8 @@ export const FinanceExpenses = base(
           'Meta Ads, Digital Advertising, Marketing, Website / Hosting, CRM / Software, Office, Salaries, Sales / Referral Commission, Travel / Fuel, Printing, Photography / Video, Client Entertainment, Professional Fees, Utilities, Miscellaneous. New categories may be entered directly.',
       },
     },
-    relationship('project', 'featured-projects'),
+    relationship('deal', 'finance-deals'),
+    { ...relationship('project', 'featured-projects'), admin: { hidden: true } },
     text('description', true),
     text('paymentMethod'),
     text('vendor'),
@@ -273,3 +355,24 @@ export const FinanceExpenses = base(
   ],
   'description',
 )
+
+// Preserve legacy data while keeping the editor focused on the current workflow.
+const legacyFields = new Set([
+  'bookingPercentage',
+  'requiredBookingPercentage',
+  'expectedEligibilityDate',
+  'calculationType',
+  'commissionRate',
+  'trigger',
+  'milestoneDescription',
+  'milestoneReached',
+  'claimed',
+  'configuration',
+  'sizeSqft',
+  'unitTypeKey',
+])
+for (const field of FinanceDeals.fields)
+  if ('name' in field && legacyFields.has(field.name))
+    field.admin = { ...field.admin, hidden: true }
+FinanceReceivables.admin = { ...FinanceReceivables.admin, hidden: true }
+FinanceReceivables.access!.create = () => false

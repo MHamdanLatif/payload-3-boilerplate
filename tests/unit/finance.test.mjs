@@ -59,7 +59,11 @@ test('money validation rejects negative, nonfinite, missing and fractional-paisa
     for (const invalid of [-1, NaN, Infinity, undefined, 0.001])
       assert.notEqual(amount.validate(invalid), true)
     for (const valid of [0, 0.01, 150000, 100.25]) assert.equal(amount.validate(valid), true)
-    assert.equal(collection.access.delete(), false)
+    assert.equal(collection.access.delete({ req: { user: null } }), false)
+    assert.equal(
+      collection.access.delete({ req: { user: { collection: 'users', financeAccess: true } } }),
+      true,
+    )
   }
 })
 test('transaction edits cannot rewrite posted financial identity or restore a voided entry', async () => {

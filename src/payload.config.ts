@@ -109,6 +109,8 @@ export default buildConfig({
     // proxies the GET to R2. Existing media-URL paths in the DB (and any
     // hard-coded references) keep working without rewriting.
     s3Storage({
+      // Disposable e2e databases must not upload test media to production R2.
+      enabled: !(process.env.USE_LOCAL_SEED_MEDIA === 'true' && /^postgres(?:ql)?:\/\/[^/]+@(?:127\.0\.0\.1|localhost)(?::\d+)?\/[^?]*_e2e(?:\?|$)/.test(process.env.DATABASE_URI || '')),
       collections: {
         media: {
           disableLocalStorage: true,

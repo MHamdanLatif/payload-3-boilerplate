@@ -40,7 +40,8 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
         <label>
           Project
           <select name="project" defaultValue={param(p, 'project')}>
-            <option value="">All projects</option>
+            <option value="">All properties</option>
+            <option value="other">Other properties / brokerage</option>
             {projects.docs.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.title}
@@ -52,14 +53,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
           Status
           <select name="status" defaultValue={param(p, 'status')}>
             <option value="">All statuses</option>
-            {[
-              'Awaiting Client Payment',
-              'Commission Eligible',
-              'Claimed / Invoiced',
-              'Partially Received',
-              'Fully Received',
-              'Cancelled',
-            ].map((s) => (
+            {['Awaiting Payment', 'Partially Received', 'Fully Received', 'Cancelled'].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
@@ -84,7 +78,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
           <select name="balance" defaultValue={param(p, 'balance')}>
             <option value="">All</option>
             <option value="paid">Fully paid</option>
-            <option value="outstanding">Outstanding eligible</option>
+            <option value="outstanding">Outstanding</option>
           </select>
         </label>
         <label>
@@ -106,10 +100,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
         </label>
         <button className="finance-button">Filter deals</button>
       </form>
-      <p>
-        Outstanding means eligible commission less receipts, as of now. Conditional commission is
-        shown separately.
-      </p>
+      <p>Outstanding is your commission minus payments received.</p>
       <div className="finance-table">
         <table>
           <thead>
@@ -122,9 +113,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
                 'Unit type',
                 'Date closed',
                 'Sale value',
-                'Booking %',
                 'Commission',
-                'Conditional',
                 'Received',
                 'Outstanding',
                 'Next payment',
@@ -147,9 +136,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
                 <td>{d.unit_type}</td>
                 <td>{displayDate(d.date_closed)}</td>
                 <td>{rupees(d.sale_value)}</td>
-                <td>{d.booking_percentage}%</td>
                 <td>{rupees(d.commission)}</td>
-                <td>{rupees(d.conditional)}</td>
                 <td>{rupees(d.received)}</td>
                 <td>{rupees(d.outstanding)}</td>
                 <td>{displayDate(d.next_payment)}</td>

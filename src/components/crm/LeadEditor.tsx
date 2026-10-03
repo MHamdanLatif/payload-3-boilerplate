@@ -158,7 +158,7 @@ export function LeadEditor({ lead, projects }: { lead: Editable; projects: Proje
               name="closedProject"
               defaultValue={relation(lead.closedProject)}
             >
-              <option value="">Not closed yet</option>
+              <option value="">Other property / not selected</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}

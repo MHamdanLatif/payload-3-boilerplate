@@ -1,3 +1,4 @@
+import { RemoveEntry } from '@/components/finance/RemoveEntry'
 import { pageNumber } from '@/lib/finance-query'
 import Link from 'next/link'
 import { sql } from '@payloadcms/db-postgres'
@@ -54,6 +55,7 @@ export default async function Receipts({ searchParams }: { searchParams: Promise
                 <td>{r.voided ? 'Voided' : 'Posted'}</td>
                 <td>
                   <Link href={`/admin/collections/finance-receipts/${r.id}`}>Notes / void</Link>
+                  <RemoveEntry kind="receipts" id={r.id} />
                 </td>
               </tr>
             ))}

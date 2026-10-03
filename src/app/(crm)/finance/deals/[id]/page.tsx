@@ -1,3 +1,4 @@
+import { RemoveEntry } from '@/components/finance/RemoveEntry'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { sql } from '@payloadcms/db-postgres'
@@ -16,17 +17,22 @@ export default async function Deal({ params }: { params: Promise<{ id: string }>
   const schedules = await financeQuery(
     sql`SELECT * FROM schedules WHERE deal_id=${id} ORDER BY date,id LIMIT 100`,
   )
+  const expenses = await financeQuery(
+    sql`SELECT * FROM finance_expenses WHERE deal_id=${id} ORDER BY date DESC,id DESC LIMIT 100`,
+  )
   return (
     <>
       <div className="finance-heading">
         <h2>
           {d.client_name} · {d.unit_number}
         </h2>
-        <Link href={`/admin/collections/finance-deals/${id}`}>
-          Edit sale / booking progress / notes
-        </Link>
+        <Link href={`/admin/collections/finance-deals/${id}`}>Edit deal</Link>
       </div>
       <Badge>{d.status}</Badge>
+      <div className="finance-actions">
+        <RemoveEntry kind="deals" id={id} />
+        {!d.cancelled && <RemoveEntry kind="deals" id={id} cancel />}
+      </div>
       <h2>Sale details</h2>
       <dl>
         {[
@@ -34,16 +40,10 @@ export default async function Deal({ params }: { params: Promise<{ id: string }>
           ['Contact', d.contact],
           ['Project', d.project_name],
           ['Unit', `${d.unit_number} · ${d.unit_type || ''}`],
-          ['Configuration / area', `${d.configuration || '—'} / ${d.size_sqft || '—'} sqft`],
           ['Sale value', rupees(d.sale_value)],
           ['Date closed', displayDate(d.date_closed)],
-          [
-            'Booking progress',
-            `${d.booking_percentage}% / ${d.required_booking_percentage ?? '—'}% required`,
-          ],
           ['Booking amount', rupees(d.booking_amount)],
-          ['Expected eligibility', displayDate(d.expected_eligibility_date)],
-          ['Trigger', `${d.trigger} ${d.milestone_description || ''}`],
+          ['Expected commission', displayDate(d.expected_payment_date)],
         ].map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
@@ -60,10 +60,8 @@ export default async function Deal({ params }: { params: Promise<{ id: string }>
       <MoneyCards
         values={[
           ['Commission generated', d.commission],
-          ['Eligible amount', d.eligible],
           ['Commission received', d.received],
           ['Outstanding commission', d.outstanding],
-          ['Conditional commission', d.conditional],
         ]}
       />
       {Number(d.overpayment) > 0 && (
@@ -101,6 +99,7 @@ export default async function Deal({ params }: { params: Promise<{ id: string }>
                 <td>{r.voided ? 'Voided' : 'Posted'}</td>
                 <td>
                   <Link href={`/admin/collections/finance-receipts/${r.id}`}>Notes / void</Link>
+                  <RemoveEntry kind="receipts" id={r.id} />
                 </td>
               </tr>
             ))}
@@ -112,20 +111,23 @@ export default async function Deal({ params }: { params: Promise<{ id: string }>
         Full payment history and audit fields
       </Link>
       <div className="finance-heading">
-        <h2>Expected receivables</h2>
+        <h2>Remaining commission</h2>
         <Link className="finance-button" href={`/finance/entry/receivables?deal=${id}`}>
-          + Expected Payment
+          Change expected date
         </Link>
       </div>
       <ScheduleTable rows={schedules} />
-      <p>
-        Receipts matched to a schedule settle it first. Unmatched receipts settle the oldest active
-        schedules. Earlier unmatched cash is not subtracted again from a newly added schedule.
-        Voided schedules are excluded. Showing up to 100 entries per section.
-      </p>
-      <Link href={`/admin/collections/finance-receivables?where[deal][equals]=${id}`}>
-        Full schedule including voided entries
+      <p>The unpaid balance moves to the next expected date when you record a partial payment.</p>
+      <h2>Deal expenses</h2>
+      <Link className="finance-button" href={`/finance/entry/expenses?deal=${id}`}>
+        Add deal expense
       </Link>
+      {expenses.map((e) => (
+        <p key={e.id}>
+          {displayDate(e.date)} · {e.description} · {rupees(e.amount)} {e.voided ? '(Voided)' : ''}
+        </p>
+      ))}
+      {!expenses.length && <p>No expenses recorded for this deal.</p>}
       <h2>Notes</h2>
       <pre>{d.notes || 'No notes yet.'}</pre>
       <p>

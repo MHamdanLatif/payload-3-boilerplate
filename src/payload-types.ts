@@ -1838,8 +1838,11 @@ export interface FinanceDeal {
   lead?: (number | null) | Lead;
   clientName: string;
   contact?: string | null;
-  project: number | FeaturedProject;
-  unitNumber: string;
+  project?: (number | null) | FeaturedProject;
+  otherProperty?: string | null;
+  unitTypeKey?: string | null;
+  expectedPaymentDate?: string | null;
+  unitNumber?: string | null;
   unitType?: string | null;
   configuration?: string | null;
   sizeSqft?: number | null;
@@ -1875,6 +1878,7 @@ export interface FinanceReceipt {
   id: number;
   deal: number | FinanceDeal;
   receivable?: (number | null) | FinanceReceivable;
+  nextExpectedDate?: string | null;
   date: string;
   amount: number;
   paymentMethod?: string | null;
@@ -1929,6 +1933,7 @@ export interface FinanceExpense {
    * Meta Ads, Digital Advertising, Marketing, Website / Hosting, CRM / Software, Office, Salaries, Sales / Referral Commission, Travel / Fuel, Printing, Photography / Video, Client Entertainment, Professional Fees, Utilities, Miscellaneous. New categories may be entered directly.
    */
   category: string;
+  deal?: (number | null) | FinanceDeal;
   project?: (number | null) | FeaturedProject;
   description: string;
   paymentMethod?: string | null;
@@ -2981,6 +2986,9 @@ export interface FinanceDealsSelect<T extends boolean = true> {
   clientName?: T;
   contact?: T;
   project?: T;
+  otherProperty?: T;
+  unitTypeKey?: T;
+  expectedPaymentDate?: T;
   unitNumber?: T;
   unitType?: T;
   configuration?: T;
@@ -3014,6 +3022,7 @@ export interface FinanceDealsSelect<T extends boolean = true> {
 export interface FinanceReceiptsSelect<T extends boolean = true> {
   deal?: T;
   receivable?: T;
+  nextExpectedDate?: T;
   date?: T;
   amount?: T;
   paymentMethod?: T;
@@ -3053,6 +3062,7 @@ export interface FinanceExpensesSelect<T extends boolean = true> {
   date?: T;
   amount?: T;
   category?: T;
+  deal?: T;
   project?: T;
   description?: T;
   paymentMethod?: T;

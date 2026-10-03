@@ -8,10 +8,10 @@ import { financeCTE } from '@/lib/finance-query'
 
 export const dynamic = 'force-dynamic'
 const queries = {
-  deals: sql`SELECT id,client_name,contact,project_name,unit_number,unit_type,date_closed,sale_value,booking_percentage,commission,eligible,conditional,received,outstanding,status,notes,created_at,updated_at,created_by_id,updated_by_id FROM deals`,
+  deals: sql`SELECT id,client_name,contact,project_name,unit_number,unit_type,date_closed,sale_value,booking_amount,expected_payment_date,commission,received,outstanding,status,notes,created_at,updated_at,created_by_id,updated_by_id FROM deals`,
   receipts: sql`SELECT r.*,d.client_name,d.project_name FROM finance_receipts r JOIN deals d ON d.id=r.deal_id`,
-  receivables: sql`SELECT r.*,d.client_name,d.project_name,s.unpaid,s.status FROM finance_receivables r JOIN deals d ON d.id=r.deal_id LEFT JOIN schedules s ON s.id=r.id`,
-  expenses: sql`SELECT e.*,p.title AS project_name FROM finance_expenses e LEFT JOIN featured_projects p ON p.id=e.project_id`,
+  receivables: sql`SELECT id,deal_id,client_name,project_name,date,unpaid,status FROM schedules`,
+  expenses: sql`SELECT e.*,COALESCE(d.project_name,p.title) AS project_name FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id LEFT JOIN featured_projects p ON p.id=e.project_id`,
 }
 const cell = (value: unknown) => {
   let s = value instanceof Date ? value.toISOString() : String(value ?? '')

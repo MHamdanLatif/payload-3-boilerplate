@@ -61,9 +61,7 @@ export function ScheduleTable({ rows }: { rows: Record<string, any>[] }) {
           <tr>
             <th>Expected date</th>
             <th>Client / project</th>
-            <th>Expected amount</th>
-            <th>Unpaid</th>
-            <th>Eligibility</th>
+            <th>Remaining commission</th>
             <th>Status</th>
             <th />
           </tr>
@@ -76,14 +74,12 @@ export function ScheduleTable({ rows }: { rows: Record<string, any>[] }) {
                 <Link href={`/finance/deals/${r.deal_id}`}>{r.client_name}</Link>
                 <small>{r.project_name}</small>
               </td>
-              <td>{rupees(r.amount)}</td>
               <td>{rupees(r.unpaid)}</td>
-              <td>{r.is_eligible ? 'Eligible' : 'Conditional'}</td>
               <td>
                 <Badge>{r.status}</Badge>
               </td>
               <td>
-                <Link href={`/admin/collections/finance-receivables/${r.id}`}>Edit / void</Link>
+                <Link href={`/finance/entry/receivables?deal=${r.deal_id}`}>Change date</Link>
               </td>
             </tr>
           ))}

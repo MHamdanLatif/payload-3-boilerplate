@@ -1,3 +1,4 @@
+import * as simpleFinance from './20261003_000000_simple_finance'
 import * as finance from './20261002_000000_finance'
 import * as leadNotificationQueue from './20260928_000001_lead_notification_queue'
 import * as crmPush from './20260928_000000_crm_push'
@@ -98,4 +99,5 @@ export const migrations = [
   { up: crmPush.up, down: crmPush.down, name: '20260928_000000_crm_push' },
   { up: leadNotificationQueue.up, down: leadNotificationQueue.down, name: '20260928_000001_lead_notification_queue' },
   { up: finance.up, down: finance.down, name: '20261002_000000_finance' },
+  { up: simpleFinance.up, down: simpleFinance.down, name: '20261003_000000_simple_finance' },
 ];
