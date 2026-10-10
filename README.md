@@ -261,7 +261,7 @@ The flag only disables development schema push; it does not apply missing migrat
 
 ### Buyer-facing project inventory
 
-The public site serves property buyers and investors. `/properties` remains the project directory. Eligible projects include pre-launch, newly launched, under-construction and ready-to-move developments with available units. Standalone `property-listings` records remain in the database for history, but are excluded from anonymous access and public discovery; their detail routes return 404.
+The public site serves property buyers and investors. `/properties` remains the project directory. Eligible projects include pre-launch, newly launched, under-construction and ready-to-move developments with available units. Standalone `property-listings` records remain in the database for history, but are excluded from anonymous access and public discovery; unknown detail routes return 404. At the owner’s request, the three known retired listing URLs, their historical variants and the deleted Saim Residency article redirect permanently to `/properties` (HTTP 308).
 
 `FeaturedProjects.salesAvailability` and `MarketedProjects.salesAvailability` control public eligibility. Existing records remain available until explicitly marked sold-out/withdrawn. Ready-to-move projects require `readyPaymentPlanConfirmed` before exposing the calculator. No finance collections or workflows are changed.
 
@@ -273,9 +273,10 @@ For databases whose historical schema was applied manually, after backing up the
 
 ```powershell
 $env:NODE_ENV = 'production'
-corepack pnpm payload run scripts/apply-project-marketing.ts --apply
+$env:APPLY_PROJECT_MARKETING = 'true'
+corepack pnpm payload run scripts/apply-project-marketing.ts
 ```
 
-This explicitly applies only the two project migrations. Do not run it as a routine local-preview command against production. This review did not apply editorial changes to the production CMS.
+This explicitly applies only the two project migrations. Do not run it as a routine local-preview command against production. The editorial changes were applied to production on 10 October 2026 after an explicit request and a content backup: 33 existing articles updated, the owner-deleted Saim Residency article skipped, and the buyer guide added as a draft. Existing publication dates and project/listing records were preserved.
 
 Focused validation: `node --test tests/unit/project-search.test.mjs`. Run `corepack pnpm test:e2e` for project availability, retired routes, optional buyer fields and project attribution, alongside the existing onboarding/payment/CRM/finance checks. Keep tests on a disposable local database and disable notifications/CAPI. See `docs/buyer-site-review.md` for the current validation record.

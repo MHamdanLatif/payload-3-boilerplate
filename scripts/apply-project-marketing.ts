@@ -10,8 +10,12 @@ import { up as content } from '../src/migrations/20261008_000001_project_marketi
 
 if (process.env.NODE_ENV !== 'production')
   throw new Error('Run with NODE_ENV=production to disable schema push.')
-if (!process.argv.includes('--apply'))
-  throw new Error('Pass --apply after reviewing the blog audit and taking a database backup.')
+// Payload's run command consumes CLI flags; the explicit environment flag also
+// works through that runner without relying on argument forwarding.
+if (!process.argv.includes('--apply') && process.env.APPLY_PROJECT_MARKETING !== 'true')
+  throw new Error(
+    'Set APPLY_PROJECT_MARKETING=true after reviewing the blog audit and taking a database backup.',
+  )
 const payload = await getPayload({ config })
 const req = await createLocalReq({}, payload)
 try {

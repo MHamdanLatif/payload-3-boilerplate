@@ -1,6 +1,6 @@
 {
   "reviewedAt": "2026-10-10",
-  "scope": "Buyer-facing service claims, public listing links/cards and metadata relevance. Educational resale/rental discussion retained. CMS snapshot: 45 published articles and one unrelated draft. Changes prepared for review, not applied to production.",
+  "scope": "Buyer-facing service claims, public listing links/cards and metadata relevance. Educational resale/rental discussion retained. CMS snapshot: 45 published articles and one unrelated draft. Applied to production on 2026-10-10: 33 existing articles updated; the owner-deleted Saim Residency advertisement was skipped; new buyer guide added as a draft.",
   "articles": [
     {
       "id": 2,

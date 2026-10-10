@@ -13,18 +13,18 @@ The existing design is retained with approved buyer copy, shared budget ranges, 
 - Homepage metadata matches approved title/description across standard/OG/Twitter, preserves canonical/social image. Meta-keywords tags removed while editorial topic fields remain available for related content.
 - About/services/contact have visible server-rendered content even without scroll animations. The detached About card and global horizontal clipping are removed. Anchors clear the sticky header; enquiry modal scrolls within the mobile viewport.
 - Privacy/terms and relevant location claims reflect buyer project enquiries. No unrelated legal/financial claims were rewritten.
-- CMS editorial changes are prepared as migrations, not written to the production database in this review. Detailed decisions are in the two JSON audit files. The new buyer guide stays a draft. The existing Al Wahab logo is retained because inspected alternatives do not establish a sharper approved logo.
+- CMS editorial changes were applied to production on 10 October 2026 after the owner’s explicit request and a content backup: 33 articles updated and one buyer guide added as a draft. The owner-deleted Saim article was skipped; existing publication dates and project/listing records were unchanged. Detailed decisions are in the two JSON audit files. The new buyer guide stays a draft. The existing Al Wahab logo is retained because inspected alternatives do not establish a sharper approved logo.
 
 ## Retired URLs
 
-No equivalent replacement exists for these standalone units. Each returns **404**, with project-navigation options; no generic replacement redirect:
+The initial review used 404 responses. The owner subsequently requested redirects on 10 October 2026: the following URLs now have explicit **308 permanent redirects to `/properties`**, the current project directory. No unrelated individual project is presented as an equivalent replacement:
 
 - `/listings/4-bed-duplex-apartment-in-lateef-duplex-luxuria-scheme-33`
 - `/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33-roof-terrace`
 - `/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2-urgent-sale`
 - `/featured/lateef-duplex-luxuria`
 
-Old double-hyphen listing variants also return 404 directly. The curated CMS migration retires `/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal` to draft; its URL returns 404 after that migration. Its old trailing-hyphen alias no longer redirects. Valid project/blog spelling redirects are preserved. The educational `/blog/4-bed-duplex-karachi-what-around-3-crore-actually-buys` remains unchanged in URL and scope.
+The deleted `/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal` URL, its trailing-hyphen alias and the old double-hyphen Saim/Rim Jhim listing variants also redirect directly to `/properties` with 308. The migration did not recreate the deleted blog. Other unknown listing URLs retain 404 responses. Valid project/blog spelling redirects are preserved. The educational `/blog/4-bed-duplex-karachi-what-around-3-crore-actually-buys` remains unchanged in URL and scope.
 
 ## Validation
 
@@ -34,7 +34,13 @@ Old double-hyphen listing variants also return 404 directly. The curated CMS mig
 - Standard Docker-started e2e attempt was blocked because Docker is absent. The **same `corepack pnpm test:e2e` suite passed (2 tests)** against a production build and disposable native PostgreSQL `buyer_review_e2e` database on port 3100. Docker workflow files are unchanged. Tests cover onboarding/seeding/comments, payments, CRM, finance, ready eligibility, withdrawn/private inventory, sitemap, optional consultation fields and saved project IDs.
 - Editorial migration tested on all 46 audited CMS articles inside a rolled-back local transaction: retained educational duplex article, retired Saim ad, draft buyer guide, unchanged dates and idempotent repeat execution.
 - Desktop/mobile browser review at 1440, 768, 414, 390, 375 and 320px: document width equals viewport width. Menu and enquiry modal inspected; homepage screenshots captured at 1440 and 390px. Forms were intercepted with mock responses; external tracking blocked. No production test leads or notifications were sent.
-- Mocked browser results confirm optional fields, project source name/slug and matching Pixel event IDs. Exact retired listing/legacy URL HTTP 404 responses verified against the isolated production build.
+- Mocked browser results confirm optional fields, project source name/slug and matching Pixel event IDs. Initial retired-route 404 checks were superseded by the owner-requested redirect checks below.
 - A temporary DNS failure reaching the remote CMS interrupted one dev-server read-only check; the query recovered. Production-build checks used local PostgreSQL and passed.
 
 Review screenshots: `tmp/buyer-review/homepage-desktop.png`, `tmp/buyer-review/homepage-mobile.png`; detailed mobile viewport screenshots and browser results are in the same local directory. Temporary artifacts/settings are excluded from the commit.
+
+## Follow-up database application and redirects
+
+A timestamped pre-change content backup is retained locally at `tmp/project-marketing/content-backup-20261010-175404.json`; read-back verification is in `tmp/project-marketing/production-apply-verification.json`. No finance tables were involved. The migration runner now accepts the explicit `APPLY_PROJECT_MARKETING=true` flag because Payload consumes extra CLI flags. The first invocation stopped at that guard before any writes. Eight exact retired URL variants are covered by redirect assertions in the existing end-to-end suite.
+
+Follow-up validation: production build passed, five focused unit tests passed, and `corepack pnpm test:e2e` passed both tests (1.2 minutes), including all eight HTTP 308 redirects. The first attempt encountered leftover local test records; clearing only the disposable localhost database resolved both failures. Production data was not used for browser tests.

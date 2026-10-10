@@ -62,6 +62,22 @@ export async function verifyProjectMarketing(admin: Page, visitor: Page, info: T
     await visitor.goto('/properties?location=Scheme+33&unitType=3+Bed+Lounge')
     await expect(visitor.getByRole('heading', { name: ready.title })).toBeVisible()
     expect((await visitor.request.get(`/listings/${listing.slug}`)).status()).toBe(404)
+    // Only the owner's known retired URLs redirect; unrelated listing URLs stay 404.
+    for (const path of [
+      '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal',
+      '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal-',
+      '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2-urgent-sale',
+      '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2--urgent-sale',
+      '/listings/4-bed-duplex-apartment-in-lateef-duplex-luxuria-scheme-33',
+      '/featured/lateef-duplex-luxuria',
+      '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33-roof-terrace',
+      '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33--roof-terrace',
+    ]) {
+      const response = await visitor.request.get(path, { maxRedirects: 0 })
+      expect(response.status()).toBe(308)
+      expect(new URL(response.headers().location, visitor.url()).pathname).toBe('/properties')
+    }
+
     expect((await visitor.request.get(`/projects/${withdrawn.slug}`)).status()).toBe(404)
     expect(
       (await visitor.request.get(`/api/property-listings/${listing.id}`)).status(),

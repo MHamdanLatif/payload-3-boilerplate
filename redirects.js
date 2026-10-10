@@ -20,6 +20,20 @@ const redirects = async () => {
   const legacyRedirects = [
     { source: '/index.html', destination: '/', permanent: true },
 
+    // Explicit retirement redirects requested by the owner on 10 October 2026.
+    // These send past enquiries to the current project directory; no individual
+    // project is presented as a replacement for the retired resale unit.
+    ...[
+      '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal',
+      '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal-',
+      '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2-urgent-sale',
+      '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2--urgent-sale',
+      '/listings/4-bed-duplex-apartment-in-lateef-duplex-luxuria-scheme-33',
+      '/featured/lateef-duplex-luxuria',
+      '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33-roof-terrace',
+      '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33--roof-terrace',
+    ].map(source => ({ source, destination: '/properties', permanent: true })),
+
     // Live projects — direct equivalents on the new site
     {
       source: '/featured/tulip-comfort',
