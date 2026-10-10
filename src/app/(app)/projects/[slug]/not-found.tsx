@@ -13,7 +13,7 @@ export default function ProjectNotFound() {
         </h1>
         <p className="mt-6 text-base leading-relaxed text-brand-deep/70 md:text-lg">
           It may have been delisted or the URL may be incorrect. Browse the full live
-          inventory or send us your requirements — our advisors source off-market
+          inventory or send us your requirements — our advisors can discuss builder
           options daily.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">

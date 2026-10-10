@@ -54,6 +54,12 @@ export function ProjectOverview({ project }: { project: FeaturedProject }) {
             About {project.title}
           </h2>
           <SectionRule className="mt-6" />
+          {project.possessionInformation && (
+            <div className="mt-6 rounded-xl border border-gold/30 bg-white p-5">
+              <h3 className="font-serif text-xl">Possession and handover</h3>
+              <p className="mt-2 whitespace-pre-line text-brand-deep/75">{project.possessionInformation}</p>
+            </div>
+          )}
 
           {project.description ? (
             <div className="mt-8 max-w-none text-brand-deep/80">

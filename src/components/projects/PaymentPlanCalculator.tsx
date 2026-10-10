@@ -1,5 +1,6 @@
 'use client'
 
+import { hasPublicPaymentPlan } from '@/lib/project-visibility'
 import { useEffect, useMemo, useState } from 'react'
 import { FileDown } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
@@ -53,7 +54,7 @@ export function PaymentPlanCalculator({
   collection = 'featured-projects',
 }: Props) {
   const config = project.paymentPlan
-  const enabled = config?.enabled !== false
+  const enabled = hasPublicPaymentPlan(project)
 
   // ── Resolve heads list (from project; fall back to defaults if unset) ─────
   const projectHeads: PaymentHead[] = useMemo(() => {

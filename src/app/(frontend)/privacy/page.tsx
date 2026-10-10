@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getServerSideURL } from '@/utilities/getURL'
 
 const base = getServerSideURL().replace(/\/$/, '')
-const EFFECTIVE_DATE = '21 May 2026'
+const EFFECTIVE_DATE = '8 October 2026'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Lateef Properties',
@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <p>
               Lateef Properties (&ldquo;Lateef Properties&rdquo;, &ldquo;we&rdquo;,
-              &ldquo;us&rdquo; or &ldquo;our&rdquo;) is a real estate marketing agency
+              &ldquo;us&rdquo; or &ldquo;our&rdquo;) provides real estate project sales guidance
               based in Karachi, Pakistan. This Privacy Policy explains how we collect,
               use, share, and protect personal information when you visit our website
               <strong>lateefproperties.com</strong> (the &ldquo;Site&rdquo;), submit an enquiry, or
@@ -75,14 +75,14 @@ export default function PrivacyPolicyPage() {
 
             <h3>2.1 Information You Provide</h3>
             <p>
-              When you submit any enquiry form on the Site (project enquiry, listing
-              enquiry, consultation request, zero-results lead capture), we collect:
+              When you submit any enquiry form on the Site (project enquiry, consultation
+              enquiry, consultation request, project matching request), we collect:
             </p>
             <ul>
               <li>Full name</li>
               <li>Phone number (with country code)</li>
               <li>Email address (optional)</li>
-              <li>The project, listing, or property type you enquired about</li>
+              <li>The project, unit type, or property type you enquired about</li>
               <li>Budget range, location preference, or other filter criteria you provided</li>
               <li>Any free-text notes you added to the form</li>
               <li>Timestamp and source page of the submission</li>
@@ -108,7 +108,7 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>
                 <strong>Responding to your enquiry</strong> — a senior advisor
-                typically contacts you within 15 minutes by phone, WhatsApp, or email to
+                contacts you by phone, WhatsApp, or email to
                 discuss the property, send details, or schedule a viewing.
               </li>
               <li>
@@ -250,7 +250,7 @@ export default function PrivacyPolicyPage() {
                 Ads tags.
               </li>
               <li>
-                <strong>Property developers and partner agencies</strong> — only where
+                <strong>Relevant project developers</strong> — only where
                 you have specifically enquired about a particular project, and only
                 the information needed to facilitate your enquiry.
               </li>

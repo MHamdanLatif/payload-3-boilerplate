@@ -145,3 +145,6 @@
     background: linear-gradient(135deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-mid)) 50%, hsl(var(--brand-light)) 100%);
   }
 }
+
+/* Keep in-page destinations clear of the fixed navigation. */
+section[id] { scroll-margin-top: 6rem; }

@@ -2,11 +2,17 @@ import type { Metadata } from 'next'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import { fetchPublishedProjects } from '@/lib/featured-projects'
 import { SearchFilter } from '@/components/properties/SearchFilter'
 import { PropertyResultsGrid } from '@/components/properties/PropertyResultsGrid'
 import { ZeroResultsLeadTrap } from '@/components/properties/ZeroResultsLeadTrap'
 import { CategoryHub } from '@/components/properties/CategoryHub'
-import { fetchUnified, parseSearchParams, type RawSearchParams } from '@/lib/property-search'
+import {
+  fetchUnified,
+  parseSearchParams,
+  projectFilterOptions,
+  type RawSearchParams,
+} from '@/lib/property-search'
 import { breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
 import { getServerSideURL } from '@/utilities/getURL'
@@ -38,34 +44,18 @@ export async function generateMetadata({
 }
 
 const metadata: Metadata = {
-  title: 'Properties for Sale in Karachi | Flats, Plots, Offices, Shops | Lateef Properties',
+  title: 'Property Projects in Karachi | Lateef Properties',
   description:
-    'Browse pre-launch allocations, ready-for-possession flats, plots, offices and shops across Karachi. Filter by location, type, status and budget. Curated, hand-picked inventory.',
+    'Explore property projects in Karachi. Compare apartments, offices and shops from pre-launch to ready to move by area, project stage and budget.',
   alternates: { canonical: `${base}/properties` },
   openGraph: {
-    title: 'Properties for Sale in Karachi | Lateef Properties',
+    title: 'Property Projects in Karachi | Lateef Properties',
     description:
-      'Browse pre-launch allocations, ready-for-possession listings, and off-market resale across Karachi.',
+      'Browse property projects in Karachi, from new launches and under-construction developments to ready-to-move properties.',
     url: `${base}/properties`,
     type: 'website',
     siteName: 'Lateef Properties',
   },
-  keywords: [
-    'properties for sale in Karachi',
-    'flats for sale Karachi',
-    'plots for sale Karachi',
-    'commercial property Karachi',
-    'office for sale Karachi',
-    'shop for sale Karachi',
-    'pre-launch projects Karachi',
-    'ready to move flats',
-    'off-market property',
-    'curated property Karachi',
-    'Gulshan-e-Iqbal properties',
-    'Scheme 33 properties',
-    'DHA Karachi property',
-    'Lateef Properties',
-  ],
 }
 
 export default async function PropertiesPage({
@@ -78,9 +68,14 @@ export default async function PropertiesPage({
   const isFiltered = Object.values(sp ?? {}).some((v) => v != null && v !== '')
 
   const payload = await getPayload({ config })
-  const items = await fetchUnified(payload, parsed)
+  const [items, projects] = await Promise.all([
+    fetchUnified(payload, parsed),
+    fetchPublishedProjects(payload),
+  ])
 
   const defaults = {
+    budget: parsed.budget ?? '',
+    layout: parsed.layout ?? '',
     location: parsed.location ?? '',
     propertyType: parsed.propertyType ?? '',
     status: parsed.status ?? '',
@@ -104,18 +99,22 @@ export default async function PropertiesPage({
               01 / INVENTORY
             </span>
             <h1 className="mt-5 font-serif text-4xl leading-[1.05] tracking-tight text-brand-deep text-balance md:text-5xl lg:text-6xl">
-              Karachi apartments, plots and{' '}
+              Karachi property projects: homes and{' '}
               <span className="italic text-gold">commercial.</span>
             </h1>
             <p className="mt-5 text-base leading-relaxed text-brand-deep/70 md:text-lg">
-              Pre-launch allocations, ready-to-move listings and off-market resale
-              across Gulshan-e-Iqbal, Scheme 33, Gulistan-e-Johar, DHA and Clifton.
-              Set your filters — we&rsquo;ll source what isn&rsquo;t here.
+              Explore apartments and commercial properties. Compare pre-launch, under-construction
+              and ready-to-move projects by area, unit configuration and budget. Ask us about
+              available units.
             </p>
           </div>
 
           <div className="mb-10">
-            <SearchFilter defaults={defaults} />
+            <SearchFilter
+              key={JSON.stringify(defaults)}
+              defaults={defaults}
+              options={projectFilterOptions(projects)}
+            />
           </div>
 
           {items.length > 0 ? (

@@ -50,7 +50,7 @@ export function InquiryModal({ open, onClose, sourceName, sourceSlug, sourceKind
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white text-brand-deep shadow-luxe"
+            className="relative z-10 w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl bg-white text-brand-deep shadow-luxe"
           >
             <div className="flex items-start justify-between border-b border-border px-6 py-5">
               <div>
@@ -75,7 +75,8 @@ export function InquiryModal({ open, onClose, sourceName, sourceSlug, sourceKind
                 sourceKind={sourceKind}
                 placement="modal"
                 tone="light"
-                submitLabel="Send Inquiry"
+                submitLabel="Request Details"
+                footnote="We’ll use your details to respond to your enquiry."
                 onSuccess={onClose}
               />
             </div>

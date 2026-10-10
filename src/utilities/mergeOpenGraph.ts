@@ -9,7 +9,7 @@ import { getServerSideURL } from './getURL'
 const defaultOpenGraph: Metadata['openGraph'] = {
   type: 'website',
   description:
-    'Lateef Properties — authorised marketing agency for Karachi apartments, plots and commercial property. Pre-launch allocations, ready-to-move resale and off-market deals.',
+    'Explore property projects in Karachi with Lateef Properties, from pre-launch to ready to move.',
   images: [
     {
       url: `${getServerSideURL()}/brand/og-default.png`,

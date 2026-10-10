@@ -25,7 +25,6 @@ const generateTitle: GenerateTitle<SeoDoc> = ({ doc }) => {
 // `marketed-projects` does — into a `/projects/<slug>` canonical it does not own.
 const SEO_PATH_PREFIX: Record<string, string> = {
   'featured-projects': '/projects',
-  'property-listings': '/listings',
 }
 
 const generateURL: GenerateURL<SeoDoc> = ({ collectionSlug, doc }) => {

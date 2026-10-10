@@ -1,3 +1,4 @@
+import { hasPublicPaymentPlan } from '@/lib/project-visibility'
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getPayload } from 'payload'
@@ -156,6 +157,7 @@ export async function POST(req: Request) {
   const payload = await getPayload({ config })
   const projectRes = await payload.find({
     collection: projectCollection,
+    overrideAccess: false,
     where: { slug: { equals: projectSlug } },
     depth: 2,
     limit: 1,
@@ -165,7 +167,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 })
   }
   const planConfig = project.paymentPlan
-  if (planConfig?.enabled === false) {
+  if (!hasPublicPaymentPlan(project)) {
     return NextResponse.json(
       { ok: false, error: 'Payment plan disabled for this project' },
       { status: 403 },

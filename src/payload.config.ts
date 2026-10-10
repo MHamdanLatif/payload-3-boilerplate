@@ -74,6 +74,8 @@ export default buildConfig({
   // This config helps us configure global or default features that the other editors can inherit
   editor: defaultLexical,
   db: postgresAdapter({
+    // Disable automatic schema changes when previewing a migrated shared database.
+    push: process.env.PAYLOAD_DB_PUSH === 'false' ? false : undefined,
     pool: {
       connectionString: process.env.DATABASE_URI || '',
     },

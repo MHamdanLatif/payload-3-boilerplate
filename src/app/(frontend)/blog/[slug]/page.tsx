@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import type { FeaturedProject, PropertyListing } from '@/payload-types'
+import { isProjectAvailable } from '@/lib/project-visibility'
+import type { FeaturedProject } from '@/payload-types'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -11,14 +12,12 @@ import {
   fetchBlogBySlug,
   fetchPublishedBlogSlugs,
   fetchRelatedProjects,
-  fetchRelatedListings,
   blogImage,
   formatBlogDate,
 } from '@/lib/blogs'
 import { articleSchema, breadcrumbListSchema } from '@/lib/seo-jsonld'
 import { JsonLd } from '@/components/shared/JsonLd'
 import { FeaturedProjectCard } from '@/components/landing/FeaturedProjectCard'
-import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
 import RichText from '@/components/RichText'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -51,10 +50,6 @@ export async function generateMetadata({
     blogImage(blog) ||
     undefined
   const canonical = `${getServerSideURL()}/blog/${blog.slug}`
-  const keywords = (blog.keywords ?? [])
-    .map((k) => k.keyword)
-    .filter((k): k is string => Boolean(k))
-
   return {
     title: seoTitle,
     description: seoDescription,
@@ -75,7 +70,6 @@ export async function generateMetadata({
       description: seoDescription,
       images: ogImage ? [ogImage] : undefined,
     },
-    keywords,
   }
 }
 
@@ -92,31 +86,13 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
   const canonical = `${base}/blog/${blog.slug}`
   const hero = blogImage(blog)
 
-  // "Featured for you" cards at the end of the post. Editorial picks from the
-  // CMS (`featuredCards`) win; if none are set, auto-select by what the article
-  // is about (projects by name match, listings by topic match). Relationships
-  // are populated because the blog is fetched at depth 2.
+  // Editorial project picks win; withdrawn projects and legacy listings never render.
   const manualProjects = (blog.featuredCards ?? [])
     .filter((c) => c.cardType === 'project' && c.targetProject && typeof c.targetProject === 'object')
     .map((c) => c.targetProject as FeaturedProject)
-  const manualListings = (blog.featuredCards ?? [])
-    .filter((c) => c.cardType === 'listing' && c.targetListing && typeof c.targetListing === 'object')
-    .map((c) => c.targetListing as PropertyListing)
-
-  let projectCards: FeaturedProject[]
-  let listingCards: PropertyListing[]
-  if (manualProjects.length > 0 || manualListings.length > 0) {
-    projectCards = manualProjects
-    listingCards = manualListings
-  } else {
-    const [rp, rl] = await Promise.all([
-      fetchRelatedProjects(payload, blog, 2),
-      fetchRelatedListings(payload, blog, 2),
-    ])
-    projectCards = rp.slice(0, 2)
-    listingCards = rl.slice(0, Math.max(0, 3 - projectCards.length))
-  }
-  const hasCards = projectCards.length > 0 || listingCards.length > 0
+    .filter(isProjectAvailable)
+  const projectCards = manualProjects.length ? manualProjects : await fetchRelatedProjects(payload, blog, 3)
+  const hasCards = projectCards.length > 0
 
   const schemas = [
     articleSchema(blog),
@@ -199,11 +175,6 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                     href: `/projects/${p.slug}`,
                     title: p.title,
                   })),
-                  ...listingCards.map((l) => ({
-                    key: `listing-${l.id}`,
-                    href: `/listings/${l.slug}`,
-                    title: l.title,
-                  })),
                 ].map((item, i, arr) => (
                   <span key={item.key}>
                     <Link
@@ -239,14 +210,11 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             <section className="mt-16">
               <p className="eyebrow text-gold">Featured for you</p>
               <h2 className="mt-3 font-serif text-2xl tracking-tight text-brand-deep md:text-3xl">
-                Properties mentioned in this guide.
+                Projects mentioned in this guide.
               </h2>
               <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
                 {projectCards.map((p) => (
                   <FeaturedProjectCard key={`project-${p.id}`} project={p} />
-                ))}
-                {listingCards.map((l) => (
-                  <PropertyListingCard key={`listing-${l.id}`} listing={l} />
                 ))}
               </div>
             </section>
@@ -258,15 +226,15 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
               Browse curated Karachi inventory.
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-brand-deep/70">
-              Filter pre-launch developments and ready-to-move listings by location,
-              type and budget — or have a senior advisor source what isn&rsquo;t listed.
+              Compare projects from pre-launch to ready to move by location,
+              type and budget, or ask an advisor about current developer availability.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/properties"
                 className="group inline-flex items-center gap-2 rounded-full bg-brand-deep px-6 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold hover:text-brand-deep"
               >
-                Browse properties
+                Browse projects
                 <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
               <Link

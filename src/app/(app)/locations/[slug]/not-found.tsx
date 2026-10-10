@@ -12,7 +12,7 @@ export default function LocationNotFound() {
           We don&rsquo;t cover that location yet.
         </h1>
         <p className="mt-6 text-base leading-relaxed text-brand-deep/70 md:text-lg">
-          Our advisors focus on Karachi. Browse our active developments and ready-to-move inventory
+          Our advisors focus on Karachi. Browse our property projects from pre-launch to ready to move
           across Gulshan, Scheme 33, Gulistan-e-Johar and DHA.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">

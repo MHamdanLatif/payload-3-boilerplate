@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Phone, Mail, MapPin, ArrowRight, RotateCcw } from 'lucide-react'
 import { SectionRule } from './SectionRule'
 import { fadeUp, staggerContainer, viewportOnce } from './_motion'
-import { trackLead } from '@/lib/analytics'
+import { PROJECT_BUDGETS } from '@/lib/project-budgets'
+import { trackLead, trackMetaLead } from '@/lib/analytics'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 
 type FormValues = {
   fullName: string
   whatsapp: string
-  propertyType: string
+  location: string
   budget: string
   project: string
   notes: string
@@ -22,21 +23,11 @@ type FormErrors = Partial<Record<keyof FormValues, string>>
 const INITIAL: FormValues = {
   fullName: '',
   whatsapp: '',
-  propertyType: '',
+  location: '',
   budget: '',
   project: '',
   notes: '',
 }
-
-const PROPERTY_TYPES = ['Apartment', 'Duplex', 'Commercial', 'Investment Allocation']
-const BUDGETS = ['Under 1.5 Cr', '1.5 – 2.5 Cr', '2.5 – 5 Cr', '5 Cr+']
-const PROJECTS = [
-  'Pre-launch project',
-  'Under-construction project',
-  'Ready-for-possession',
-  'Off-market / Resale',
-  'No preference — show me everything',
-]
 
 function validate(values: FormValues): FormErrors {
   const errs: FormErrors = {}
@@ -50,13 +41,17 @@ function validate(values: FormValues): FormErrors {
   } else if (!isValidPhoneNumber(values.whatsapp.trim(), 'PK')) {
     errs.whatsapp = 'Please enter a valid phone number.'
   }
-  if (!values.propertyType) errs.propertyType = 'Choose a property type.'
-  if (!values.budget) errs.budget = 'Choose a budget range.'
-  if (!values.project) errs.project = 'Choose a project of interest.'
   return errs
 }
 
-export function ConsultationForm() {
+type ProjectOption = { id: number; title: string; slug: string }
+export function ConsultationForm({
+  projects,
+  locations,
+}: {
+  projects: ProjectOption[]
+  locations: string[]
+}) {
   const [values, setValues] = useState<FormValues>(INITIAL)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitted, setSubmitted] = useState(false)
@@ -76,14 +71,11 @@ export function ConsultationForm() {
     if (Object.keys(v).length > 0) return
     setSubmitting(true)
     try {
-      // Project field now stores a status preference (Pre-launch / Under-construction /
-      // Ready-for-possession / Off-market / No preference), not a specific project name.
-      // We prepend it to notes for CRM context.
-      const projectPref = values.project || null
-      const buyerNotes = values.notes.trim()
-      const composedNotes = projectPref
-        ? `[Preference: ${projectPref}]${buyerNotes ? '\n' + buyerNotes : ''}`
-        : buyerNotes || null
+      const project = projects.find((p) => String(p.id) === values.project)
+      const composedNotes =
+        [values.location ? `Preferred location: ${values.location}` : '', values.notes.trim()]
+          .filter(Boolean)
+          .join('\n') || null
       const res = await fetch('/api/lead-capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,26 +83,28 @@ export function ConsultationForm() {
           name: values.fullName.trim(),
           phone: values.whatsapp.trim(),
           conversionSurface: 'consultation-form',
-          sourceKind: 'consultation',
-          sourceName: null,
-          sourceSlug: null,
+          sourceKind: project ? 'project' : 'consultation',
+          sourceName: project?.title ?? null,
+          sourceSlug: project?.slug ?? null,
           placement: 'home',
           source: 'home:consultation',
-          propertyType: values.propertyType || null,
           budget: values.budget || null,
           notes: composedNotes,
         }),
       })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string }
-        setErrors({ fullName: j.error ?? "Couldn't send right now. Please try again or WhatsApp us." })
+        setErrors({
+          fullName: j.error ?? "Couldn't send right now. Please try again or WhatsApp us.",
+        })
         setSubmitting(false)
         return
       }
       setSubmitting(false)
       setSubmitted(true)
-      // Confirmed success — the general home contact form has no single project.
-      trackLead({ form_name: 'contact' })
+      const result = (await res.json()) as { eventId?: string }
+      trackLead({ form_name: 'contact', project: project?.slug })
+      trackMetaLead(result.eventId, project?.title)
     } catch {
       setErrors({ fullName: 'Network error. Please try again.' })
       setSubmitting(false)
@@ -124,10 +118,7 @@ export function ConsultationForm() {
   }
 
   return (
-    <section
-      id="contact"
-      className="relative overflow-hidden bg-cream py-24 text-brand md:py-32"
-    >
+    <section id="contact" className="relative overflow-hidden bg-cream py-24 text-brand md:py-32">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_hsl(var(--gold)/0.10),transparent_55%)]" />
 
       <div className="container">
@@ -135,14 +126,14 @@ export function ConsultationForm() {
           {/* Left — copy + contact */}
           <motion.div
             variants={staggerContainer}
-            initial="hidden"
+            initial={false}
             whileInView="show"
             viewport={viewportOnce}
-            className="lg:col-span-5"
+            className="min-w-0 lg:col-span-5"
           >
             <motion.div variants={fadeUp} className="flex items-center gap-3">
               <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
-                06 / CONSULTATION
+                CONSULTATION
               </span>
               <span className="h-px w-10 bg-gold" />
             </motion.div>
@@ -151,17 +142,16 @@ export function ConsultationForm() {
               variants={fadeUp}
               className="mt-6 font-serif text-4xl leading-[1.05] tracking-tight text-brand-deep text-balance md:text-5xl lg:text-[3.25rem]"
             >
-              Tell us what you&rsquo;re looking for in{' '}
-              <span className="italic text-gold">Karachi.</span>
+              Let&rsquo;s find a property that{' '}
+              <span className="italic text-gold">fits your plans.</span>
             </motion.h2>
             <motion.div variants={fadeUp}>
               <SectionRule className="mt-6" />
             </motion.div>
 
             <motion.p variants={fadeUp} className="mt-6 max-w-md text-brand/70 leading-relaxed">
-              Send your requirements — apartment, plot, office or shop — and a
-              Karachi-based advisor typically reaches you on WhatsApp within 15
-              minutes. No robocalls, no pressure.
+              Tell us your budget and preferred location. We’ll help you explore suitable projects,
+              understand the payment options and arrange a visit.
             </motion.p>
 
             <motion.div variants={fadeUp} className="mt-10 space-y-1 text-sm">
@@ -169,12 +159,12 @@ export function ConsultationForm() {
                 href="tel:+923363528333"
                 className="group flex items-center gap-4 border-b border-brand/10 py-4 transition-colors hover:border-gold"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
                   <Phone className="h-4 w-4" />
                 </span>
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-[0.3em] text-brand/55">
-                    Direct line
+                    Call or WhatsApp
                   </p>
                   <p className="font-serif text-lg text-brand">+92-3363-LATEEF</p>
                 </div>
@@ -183,14 +173,14 @@ export function ConsultationForm() {
                 href="mailto:info.lateefproperties@gmail.com"
                 className="group flex items-center gap-4 border-b border-brand/10 py-4 transition-colors hover:border-gold"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
                   <Mail className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-brand/55">
-                    Advisor desk
+                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-brand/55">Email</p>
+                  <p className="break-all font-serif text-base text-brand md:text-lg">
+                    info.lateefproperties@gmail.com
                   </p>
-                  <p className="font-serif text-base text-brand md:text-lg">info.lateefproperties@gmail.com</p>
                 </div>
               </a>
               <a
@@ -199,13 +189,11 @@ export function ConsultationForm() {
                 rel="noopener noreferrer"
                 className="group flex items-start gap-4 border-b border-brand/10 py-4 transition-colors hover:border-gold"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand/15 bg-ivory text-gold transition-colors group-hover:border-gold">
                   <MapPin className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-brand/55">
-                    Karachi office
-                  </p>
+                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-brand/55">Office</p>
                   <p className="font-serif text-base leading-snug text-brand md:text-lg">
                     Ground Floor, Four Seasons Apartment,
                     <br />
@@ -218,24 +206,25 @@ export function ConsultationForm() {
 
           {/* Right — form card */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={viewportOnce}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative lg:col-span-7"
+            className="relative min-w-0 lg:col-span-7"
           >
             <div className="relative overflow-hidden rounded-3xl border border-brand/10 bg-white p-6 shadow-luxe sm:p-10">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
 
-              <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 sm:grid-cols-2" noValidate>
-                <Field
-                  label="Full name"
-                  error={errors.fullName}
-                  className="sm:col-span-2"
-                >
+              <form
+                onSubmit={onSubmit}
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2"
+                noValidate
+              >
+                <Field label="Full Name" error={errors.fullName} className="sm:col-span-2">
                   <input
                     type="text"
                     autoComplete="name"
+                    required
                     value={values.fullName}
                     onChange={update('fullName')}
                     placeholder="e.g. Aisha Khan"
@@ -243,10 +232,11 @@ export function ConsultationForm() {
                   />
                 </Field>
 
-                <Field label="WhatsApp" error={errors.whatsapp}>
+                <Field label="WhatsApp Number" error={errors.whatsapp}>
                   <input
                     type="tel"
                     autoComplete="tel"
+                    required
                     value={values.whatsapp}
                     onChange={update('whatsapp')}
                     placeholder="+92 3XXXXXXXXX"
@@ -254,52 +244,47 @@ export function ConsultationForm() {
                   />
                 </Field>
 
-                <Field label="Property type" error={errors.propertyType}>
-                  <select
-                    value={values.propertyType}
-                    onChange={update('propertyType')}
-                    className={selectCls}
-                  >
+                <Field label="Preferred Location (optional)">
+                  <input
+                    value={values.location}
+                    onChange={update('location')}
+                    className={inputCls}
+                    list="consultation-locations"
+                    placeholder="Your preferred area"
+                  />
+                  <datalist id="consultation-locations">
+                    {locations.map((location) => (
+                      <option key={location} value={location} />
+                    ))}
+                  </datalist>
+                </Field>
+
+                <Field label="Budget Range (optional)" error={errors.budget}>
+                  <select value={values.budget} onChange={update('budget')} className={selectCls}>
                     <option value="">Select…</option>
-                    {PROPERTY_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {PROJECT_BUDGETS.map((b) => (
+                      <option key={b.value} value={b.label}>
+                        {b.label}
                       </option>
                     ))}
                   </select>
                 </Field>
 
-                <Field label="Budget range" error={errors.budget}>
-                  <select
-                    value={values.budget}
-                    onChange={update('budget')}
-                    className={selectCls}
-                  >
-                    <option value="">Select…</option>
-                    {BUDGETS.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
+                <Field label="Project of Interest (optional)" error={errors.project}>
+                  <select value={values.project} onChange={update('project')} className={selectCls}>
+                    <option value="">Not sure yet</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={String(p.id)}>
+                        {p.title}
                       </option>
                     ))}
                   </select>
                 </Field>
 
-                <Field label="Project of interest" error={errors.project}>
-                  <select
-                    value={values.project}
-                    onChange={update('project')}
-                    className={selectCls}
-                  >
-                    <option value="">Select…</option>
-                    {PROJECTS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Notes (optional)" className="sm:col-span-2">
+                <Field
+                  label="Anything Else You’d Like Us to Know? (optional)"
+                  className="sm:col-span-2"
+                >
                   <textarea
                     rows={3}
                     value={values.notes}
@@ -311,15 +296,18 @@ export function ConsultationForm() {
 
                 <div className="sm:col-span-2 flex flex-col items-start gap-4 border-t border-brand/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs leading-relaxed text-brand/60">
-                    Your details stay private. We don&rsquo;t share enquirer
-                    information with third parties.
+                    We’ll use your details to respond to your enquiry. Read our{' '}
+                    <a href="/privacy" className="underline">
+                      Privacy Policy
+                    </a>
+                    .
                   </p>
                   <button
                     type="submit"
                     disabled={submitting}
                     className="group inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-sm font-medium uppercase tracking-[0.18em] text-ivory shadow-luxe-sm transition-all duration-300 hover:bg-gold hover:text-brand hover:shadow-gold disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {submitting ? 'Sending…' : 'Book a Consultation'}
+                    {submitting ? 'Sending…' : 'Discuss My Options'}
                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </button>
                 </div>
@@ -350,14 +338,16 @@ export function ConsultationForm() {
                       >
                         <Check className="h-7 w-7" strokeWidth={1.5} />
                       </motion.div>
-                      <p className="mt-6 eyebrow text-gold">Thank you, {values.fullName.split(' ')[0]}.</p>
+                      <p className="mt-6 eyebrow text-gold">
+                        Thank you, {values.fullName.split(' ')[0]}.
+                      </p>
                       <h3 className="mt-3 font-serif text-3xl leading-tight text-ivory">
-                        We&rsquo;ll be in touch within 15 minutes.
+                        Your enquiry has been received.
                       </h3>
                       <p className="mt-4 text-sm leading-relaxed text-ivory/80">
-                        A Karachi-based advisor will message you on WhatsApp at the
-                        number you shared. We&rsquo;ll cover what you&rsquo;re looking for,
-                        your budget, and the next viewing slot.
+                        A Karachi-based advisor will message you on WhatsApp at the number you
+                        shared. We&rsquo;ll cover what you&rsquo;re looking for, your budget and
+                        suitable next steps.
                       </p>
                       <button
                         type="button"
@@ -397,9 +387,7 @@ function Field({
 }) {
   return (
     <label className={`flex flex-col gap-2 ${className}`}>
-      <span className="text-[0.7rem] uppercase tracking-[0.25em] text-brand/65">
-        {label}
-      </span>
+      <span className="text-[0.7rem] uppercase tracking-[0.25em] text-brand/65">{label}</span>
       {children}
       {error && (
         <span className="text-xs font-medium text-destructive" role="alert">

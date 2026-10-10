@@ -3,10 +3,10 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getServerSideURL } from '@/utilities/getURL'
 import { heroImage } from '@/lib/featured-projects'
-import { listingHeroImage } from '@/lib/property-listings'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import { blogImage } from '@/lib/blogs'
 import { LOCATION_ENTITIES } from '@/lib/project-mapper'
-import type { FeaturedProject, PropertyListing, Blog } from '@/payload-types'
+import type { FeaturedProject, Blog } from '@/payload-types'
 
 /**
  * Normalise a media URL for a sitemap `<image:loc>`: make it absolute and
@@ -48,15 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const payload = await getPayload({ config })
 
-    const [projects, listings, blogs] = await Promise.all([
+    const [projects, blogs] = await Promise.all([
       payload.find({
         collection: 'featured-projects',
-        depth: 1,
-        limit: 500,
-        pagination: false,
-      }),
-      payload.find({
-        collection: 'property-listings',
+        overrideAccess: false,
+        where: availableProjectsWhere,
         depth: 1,
         limit: 500,
         pagination: false,
@@ -84,20 +80,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       })
 
-    const listingEntries: MetadataRoute.Sitemap = listings.docs
-      .filter((d) => Boolean(d.slug))
-      .map((d) => {
-        const listing = d as PropertyListing
-        const img = sitemapImage(listingHeroImage(listing), base)
-        return {
-          url: `${base}/listings/${listing.slug}`,
-          lastModified: listing.updatedAt ? new Date(listing.updatedAt) : now,
-          changeFrequency: 'daily' as const,
-          priority: 0.8,
-          ...(img && { images: [img] }),
-        }
-      })
-
     const blogEntries: MetadataRoute.Sitemap = blogs.docs
       .filter((d) => Boolean(d.slug))
       .map((d) => {
@@ -120,9 +102,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const d of projects.docs) {
       if ((d as FeaturedProject).location) populatedLocations.add((d as FeaturedProject).location!)
     }
-    for (const d of listings.docs) {
-      if ((d as PropertyListing).location) populatedLocations.add((d as PropertyListing).location!)
-    }
     const locationEntries = allLocationEntries.filter((entry) => {
       const slug = entry.url.split('/locations/')[1]
       const match = LOCATION_ENTITIES.find((e) => e.slug === slug)
@@ -133,7 +112,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...staticEntries,
       ...locationEntries,
       ...projectEntries,
-      ...listingEntries,
       ...blogEntries,
     ]
   } catch {

@@ -19,7 +19,6 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 
-import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
 import { autoFillBlogDefaults } from './Blogs/hooks/autoFillBlogDefaults'
@@ -32,7 +31,7 @@ export const Blogs: CollectionConfig = {
   access: {
     create: authenticated,
     delete: authenticated,
-    read: anyone,
+    read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
     update: authenticated,
   },
   admin: {
@@ -116,7 +115,7 @@ export const Blogs: CollectionConfig = {
       labels: { singular: 'Keyword', plural: 'Keywords' },
       admin: {
         description:
-          'Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.',
+          'Editorial topics used to identify related projects and structured article data.',
       },
       fields: [{ name: 'keyword', type: 'text', required: true }],
     },
@@ -132,7 +131,7 @@ export const Blogs: CollectionConfig = {
       label: 'Article Body',
       admin: {
         description:
-          'Paste markdown from your Claude conversation — `## headings`, `-` bullets, `**bold**`, `[text](url)` are auto-converted on paste. Aim for 1000–1500 words with H2 every 200–300 words.',
+          'Write helpful Karachi buyer guides with accurate developer-project information. Link to active projects and area guides. Describe only services we offer: project marketing and builder-inventory sales support. Educational comparisons may discuss resale; never offer standalone listing sourcing. Markdown headings and links are converted on paste.',
       },
       editor: lexicalEditor({
         features: () => [
@@ -212,22 +211,24 @@ export const Blogs: CollectionConfig = {
     {
       name: 'featuredCards',
       type: 'array',
-      label: 'Featured Project / Listing Cards',
+      label: 'Featured Project Cards',
       labels: { singular: 'Card', plural: 'Cards' },
       admin: {
         description:
-          'Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.',
+          'Choose builder projects to feature at the end of this post. Leave empty for automatic project recommendations. Historical listing references are retained privately and never rendered.',
         initCollapsed: false,
       },
       fields: [
         {
           name: 'cardType',
+          admin: { hidden: true },
+          hooks: { beforeChange: [() => 'project'] },
           type: 'select',
           required: true,
           defaultValue: 'project',
           options: [
             { label: 'Project', value: 'project' },
-            { label: 'Listing', value: 'listing' },
+            { label: 'Archived listing (not displayed)', value: 'listing' },
           ],
         },
         {
@@ -240,7 +241,8 @@ export const Blogs: CollectionConfig = {
           name: 'targetListing',
           type: 'relationship',
           relationTo: 'property-listings',
-          admin: { condition: (_data, siblingData) => siblingData?.cardType === 'listing' },
+          admin: { hidden: true },
+          access: { read: ({ req }) => Boolean(req.user) },
         },
       ],
     },

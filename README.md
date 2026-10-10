@@ -243,3 +243,39 @@ Finance includes Overview, Deals, Receivables, Commission Payments, Expenses, Re
 **Backups:** the four finance tables, their relationships and the two user permission fields are included in a full PostgreSQL database backup. Use the existing database backup/restore workflow and verify its schedule in Railway; this implementation does not enable or assume a paid backup feature. CSV downloads provide independent ledger copies, include voided records and audit columns, and neutralize spreadsheet formula prefixes. CSV files do not replace a transactionally consistent database backup.
 
 **Verification:** `corepack pnpm test:finance` runs focused authorization, input and audit tests. With a disposable localhost database whose name ends in `_e2e`, `corepack pnpm test:finance:db` exercises the migration and calculations in a rolled-back PostgreSQL transaction. `corepack pnpm test:e2e` retains the Docker PostgreSQL flow and checks onboarding, CRM, comments, finance permissions/session expiry, calculations, CSV and quick forms. Its setup initializes the empty local test schema before the production build. When USE_LOCAL_SEED_MEDIA is enabled against a localhost database ending in _e2e, media stays local and S3/R2 uploads are disabled; production storage is unchanged. `corepack pnpm lint` now invokes ESLint directly with `eslint.config.mjs`, as required by Next.js 16. No dependency version changes were needed.
+
+
+### Local preview with a shared, migrated database
+
+Payload normally compares and pushes its schema in development. If startup waits at a create/rename prompt, requests can remain pending until that prompt is resolved. Apply reviewed migrations first; do not accept unrelated rename/drop suggestions against a shared database.
+
+To start a preview against an already migrated database without automatic schema changes in PowerShell:
+
+```powershell
+$env:PAYLOAD_DB_PUSH = 'false'
+corepack pnpm dev --webpack
+```
+
+The flag only disables development schema push; it does not apply missing migrations. Leave it unset for the normal isolated e2e database setup. The webpack option can be used to troubleshoot a stalled Turbopack development session.
+
+
+### Buyer-facing project inventory
+
+The public site serves property buyers and investors. `/properties` remains the project directory. Eligible projects include pre-launch, newly launched, under-construction and ready-to-move developments with available units. Standalone `property-listings` records remain in the database for history, but are excluded from anonymous access and public discovery; their detail routes return 404.
+
+`FeaturedProjects.salesAvailability` and `MarketedProjects.salesAvailability` control public eligibility. Existing records remain available until explicitly marked sold-out/withdrawn. Ready-to-move projects require `readyPaymentPlanConfirmed` before exposing the calculator. No finance collections or workflows are changed.
+
+Search uses the published total unit prices and matches the price, unit configuration and duplex layout on the same unit. Budget ranges are half-open at PKR 15m, 25m and 50m, shared with the consultation form. Projects lacking unit prices fall back to their published starting price with a visible explanation; when all inventory lacks unit prices, the label becomes Starting Price Budget. Legacy minPrice/maxPrice URLs retain inclusive boundaries.
+
+Before rollout, review the CMS edits in `docs/project-marketing-blog-audit.json` and `docs/buyer-content-review.json`. Apply `20261008_000000_project_marketing` and `20261008_000001_project_marketing_content` through the normal reviewed migration workflow. The latter edits exact service-claim text, unlinks retired listing URLs, makes the Saim Residency resale article a draft and adds a buyer guide as a draft. It preserves article URLs, publication dates and educational resale/rental discussion. The migration is repeatable and does not delete historical content. Railway does not automatically run migrations.
+
+For databases whose historical schema was applied manually, after backing up the intended database, the scoped alternative is:
+
+```powershell
+$env:NODE_ENV = 'production'
+corepack pnpm payload run scripts/apply-project-marketing.ts --apply
+```
+
+This explicitly applies only the two project migrations. Do not run it as a routine local-preview command against production. This review did not apply editorial changes to the production CMS.
+
+Focused validation: `node --test tests/unit/project-search.test.mjs`. Run `corepack pnpm test:e2e` for project availability, retired routes, optional buyer fields and project attribution, alongside the existing onboarding/payment/CRM/finance checks. Keep tests on a disposable local database and disable notifications/CAPI. See `docs/buyer-site-review.md` for the current validation record.

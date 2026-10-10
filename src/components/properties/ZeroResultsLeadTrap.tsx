@@ -4,7 +4,9 @@ import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Check, RotateCcw } from 'lucide-react'
 import type { ParsedSearchParams } from '@/lib/property-search'
-import { trackLead } from '@/lib/analytics'
+import Link from 'next/link'
+import { PROJECT_BUDGETS } from '@/lib/project-budgets'
+import { trackLead, trackMetaLead } from '@/lib/analytics'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 
 export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: ParsedSearchParams }) {
@@ -20,7 +22,8 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
     if (sp.location) bits.push(sp.location)
     if (sp.propertyType) bits.push(sp.propertyType)
     if (sp.status) bits.push(sp.status)
-    if (sp.minPrice || sp.maxPrice) {
+    if (sp.budget) bits.push(PROJECT_BUDGETS.find(b => b.value === sp.budget)?.label || sp.budget)
+    if (!sp.budget && (sp.minPrice || sp.maxPrice)) {
       const min = sp.minPrice ? `PKR ${sp.minPrice.toLocaleString()}` : 'any'
       const max = sp.maxPrice ? `PKR ${sp.maxPrice.toLocaleString()}` : 'any'
       bits.push(`budget ${min} – ${max}`)
@@ -62,9 +65,11 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
         setSubmitting(false)
         return
       }
+      const result = await res.json() as { eventId?: string }
+      trackMetaLead(result.eventId)
       setSubmitted(true)
       // Confirmed success — tie the lead to the searched area when one was set.
-      trackLead({ form_name: 'off_market_request', project: searchedParams.location || undefined })
+      trackLead({ form_name: 'project_match_request', project: searchedParams.location || undefined })
     } catch {
       setErrors({ api: 'Network error. Please try again.' })
     } finally {
@@ -88,22 +93,22 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
       <div className="grid grid-cols-1 gap-10 p-8 sm:p-12 lg:grid-cols-12 lg:gap-16 lg:p-16">
         <div className="lg:col-span-5">
           <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
-            OFF-MARKET INVENTORY
+            PROJECT OPTIONS
           </span>
           <h2 className="mt-5 font-serif text-3xl leading-[1.1] tracking-tight md:text-4xl lg:text-[2.75rem]">
-            Couldn&rsquo;t find an exact match? Our{' '}
-            <span className="italic text-gold">off-market list</span> updates daily.
+            Couldn&rsquo;t find an exact match? Discuss{' '}
+            <span className="italic text-gold">project options</span> with our team.
           </h2>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-white/75 md:text-base">
-            Drop your requirements and a senior advisor will source it within 48 hours.
-            No spam. No follow-up calls outside working hours.
+            Share your requirements and an advisor will discuss available units and suitable upcoming projects with you.
           </p>
 
+          <Link href="/properties" className="mt-5 inline-block text-sm text-gold underline">Clear all filters</Link>
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
             <p className="eyebrow text-gold">You searched for</p>
             <p className="mt-2 text-sm leading-relaxed text-white/85">{summarize(searchedParams)}</p>
             <p className="mt-3 text-xs text-white/55">
-              We&rsquo;ll match against off-market inventory and call you back with a verified shortlist.
+              We&rsquo;ll check current projects against your budget, location and timing.
             </p>
           </div>
         </div>
@@ -196,7 +201,7 @@ export function ZeroResultsLeadTrap({ searchedParams }: { searchedParams: Parsed
                     A shortlist within 48 hours.
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-white/75">
-                    A senior advisor will reach you on WhatsApp with verified, off-market matches.
+                    An advisor will reach you on WhatsApp to discuss suitable projects.
                   </p>
                   <button
                     type="button"

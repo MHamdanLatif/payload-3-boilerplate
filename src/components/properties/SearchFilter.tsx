@@ -1,208 +1,150 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Search, X } from 'lucide-react'
 import {
-  VALID_LOCATIONS,
-  VALID_PROPERTY_TYPES,
   VALID_FILTER_STATUSES,
   VALID_UNIT_TYPES,
+  type ProjectFilterOptions,
 } from '@/lib/property-search'
-
-const groupNumber = new Intl.NumberFormat('en-US')
-
-/** "PKR 1 Cr" → "1 Cr"; "PKR 50 Lac" → "50 Lac"; "PKR 50,000" → "50,000". Strips the prefix. */
-function humanMagnitude(n: number): string {
-  if (n >= 10_000_000) return `${(n / 10_000_000).toFixed(2).replace(/\.?0+$/, '')} Cr`
-  if (n >= 100_000) return `${(n / 100_000).toFixed(2).replace(/\.?0+$/, '')} Lac`
-  return groupNumber.format(n)
-}
-
-function priceHint(raw: string): string | null {
-  if (!raw) return null
-  const n = Number(raw)
-  if (!Number.isFinite(n) || n < 0) return null
-  const grouped = groupNumber.format(n)
-  const magnitude = humanMagnitude(n)
-  // Avoid duplicating when the number is too small to use Lac/Cr (humanMagnitude already groups).
-  return grouped === magnitude ? grouped : `${grouped} · ${magnitude}`
-}
-
-// Locations visible in the filter dropdown. Sukkur is intentionally hidden for
-// now while the agency is positioning as Karachi-only — `VALID_LOCATIONS` still
-// includes it so admin entries and saved URLs remain valid.
-const DROPDOWN_LOCATIONS = VALID_LOCATIONS.filter((l) => l !== 'Sukkur')
+import { PROJECT_BUDGETS, propertyTypeLabel } from '@/lib/project-budgets'
 
 type FilterState = {
   location: string
   propertyType: string
   status: string
   unitType: string
+  layout: string
+  budget: string
   minPrice: string
   maxPrice: string
 }
-
 const EMPTY: FilterState = {
   location: '',
   propertyType: '',
   status: '',
   unitType: '',
+  layout: '',
+  budget: '',
   minPrice: '',
   maxPrice: '',
 }
-
-export function SearchFilter({ defaults }: { defaults: Partial<FilterState> }) {
+export function SearchFilter({
+  defaults,
+  options,
+}: {
+  defaults: Partial<FilterState>
+  options: ProjectFilterOptions
+}) {
   const router = useRouter()
   const pathname = usePathname()
-  const [state, setState] = useState<FilterState>({ ...EMPTY, ...defaults })
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const firstRender = useRef(true)
-
-  // Push filters to URL with light debouncing so typing budgets doesn't fire on every keystroke.
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      return
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      const params = new URLSearchParams()
-      ;(Object.keys(state) as (keyof FilterState)[]).forEach((k) => {
-        if (state[k]) params.set(k, state[k])
-      })
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    }, 300)
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [state, router, pathname])
-
-  const update = <K extends keyof FilterState>(k: K) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setState((s) => ({ ...s, [k]: e.target.value }))
-
-  const reset = () => setState(EMPTY)
-
-  const hasFilters = Object.values(state).some(Boolean)
-
+  const [state, setState] = useState({ ...EMPTY, ...defaults })
+  const navigate = (next: FilterState) => {
+    setState(next)
+    const params = new URLSearchParams()
+    Object.entries(next).forEach(([key, value]) => {
+      if (value) params.set(key, value)
+    })
+    router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
+  }
+  const update = (key: keyof FilterState, value: string) =>
+    navigate({
+      ...state,
+      [key]: value,
+      ...(key === 'budget' ? { minPrice: '', maxPrice: '' } : {}),
+    })
+  const controls: {
+    key: keyof FilterState
+    label: string
+    any: string
+    options: { value: string; label: string }[]
+  }[] = [
+    {
+      key: 'location',
+      label: 'Location',
+      any: 'Any location',
+      options: options.locations.map((value) => ({ value, label: value })),
+    },
+    {
+      key: 'propertyType',
+      label: 'Property Type',
+      any: 'Any type',
+      options: options.propertyTypes.map((value) => ({ value, label: propertyTypeLabel(value) })),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      any: 'Any status',
+      options: VALID_FILTER_STATUSES.map((value) => ({
+        value,
+        label: value === 'Ready' ? 'Ready to Move' : value,
+      })),
+    },
+    {
+      key: 'unitType',
+      label: 'Unit Type',
+      any: 'Any unit',
+      options: VALID_UNIT_TYPES.map((value) => ({ value, label: value })),
+    },
+    {
+      key: 'layout',
+      label: 'Layout',
+      any: 'Any layout',
+      options: [{ value: 'duplex', label: 'Duplex' }],
+    },
+    {
+      key: 'budget',
+      label: options.budgetLabel,
+      any: state.minPrice || state.maxPrice ? 'Custom budget from URL' : 'Any budget',
+      options: [...PROJECT_BUDGETS],
+    },
+  ]
   return (
     <form
       onSubmit={(e) => e.preventDefault()}
-      className="rounded-2xl border border-brand-deep/10 bg-white/85 p-5 shadow-luxe-sm backdrop-blur-sm md:p-6"
+      className="rounded-2xl border border-brand-deep/10 bg-white/85 p-5 shadow-luxe-sm md:p-6"
     >
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Search className="h-4 w-4 text-gold" />
-          <span className="eyebrow text-brand-deep/70">Refine your search</span>
-        </div>
-        {hasFilters && (
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <span className="eyebrow text-brand-deep/70">Refine your search</span>
+        {Object.values(state).some(Boolean) && (
           <button
             type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-[0.2em] text-brand-deep/60 transition-colors hover:text-gold"
+            onClick={() => navigate(EMPTY)}
+            className="text-sm text-brand-deep underline"
           >
-            <X className="h-3 w-3" />
-            Reset
+            Reset filters
           </button>
         )}
       </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
-        <Field label="Location">
-          <select value={state.location} onChange={update('location')} className={selectCls}>
-            <option value="">Any location</option>
-            {DROPDOWN_LOCATIONS.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Property Type">
-          <select
-            value={state.propertyType}
-            onChange={update('propertyType')}
-            className={selectCls}
-          >
-            <option value="">Any type</option>
-            {VALID_PROPERTY_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Status">
-          <select value={state.status} onChange={update('status')} className={selectCls}>
-            <option value="">Any status</option>
-            {VALID_FILTER_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Unit Type">
-          <select value={state.unitType} onChange={update('unitType')} className={selectCls}>
-            <option value="">Any unit</option>
-            {VALID_UNIT_TYPES.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Min Budget (PKR)" hint={priceHint(state.minPrice)}>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            placeholder="e.g. 10000000"
-            value={state.minPrice}
-            onChange={update('minPrice')}
-            className={inputCls}
-          />
-        </Field>
-
-        <Field label="Max Budget (PKR)" hint={priceHint(state.maxPrice)}>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            placeholder="e.g. 50000000"
-            value={state.maxPrice}
-            onChange={update('maxPrice')}
-            className={inputCls}
-          />
-        </Field>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {controls.map((control) => (
+          <label key={control.key} className="min-w-0 text-sm text-brand-deep">
+            {control.label}
+            <select
+              value={state[control.key]}
+              onChange={(e) => update(control.key, e.target.value)}
+              className={`${selectCls} mt-2`}
+            >
+              <option value="">{control.any}</option>
+              {state[control.key] &&
+                !control.options.some((o) => o.value === state[control.key]) && (
+                  <option value={state[control.key]}>{state[control.key]}</option>
+                )}
+              {control.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
       </div>
+      <p className="mt-4 text-xs text-brand-deep/65">
+        Budget refers to total unit price, not booking or monthly instalments.
+        {options.hasStartingPriceFallback &&
+          ' Where unit prices are not published, results use the project starting price.'}
+      </p>
     </form>
-  )
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string | null
-  children: React.ReactNode
-}) {
-  return (
-    <label className="flex flex-col gap-2">
-      <span className="text-[0.7rem] uppercase tracking-[0.25em] text-brand-deep/65">{label}</span>
-      {children}
-      {hint && (
-        <span className="font-mono text-[0.7rem] tabular-nums text-brand-deep/65">{hint}</span>
-      )}
-    </label>
   )
 }
 

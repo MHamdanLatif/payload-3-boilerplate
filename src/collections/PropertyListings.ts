@@ -1,11 +1,9 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
 import { richDescriptionEditor } from '@/fields/richDescriptionEditor'
 import { LOCATION_OPTIONS, UNIT_TYPE_OPTIONS } from './FeaturedProjects'
-import { indexNowAfterChange } from '@/lib/indexnow'
 
 export const PROPERTY_TYPE_OPTIONS = ['Flat', 'Plot', 'Office', 'Shop', 'Commercial'] as const
 
@@ -14,23 +12,17 @@ export const PropertyListings: CollectionConfig = {
   access: {
     create: authenticated,
     delete: authenticated,
-    read: anyone,
+    read: authenticated,
     update: authenticated,
   },
   admin: {
+    hidden: true,
     useAsTitle: 'title',
     defaultColumns: ['title', 'propertyType', 'location', 'status', 'price'],
     description:
-      'Individual ready-to-move units — a specific flat, plot, office, shop, or commercial space (ready, resale, or urgent sale).',
+      'Archived standalone listings. Private records only; new public inventory belongs in Projects.',
   },
-  hooks: {
-    // Ping IndexNow (Bing/Yandex) so listing pages are recrawled on change.
-    afterChange: [
-      indexNowAfterChange((doc) =>
-        typeof doc.slug === 'string' && doc.slug ? `/listings/${doc.slug}` : null,
-      ),
-    ],
-  },
+  // Retained privately for historical relationships; never marketed on the website.
   fields: [
     {
       name: 'title',

@@ -1,0 +1,31 @@
+{
+  "reviewedAt": "2026-10-10",
+  "cmsWritesApplied": false,
+  "scope": "Commercial service claims, retired links, inventory relevance; educational rental/resale discussion retained.",
+  "articlesReviewed": 46,
+  "duplexArticle": {
+    "slug": "4-bed-duplex-karachi-what-around-3-crore-actually-buys",
+    "decision": "retain",
+    "reason": "Educational layout/budget comparison with a real Tulip Comforts project example, not an individual resale advertisement. Replace only generic directory CTA; preserve URL, examples and prices."
+  },
+  "retiredArticle": {
+    "slug": "an-opportunity-4-bed-flat-in-gulshan-e-iqbal",
+    "decision": "draft",
+    "reason": "Promotes one Saim Residency resale unit. Retain CMS record and relationships."
+  },
+  "untouchedDraft": "tulip-comforts-payment-plan",
+  "alWahabImage": {
+    "mediaId": 148,
+    "filename": "Al Wahab.webp",
+    "dimensions": "5760x3240",
+    "decision": "retain",
+    "reason": "Source logo is soft despite large dimensions. Inspected alternatives 119 and 147; neither is a sharper approved logo. No unverified substitute used."
+  },
+  "publicationDates": {
+    "field": "publishedAt",
+    "cmsPicker": "dayAndTime",
+    "exampleUtc": "2026-08-31T19:00:00.000Z",
+    "karachiDisplay": "1 Sept 2026",
+    "fix": "Timestamp display uses Asia/Karachi. Date-only strings retain their calendar date. Stored values unchanged."
+  }
+}

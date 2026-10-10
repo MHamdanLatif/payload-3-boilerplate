@@ -1,8 +1,9 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import { authenticated } from '../access/authenticated'
 import { LOCATION_OPTIONS } from './FeaturedProjects'
+import { revalidateProjectInventory, revalidateDeletedProject } from '@/hooks/revalidateProjectInventory'
 
 /**
  * Collapse a URL segment to a comparison key: lowercase, letters and digits only.
@@ -35,7 +36,7 @@ export const MarketedProjects: CollectionConfig = {
   access: {
     create: authenticated,
     delete: authenticated,
-    read: anyone,
+    read: ({ req }) => req.user ? true : { and: [availableProjectsWhere, { active: { equals: true } }] },
     update: authenticated,
   },
   admin: {
@@ -46,6 +47,8 @@ export const MarketedProjects: CollectionConfig = {
       'Standalone landing pages for paid campaigns, served at lateefproperties.com/<Slug>. Noindex — they never appear in Google, and are reachable only through an ad or a link you send. Content here is independent of Featured Projects, so campaign pricing never changes the public project page.',
   },
   hooks: {
+    afterChange: [revalidateProjectInventory],
+    afterDelete: [revalidateDeletedProject],
     beforeChange: [
       // Derive the lookup key from whatever casing the editor typed.
       ({ data }) => {
@@ -59,6 +62,21 @@ export const MarketedProjects: CollectionConfig = {
     // recrawl them is a contradiction.
   },
   fields: [
+    {
+      name: 'salesAvailability', type: 'select', defaultValue: 'available',
+      label: 'Sales availability',
+      options: [
+        { label: 'Available from builder', value: 'available' },
+        { label: 'Sold out', value: 'sold-out' },
+        { label: 'Withdrawn', value: 'withdrawn' },
+      ],
+      admin: { position: 'sidebar', description: 'Only available projects are public. Construction stage is separate: completed projects may still have builder stock. Confirm direct-builder inventory and marketing permission before publishing.' },
+    },
+    {
+      name: 'builderMarketingNotes', type: 'textarea', label: 'Builder relationship (internal)',
+      access: { read: ({ req }) => Boolean(req.user) },
+      admin: { description: 'Record the builder contact, inventory confirmation and marketing arrangement. Never shown publicly.' },
+    },
     {
       name: 'title',
       type: 'text',
@@ -152,6 +170,7 @@ export const MarketedProjects: CollectionConfig = {
       options: [
         { label: 'Pre-launch', value: 'Pre-launch' },
         { label: 'Under Construction', value: 'Under Construction' },
+        { label: 'Ready to Move', value: 'Ready to Move' },
       ],
     },
     {

@@ -28,7 +28,6 @@ const COLLECTION_ROUTE_PREFIX: Record<string, string> = {
   posts: '/posts',
   blogs: '/blog',
   'featured-projects': '/projects',
-  'property-listings': '/listings',
 }
 
 function referenceHref(relationTo: string, slug: string): string {
@@ -48,6 +47,8 @@ export const CMSLink: React.FC<CMSLinkType> = (props) => {
     size: sizeFromProps,
     url,
   } = props
+
+  if (reference?.relationTo === 'property-listings') return null
 
   const href =
     type === 'reference' && typeof reference?.value === 'object' && reference.value.slug

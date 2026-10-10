@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { availableProjectsWhere } from './project-visibility'
 import type { MarketedProject } from '@/payload-types'
 import { normaliseSlugKey } from '@/collections/MarketedProjects'
 
@@ -24,7 +25,8 @@ export async function fetchMarketedProject(
 
   const res = await payload.find({
     collection: 'marketed-projects',
-    where: { slugKey: { equals: key } },
+    overrideAccess: false,
+    where: { and: [availableProjectsWhere, { active: { equals: true } }, { slugKey: { equals: key } }] },
     depth: 2,
     limit: 1,
   })
@@ -59,7 +61,8 @@ function stripServerOnlyFields(doc: MarketedProject): MarketedProject {
 export async function fetchMarketedSlugs(payload: Payload): Promise<string[]> {
   const res = await payload.find({
     collection: 'marketed-projects',
-    where: { active: { equals: true } },
+    overrideAccess: false,
+    where: { and: [availableProjectsWhere, { active: { equals: true } }] },
     depth: 0,
     limit: 200,
     pagination: false,

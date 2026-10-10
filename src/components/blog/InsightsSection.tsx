@@ -51,7 +51,7 @@ export function InsightsSection({
               href="/blog"
               className="inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep transition-colors hover:text-gold"
             >
-              View all articles
+              View All Articles
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           </div>

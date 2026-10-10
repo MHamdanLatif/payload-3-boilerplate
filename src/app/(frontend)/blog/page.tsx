@@ -24,14 +24,6 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Lateef Properties',
   },
-  keywords: [
-    'Karachi real estate blog',
-    'Pakistan property guide',
-    'Karachi investor guide',
-    'property trends Karachi',
-    'Karachi real estate articles',
-    'Lateef Properties',
-  ],
 }
 
 export const dynamic = 'force-dynamic'

@@ -50,7 +50,7 @@ export const LOCATION_CONTENT: Record<string, LocationContent> = {
       'The Kamran Chowrangi corridor and Block 11 sit at the centre of that demand. The junction connects Johar to Rashid Minhas Road and University Road, which is what keeps commute times workable to Gulshan-e-Iqbal, the airport and the wider city — and why apartment projects cluster within a short radius of it. Blocks nearer the main arteries typically command a premium over the interior lanes.',
     metaTitle: 'Property for Sale in Gulistan-e-Johar, Karachi',
     metaDescription:
-      'Apartments and commercial property for sale in Gulistan-e-Johar, Karachi — Block 11 and the Kamran Chowrangi corridor. Current projects and resale.',
+      'Apartments and commercial property for sale in Gulistan-e-Johar, Karachi — Block 11 and the Kamran Chowrangi corridor. Explore project locations, layouts and available units.',
     faqs: [
       {
         question: 'Is Gulistan-e-Johar a good area to buy an apartment in Karachi?',
@@ -83,7 +83,7 @@ export const LOCATION_CONTENT: Record<string, LocationContent> = {
       'Because the area is largely built out, the market is dominated by resale apartments and selective new towers on the larger plots, with commercial frontage along the main roads. That mix means available inventory changes quickly and is worth checking against current listings rather than older guides.',
     metaTitle: 'Property for Sale in Gulshan-e-Iqbal, Karachi',
     metaDescription:
-      'Apartments, flats and commercial property for sale in Gulshan-e-Iqbal, Karachi. Current projects, resale listings and payment plans from Lateef Properties.',
+      'Apartments, flats and commercial property for sale in Gulshan-e-Iqbal, Karachi. Explore projects and payment options with Lateef Properties.',
     faqs: [
       {
         question: 'Why do buyers choose Gulshan-e-Iqbal over newer Karachi areas?',

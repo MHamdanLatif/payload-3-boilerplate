@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { hasPublicPaymentPlan } from '@/lib/project-visibility'
 import {
   areaRangeLabel,
   formatPkr,
@@ -199,9 +200,9 @@ export function UnitTypesTable({
                     ) : (
                       <a
                         className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
-                        href={`?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}
+                        href={!hasPublicPaymentPlan(project) ? '/#contact' : `?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}
                       >
-                        Payment plan
+                        {!hasPublicPaymentPlan(project) ? 'Enquire about payment terms' : 'Payment plan'}
                       </a>
                     )}
                   </td>

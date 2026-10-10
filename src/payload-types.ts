@@ -775,13 +775,21 @@ export interface Comment {
   createdAt: string;
 }
 /**
- * Ongoing developments — pre-launch or under-construction projects. Each published project auto-generates a /projects/<slug> landing page and surfaces on the home Featured section.
+ * Builder-supplied developments — pre-launch, under-construction or ready-to-move projects. Each published project auto-generates a /projects/<slug> landing page and surfaces on the home Featured section.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "featured-projects".
  */
 export interface FeaturedProject {
   id: number;
+  /**
+   * Only available projects are public. Construction stage is separate: completed projects may still have builder stock. Confirm direct-builder inventory and marketing permission before publishing.
+   */
+  salesAvailability?: ('available' | 'sold-out' | 'withdrawn') | null;
+  /**
+   * Record the builder contact, inventory confirmation and marketing arrangement. Never shown publicly.
+   */
+  builderMarketingNotes?: string | null;
   title: string;
   slug?: string | null;
   slugLock?: boolean | null;
@@ -815,7 +823,15 @@ export interface FeaturedProject {
     | 'Model Colony'
     | 'Sukkur'
     | 'Other';
-  status: 'Pre-launch' | 'Under Construction';
+  status: 'Pre-launch' | 'Under Construction' | 'Ready to Move';
+  /**
+   * Builder-confirmed handover timing, readiness and any remaining conditions. For ready projects, describe actual possession arrangements.
+   */
+  possessionInformation?: string | null;
+  /**
+   * For Ready to Move projects only: enable after entering the actual builder schedule and disabling inapplicable construction milestones. Otherwise buyers enquire about payment terms.
+   */
+  readyPaymentPlanConfirmed?: boolean | null;
   /**
    * Optional curated tag rendered on the home-page card. Tagged projects sort to the top of the Featured Projects grid (Hot Selling first, then Newly Launched, then Limited Inventory). Leave blank for no tag.
    */
@@ -1103,7 +1119,7 @@ export interface Blog {
    */
   excerpt?: string | null;
   /**
-   * Semantic SEO keywords for this post. Emitted in <meta keywords> and used in derived OG tags.
+   * Editorial topics used to identify related projects and structured article data.
    */
   keywords?:
     | {
@@ -1116,7 +1132,7 @@ export interface Blog {
    */
   featuredImage?: (number | null) | Media;
   /**
-   * Paste markdown from your Claude conversation — `## headings`, `-` bullets, `**bold**`, `[text](url)` are auto-converted on paste. Aim for 1000–1500 words with H2 every 200–300 words.
+   * Write helpful Karachi buyer guides with accurate developer-project information. Link to active projects and area guides. Describe only services we offer: project marketing and builder-inventory sales support. Educational comparisons may discuss resale; never offer standalone listing sourcing. Markdown headings and links are converted on paste.
    */
   content?: {
     root: {
@@ -1156,7 +1172,7 @@ export interface Blog {
       }[]
     | null;
   /**
-   * Cards shown at the end of the post (same style as the homepage cards, linking to the project/listing page). Pick specific projects or listings to feature here. LEAVE EMPTY to auto-select based on what the article mentions.
+   * Choose builder projects to feature at the end of this post. Leave empty for automatic project recommendations. Historical listing references are retained privately and never rendered.
    */
   featuredCards?:
     | {
@@ -1184,7 +1200,7 @@ export interface Blog {
   createdAt: string;
 }
 /**
- * Individual ready-to-move units — a specific flat, plot, office, shop, or commercial space (ready, resale, or urgent sale).
+ * Archived standalone listings. Private records only; new public inventory belongs in Projects.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "property-listings".
@@ -1370,6 +1386,14 @@ export interface BlogTopic {
 export interface MarketedProject {
   id: number;
   /**
+   * Only available projects are public. Construction stage is separate: completed projects may still have builder stock. Confirm direct-builder inventory and marketing permission before publishing.
+   */
+  salesAvailability?: ('available' | 'sold-out' | 'withdrawn') | null;
+  /**
+   * Record the builder contact, inventory confirmation and marketing arrangement. Never shown publicly.
+   */
+  builderMarketingNotes?: string | null;
+  /**
    * Shown as the page heading. May differ from the organic project title.
    */
   title: string;
@@ -1406,7 +1430,7 @@ export interface MarketedProject {
     | 'Model Colony'
     | 'Sukkur'
     | 'Other';
-  status: 'Pre-launch' | 'Under Construction';
+  status: 'Pre-launch' | 'Under Construction' | 'Ready to Move';
   /**
    * One sentence under the project name in the hero. Also used as the link-preview description when the URL is shared on WhatsApp.
    */
@@ -2510,6 +2534,8 @@ export interface CommentsSelect<T extends boolean = true> {
  * via the `definition` "featured-projects_select".
  */
 export interface FeaturedProjectsSelect<T extends boolean = true> {
+  salesAvailability?: T;
+  builderMarketingNotes?: T;
   title?: T;
   slug?: T;
   slugLock?: T;
@@ -2519,6 +2545,8 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
   startingPrice?: T;
   location?: T;
   status?: T;
+  possessionInformation?: T;
+  readyPaymentPlanConfirmed?: T;
   highlightTag?: T;
   summary?: T;
   elevationImages?:
@@ -2634,6 +2662,8 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
  * via the `definition` "marketed-projects_select".
  */
 export interface MarketedProjectsSelect<T extends boolean = true> {
+  salesAvailability?: T;
+  builderMarketingNotes?: T;
   title?: T;
   slug?: T;
   slugKey?: T;

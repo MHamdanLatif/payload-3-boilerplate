@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { availableProjectsWhere } from './project-visibility'
 import type { FeaturedProject, Media } from '@/payload-types'
 import type { ElevationSource, UnitsSource } from '@/lib/project-shape'
 
@@ -156,6 +157,8 @@ export async function fetchPublishedProjects(
 ): Promise<FeaturedProject[]> {
   const res = await payload.find({
     collection: 'featured-projects',
+    overrideAccess: false,
+    where: availableProjectsWhere,
     depth: 2,
     limit: 250,
     sort: '-updatedAt',
@@ -177,7 +180,8 @@ export async function fetchProjectBySlug(
 ): Promise<FeaturedProject | null> {
   const res = await payload.find({
     collection: 'featured-projects',
-    where: { slug: { equals: slug } },
+    overrideAccess: false,
+    where: { and: [availableProjectsWhere, { slug: { equals: slug } }] },
     depth: 2,
     limit: 1,
   })
@@ -191,7 +195,8 @@ export async function fetchProjectsByLocation(
 ): Promise<FeaturedProject[]> {
   const res = await payload.find({
     collection: 'featured-projects',
-    where: { location: { equals: location } },
+    overrideAccess: false,
+    where: { and: [availableProjectsWhere, { location: { equals: location } }] },
     depth: 2,
     limit: 50,
     sort: '-updatedAt',
@@ -203,6 +208,8 @@ export async function fetchProjectsByLocation(
 export async function fetchPublishedProjectSlugs(payload: Payload): Promise<string[]> {
   const res = await payload.find({
     collection: 'featured-projects',
+    overrideAccess: false,
+    where: availableProjectsWhere,
     depth: 0,
     limit: 250,
     pagination: false,

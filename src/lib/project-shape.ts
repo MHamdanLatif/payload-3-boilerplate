@@ -17,6 +17,9 @@ export type UnitsSource = {
 /** What the units table renders: the mix, plus what to call the project. */
 export type UnitsTableSource = UnitsSource & {
   title: string
+  status?: FeaturedProject['status']
+  readyPaymentPlanConfirmed?: boolean | null
+  paymentPlan?: FeaturedProject['paymentPlan']
   slug?: string | null
   location?: FeaturedProject['location']
 }
@@ -36,6 +39,9 @@ export type PaymentPlanSource = UnitsTableSource & {
  */
 export type TrackRecordSource = {
   title: string
+  status?: FeaturedProject['status']
+  readyPaymentPlanConfirmed?: boolean | null
+  paymentPlan?: FeaturedProject['paymentPlan']
   builderName: string
   location?: FeaturedProject['location']
   builderTrackRecord?: FeaturedProject['builderTrackRecord']

@@ -1,4 +1,4 @@
-import type { FeaturedProject, PropertyListing } from '@/payload-types'
+import type { FeaturedProject } from '@/payload-types'
 
 /**
  * Derive a dense, conversion-led keywords array from a FeaturedProject doc.
@@ -39,62 +39,10 @@ export function deriveProjectKeywords(project: FeaturedProject): string[] {
       }
     }
   }
-  out.push('pre-launch')
+  if (project.status) out.push(project.status)
   out.push('Karachi real estate')
   out.push('Pakistan property')
-  out.push('off-market inventory')
-  out.push('Lateef Properties')
-
-  return dedupeCap(out, 25)
-}
-
-/**
- * Derive keywords from an individual PropertyListing.
- */
-export function deriveListingKeywords(listing: PropertyListing): string[] {
-  const out: string[] = []
-  const t = listing.title
-  const loc = listing.location
-  const pt = listing.propertyType
-  const rooms = listing.rooms
-  const society =
-    typeof listing.parentProject === 'object' && listing.parentProject?.title
-      ? listing.parentProject.title
-      : listing.societyName ?? null
-
-  if (t) out.push(t)
-  if (loc) {
-    out.push(loc)
-    out.push(`${loc} Karachi`)
-  }
-  if (pt) {
-    out.push(pt)
-    if (loc) out.push(`${pt} for sale in ${loc}`)
-  }
-  if (rooms != null) {
-    out.push(`${rooms} bed`)
-    out.push(`${rooms} room`)
-    if (loc) {
-      out.push(`${rooms} bed apartment in ${loc}`)
-      out.push(`${rooms} bedroom flat ${loc}`)
-      out.push(`${rooms} room apartment in ${loc}`)
-      out.push(`${rooms} room flat ${loc}`)
-      if (pt) out.push(`${rooms} bed ${pt} ${loc}`)
-      if (pt) out.push(`${rooms} room ${pt} ${loc}`)
-    }
-  }
-  if (society) {
-    out.push(society)
-    if (rooms != null) {
-      out.push(`${rooms} bed ${society}`)
-      out.push(`${rooms} room ${society}`)
-    }
-  }
-  if (listing.status) out.push(listing.status)
-  out.push('Karachi real estate')
-  out.push('Pakistan property')
-  out.push('ready to move')
-  out.push('curated property')
+  out.push('builder project inventory')
   out.push('Lateef Properties')
 
   return dedupeCap(out, 25)

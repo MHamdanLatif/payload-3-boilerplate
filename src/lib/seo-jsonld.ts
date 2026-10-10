@@ -1,4 +1,4 @@
-import type { FeaturedProject, PropertyListing, Blog, Media } from '@/payload-types'
+import type { FeaturedProject, Blog, Media } from '@/payload-types'
 import {
   heroImage,
   formatPkr,
@@ -8,7 +8,6 @@ import {
   sortedUnits,
   unitSummary,
 } from './featured-projects'
-import { listingHeroImage, getSocietyOrProject } from './property-listings'
 import { getServerSideURL } from '@/utilities/getURL'
 
 /* -------------------------------------------------------------------------- */
@@ -246,92 +245,6 @@ export function apartmentComplexSchema(project: FeaturedProject) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Listing schema — RealEstateListing                                         */
-/* (See note on the project schema above re: why Product was removed.)        */
-/* -------------------------------------------------------------------------- */
-
-export function propertyListingSchema(listing: PropertyListing) {
-  const url = `${getServerSideURL()}/listings/${listing.slug}`
-  const image = listingHeroImage(listing)
-  const description =
-    listing.summary?.trim() ||
-    richTextExcerpt(listing.description, 200) ||
-    `${listing.title} — ${listing.propertyType ?? 'Property'} in ${listing.location ?? 'Karachi'}.`
-  const society = getSocietyOrProject(listing)
-  const geo = geoCoordinates(listing.googleMapsEmbedUrl)
-
-  const offers = listing.price
-    ? {
-        '@type': 'Offer',
-        priceCurrency: 'PKR',
-        price: listing.price,
-        availability: 'https://schema.org/InStock',
-        url,
-      }
-    : undefined
-
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'RealEstateListing',
-    '@id': url,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
-    name: listing.title,
-    description,
-    image: image ? [image] : undefined,
-    url,
-    category: listing.propertyType,
-    address: postalAddress(listing.addressLine, listing.location),
-    ...(geo && { geo }),
-    ...(listing.rooms != null && { numberOfRooms: listing.rooms }),
-    ...(listing.areaSqFt != null && {
-      floorSize: {
-        '@type': 'QuantitativeValue',
-        value: listing.areaSqFt,
-        unitCode: 'FTK',
-      },
-    }),
-    ...(offers && { offers }),
-    additionalProperty: [
-      listing.location && {
-        '@type': 'PropertyValue',
-        name: 'Location',
-        value: listing.location,
-      },
-      listing.status && {
-        '@type': 'PropertyValue',
-        name: 'Status',
-        value: listing.status,
-      },
-      listing.rooms != null && {
-        '@type': 'PropertyValue',
-        name: 'Rooms',
-        value: listing.rooms,
-      },
-      listing.bathrooms != null && {
-        '@type': 'PropertyValue',
-        name: 'Bathrooms',
-        value: listing.bathrooms,
-      },
-      listing.areaSqFt != null && {
-        '@type': 'PropertyValue',
-        name: 'Area (sq ft)',
-        value: listing.areaSqFt,
-      },
-      society && {
-        '@type': 'PropertyValue',
-        name: 'Society / Project',
-        value: society,
-      },
-      listing.price && {
-        '@type': 'PropertyValue',
-        name: 'Price',
-        value: formatPkr(listing.price),
-      },
-    ].filter(Boolean),
-  }
-}
-
-/* -------------------------------------------------------------------------- */
 /* FAQPage schema — Google's drop-down rich result                            */
 /* -------------------------------------------------------------------------- */
 
@@ -438,7 +351,7 @@ export function organizationSchema() {
     telephone: PHONE_E164,
     email: EMAIL,
     description:
-      'Authorised marketing agency for Karachi real estate. Apartments, plots, offices and shops across Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir. Pre-launch allocations on Karachi’s leading developments and off-market resale.',
+      'Property guidance in Karachi. Explore apartments and commercial property projects, compare layouts and payment options, and arrange project visits and bookings.',
     address: {
       '@type': 'PostalAddress',
       streetAddress: STREET,
@@ -506,7 +419,7 @@ export function organizationSchema() {
       'Pre-launch property allocations',
       'Under-construction projects Karachi',
       'Ready-for-possession apartments Karachi',
-      'Off-market resale',
+      'Developer project marketing',
       'Property investment Karachi',
       'Apartments in Gulshan-e-Iqbal',
       'Apartments in Gulistan-e-Johar',

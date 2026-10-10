@@ -4,7 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { fetchProjectsByLocation } from '@/lib/featured-projects'
-import { fetchListingsByLocation } from '@/lib/property-listings'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import { fetchRelatedBlogs } from '@/lib/blogs'
 import { LOCATION_ENTITIES, findEntityByLocationSlug } from '@/lib/project-mapper'
 import { locationContent } from '@/lib/location-content'
@@ -13,7 +13,6 @@ import { JsonLd } from '@/components/shared/JsonLd'
 import { FaqSection } from '@/components/shared/FaqSection'
 import { SectionRule } from '@/components/landing/SectionRule'
 import { FeaturedProjectCard } from '@/components/landing/FeaturedProjectCard'
-import { PropertyListingCard } from '@/components/landing/PropertyListingCard'
 import { InsightsSection } from '@/components/blog/InsightsSection'
 import { FinalCTASection } from '@/components/shared/FinalCTASection'
 import { getServerSideURL } from '@/utilities/getURL'
@@ -32,11 +31,8 @@ export async function generateStaticParams() {
 async function locationHasInventory(canonical: string): Promise<boolean> {
   try {
     const payload = await getPayload({ config })
-    const [projects, listings] = await Promise.all([
-      payload.count({ collection: 'featured-projects', where: { location: { equals: canonical } } }),
-      payload.count({ collection: 'property-listings', where: { location: { equals: canonical } } }),
-    ])
-    return (projects?.totalDocs ?? 0) + (listings?.totalDocs ?? 0) > 0
+    const projects = await payload.count({ collection: 'featured-projects', overrideAccess: false, where: { and: [availableProjectsWhere, { location: { equals: canonical } }] } })
+    return projects.totalDocs > 0
   } catch {
     // On a DB hiccup, prefer indexable over accidentally noindexing a good page.
     return true
@@ -60,18 +56,13 @@ export async function generateMetadata({
 
   const title =
     authored?.metaTitle ??
-    `${entry.canonical} Properties — Verified Karachi Real Estate | Lateef Properties`
+    `${entry.canonical} Properties — Karachi Property Projects | Lateef Properties`
   const description =
     authored?.metaDescription ??
     `Featured developments and ready-to-move properties in ${entry.canonical}, Karachi. ` +
-      `Pre-launch allocations and curated resale inventory reviewed by Lateef Properties advisors.`
+      `Builder-supplied apartments and commercial units marketed by Lateef Properties.`
 
-  // A location with no projects AND no listings has nothing to offer a searcher
-  // beyond a placeholder — nine such pages sharing near-identical boilerplate is
-  // a thin-content cluster that drags on sitewide quality. Noindex them until
-  // inventory exists; `follow: true` so equity still flows out through the CTA
-  // and related-reading links. This reverses itself automatically the moment a
-  // project or listing is tagged to the location — nothing to remember later.
+  // Empty project locations stay out of search until builder inventory is available.
   const hasInventory = await locationHasInventory(entry.canonical)
 
   return {
@@ -91,18 +82,6 @@ export async function generateMetadata({
       title,
       description,
     },
-    keywords: [
-      `${entry.canonical} property`,
-      `${entry.canonical} apartments`,
-      `${entry.canonical} flats`,
-      `${entry.canonical} plots`,
-      `${entry.canonical} Karachi`,
-      `${entry.canonical} real estate`,
-      `pre-launch ${entry.canonical}`,
-      `apartments for sale in ${entry.canonical}`,
-      'Karachi real estate',
-      'Lateef Properties',
-    ],
   }
 }
 
@@ -116,9 +95,8 @@ export default async function LocationLandingPage({
   if (!entry) notFound()
 
   const payload = await getPayload({ config })
-  const [projects, listings, relatedBlogs] = await Promise.all([
+  const [projects, relatedBlogs] = await Promise.all([
     fetchProjectsByLocation(payload, entry.canonical),
-    fetchListingsByLocation(payload, entry.canonical),
     fetchRelatedBlogs(payload, [entry.canonical, ...entry.aliases], 3),
   ])
 
@@ -154,10 +132,6 @@ export default async function LocationLandingPage({
           name: p.title,
           url: `${base}/projects/${p.slug}`,
         })),
-        ...listings.map((l) => ({
-          name: l.title,
-          url: `${base}/listings/${l.slug}`,
-        })),
       ],
       `Property for sale in ${entry.canonical}, Karachi`,
     ),
@@ -184,9 +158,7 @@ export default async function LocationLandingPage({
             <p className="mt-7 max-w-2xl text-lg leading-relaxed text-white/85 md:text-xl">
               {authored?.intro ?? (
                 <>
-                  Verified developments and ready-to-move inventory in {entry.canonical}, curated by
-                  Lateef Properties advisors. Pre-launch allocations on partnered builder projects,
-                  and off-market resale opportunities, reviewed before recommendation.
+                  Explore projects in {entry.canonical}, from pre-launch to ready to move. Compare locations, layouts and payment options with Lateef Properties.
                 </>
               )}
             </p>
@@ -220,40 +192,19 @@ export default async function LocationLandingPage({
           </section>
         )}
 
-        {listings.length > 0 && (
-          <section
-            id="listings"
-            className="bg-cream py-20 md:py-28"
-          >
-            <div className="container">
-              <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
-                02 / READY INVENTORY
-              </span>
-              <h2 className="mt-5 max-w-2xl font-serif text-4xl leading-[1.1] tracking-tight text-brand-deep md:text-5xl">
-                Ready-to-move properties in {entry.canonical}.
-              </h2>
-              <SectionRule className="mt-6" />
-              <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {listings.map((l) => (
-                  <PropertyListingCard key={l.id} listing={l} />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
-        {projects.length === 0 && listings.length === 0 && (
+        {projects.length === 0 && (
           <section className="bg-ivory py-20 md:py-28">
             <div className="container max-w-2xl text-center">
               <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
                 INVENTORY LOADING
               </span>
               <h2 className="mt-5 font-serif text-4xl leading-tight tracking-tight text-brand-deep md:text-5xl">
-                New {entry.canonical} listings on the way.
+                Explore project options in {entry.canonical}.
               </h2>
               <p className="mt-6 text-base leading-relaxed text-brand-deep/70">
-                Our advisors are vetting {entry.canonical} inventory now. Drop your requirements and
-                we'll match you to projects and off-market resale as they come online.
+                We have no active property projects in this area at present. Share your requirements
+                to discuss available projects in nearby locations or future launches.
               </p>
             </div>
           </section>
@@ -275,7 +226,7 @@ export default async function LocationLandingPage({
           sourceSlug={entry.slug}
           sourceKind="location"
           sectionNumber="03 / ENQUIRE"
-          intro={`Share your ${entry.canonical} buying brief — a senior advisor typically reaches you within 15 minutes with current availability and pricing.`}
+          intro={`Share your ${entry.canonical} buying brief — an advisor can discuss current project availability and pricing.`}
         />
       </main>
     </>

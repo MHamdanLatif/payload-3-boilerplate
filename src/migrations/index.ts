@@ -1,3 +1,5 @@
+import * as projectMarketing from './20261008_000000_project_marketing';
+import * as projectMarketingContent from './20261008_000001_project_marketing_content';
 import * as simpleFinance from './20261003_000000_simple_finance'
 import * as finance from './20261002_000000_finance'
 import * as leadNotificationQueue from './20260928_000001_lead_notification_queue'
@@ -100,4 +102,6 @@ export const migrations = [
   { up: leadNotificationQueue.up, down: leadNotificationQueue.down, name: '20260928_000001_lead_notification_queue' },
   { up: finance.up, down: finance.down, name: '20261002_000000_finance' },
   { up: simpleFinance.up, down: simpleFinance.down, name: '20261003_000000_simple_finance' },
+  { up: projectMarketing.up, down: projectMarketing.down, name: '20261008_000000_project_marketing' },
+  { up: projectMarketingContent.up, down: projectMarketingContent.down, name: '20261008_000001_project_marketing_content' },
 ];

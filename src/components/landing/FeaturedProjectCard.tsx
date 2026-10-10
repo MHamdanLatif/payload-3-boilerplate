@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, BedDouble, MapPin } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
-import { heroImage, imageAlt, formatPkr, smallestUnit } from '@/lib/featured-projects'
+import { heroImage, imageAlt, formatPkr, unitLabel } from '@/lib/featured-projects'
 import { InquiryModal } from '@/components/shared/InquiryModal'
 import { HighlightBadge, type HighlightTag } from './HighlightBadge'
 import { fadeUp } from './_motion'
@@ -18,7 +18,8 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
   const [open, setOpen] = useState(false)
   const src = heroImage(project) ?? PLACEHOLDER
   const alt = imageAlt(project.elevationImages?.[0]?.image, project.title)
-  const small = smallestUnit(project)
+  const unitTypes = [...new Set((project.unitTypes ?? []).map(unitLabel))]
+  const description = project.summary?.split(/(?<=[.!?])\s+(?=[A-Z])/)[0]
   const href = `/projects/${project.slug}`
 
   return (
@@ -32,7 +33,7 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
             src={src}
             alt={alt}
             fill
-            sizes="(min-width: 1024px) 32vw, (min-width: 640px) 50vw, 100vw"
+            sizes="(min-width: 1024px) 50vw, (min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform duration-700 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/80 via-brand-deep/15 to-transparent" />
@@ -42,21 +43,16 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
               <span className="h-1 w-1 rounded-full bg-brand-deep" />
               {project.status}
             </span>
-            {project.highlightTag && (
+            {project.highlightTag && project.highlightTag !== 'hot-selling' && (
               <HighlightBadge tag={project.highlightTag as HighlightTag} />
             )}
           </div>
 
-          {project.builderName && (
-            <span className="absolute right-5 top-5 rounded-full bg-white/15 px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.25em] text-white backdrop-blur-sm">
-              {project.builderName}
-            </span>
-          )}
-
           <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-            <h3 className="font-serif text-2xl leading-tight tracking-tight">
-              {project.title}
-            </h3>
+            <h3 className="font-serif text-2xl leading-tight tracking-tight">{project.title}</h3>
+            {project.builderName && (
+              <p className="mt-1 text-sm text-white/85">{project.builderName}</p>
+            )}
             <p className="mt-2 flex items-center gap-1.5 text-sm text-white/85">
               <MapPin className="h-3.5 w-3.5" />
               {project.location}
@@ -65,53 +61,51 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
         </Link>
 
         <div className="flex flex-1 flex-col gap-4 p-5">
-          {(project.startingPrice || small) && (
+          {(project.startingPrice || unitTypes.length > 0) && (
             <div className="grid grid-cols-2 gap-3 border-b border-dashed border-border pb-4">
               {project.startingPrice && (
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/55">
-                    Starting from
+                    Starting Price
                   </p>
                   <p className="mt-1 font-serif text-lg text-brand-deep">
                     {formatPkr(project.startingPrice)}
                   </p>
                 </div>
               )}
-              {small && (
+              {unitTypes.length > 0 && (
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-[0.2em] text-brand-deep/55">
-                    Starting From
+                    Unit Types
                   </p>
-                  <p className="mt-1 inline-flex items-center gap-1.5 font-serif text-lg text-brand-deep">
-                    <BedDouble className="h-4 w-4 text-gold" />
-                    {small.type}
+                  <p className="mt-1 inline-flex items-start gap-1.5 font-serif text-lg text-brand-deep">
+                    <BedDouble className="h-4 w-4 shrink-0 text-gold" />
+                    {unitTypes.join(' · ')}
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {project.summary && (
-            <p className="text-sm leading-relaxed text-brand-deep/70 line-clamp-3">
-              {project.summary}
-            </p>
+          {description && (
+            <p className="text-sm leading-relaxed text-brand-deep/70">{description}</p>
           )}
 
-          <div className="mt-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-deep px-4 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-white transition-all duration-300 hover:bg-gold hover:text-brand-deep"
-            >
-              Send Inquiry
-            </button>
+          <div className="mt-auto flex flex-wrap items-center gap-2">
             <Link
               href={href}
-              className="inline-flex items-center gap-1.5 rounded-full border border-brand-deep/20 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-brand-deep transition-all duration-300 hover:border-brand-deep hover:bg-brand-deep hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-deep px-4 py-2.5 text-xs font-medium uppercase tracking-[0.12em] text-white transition-all duration-300 hover:border-brand-deep hover:bg-brand-deep hover:text-white"
             >
               View Project
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-deep/20 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.12em] text-brand-deep transition-all duration-300 hover:bg-gold hover:text-brand-deep"
+            >
+              Request Details
+            </button>
           </div>
         </div>
       </motion.article>

@@ -1,60 +1,8 @@
 import type { Payload } from 'payload'
-import type { Blog, FeaturedProject, PropertyListing, Media } from '@/payload-types'
+import { availableProjectsWhere } from './project-visibility'
+import type { Blog, FeaturedProject, Media } from '@/payload-types'
 import { PROJECT_ENTITIES } from '@/lib/project-mapper'
 import { lexicalToPlainText } from '@/lib/lexical-to-text'
-
-// Generic real-estate words that shouldn't count as a match signal between a
-// blog and a listing (every post/listing shares these).
-const LISTING_MATCH_STOPWORDS = new Set([
-  'apartment', 'apartments', 'flat', 'flats', 'karachi', 'sale', 'buy', 'price',
-  'prices', 'plan', 'plans', 'payment', 'project', 'projects', 'property',
-  'properties', 'ready', 'move', 'moving', 'beds', 'bath', 'baths', 'room',
-  'rooms', 'home', 'homes', 'house', 'guide', 'best', 'launch', 'under', 'over',
-  'crore', 'sqft', 'area', 'with', 'from', 'your', 'that', 'this', 'pakistan',
-  'luxury', 'residential', 'lounge', 'drawing', 'possession', 'urgent', 'resale',
-])
-
-/** Distinctive lowercased word tokens (≥4 chars, excluding generic terms). */
-function distinctiveTokens(text: string): Set<string> {
-  const words: string[] = text.toLowerCase().match(/[a-z0-9]+/g) ?? []
-  return new Set(words.filter((w) => w.length >= 4 && !LISTING_MATCH_STOPWORDS.has(w)))
-}
-
-/**
- * Live ready-to-move listings relevant to a blog — matched on distinctive token
- * overlap between the blog (title + keywords) and the listing (title, society,
- * unit type). So a "duplex" post surfaces duplex listings, and a post naming a
- * building surfaces that building's unit. Best matches first, capped at `limit`.
- */
-export async function fetchRelatedListings(
-  payload: Payload,
-  blog: Blog,
-  limit = 2,
-): Promise<PropertyListing[]> {
-  const blogTokens = distinctiveTokens(
-    [blog.title ?? '', ...(blog.keywords ?? []).map((k) => k.keyword ?? '')].join(' '),
-  )
-  if (!blogTokens.size) return []
-
-  const res = await payload.find({
-    collection: 'property-listings',
-    depth: 1,
-    limit: 250,
-    pagination: false,
-  })
-
-  return (res.docs as PropertyListing[])
-    .map((l) => {
-      const text = [l.title ?? '', l.societyName ?? '', l.unitType ?? ''].join(' ')
-      let score = 0
-      for (const t of distinctiveTokens(text)) if (blogTokens.has(t)) score++
-      return { l, score }
-    })
-    .filter((x) => x.score > 0 && Boolean(x.l.slug))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((x) => x.l)
-}
 
 /**
  * Projects a blog is about — detected by scanning its title, keywords and body
@@ -89,7 +37,8 @@ export async function fetchRelatedProjects(
 
   const res = await payload.find({
     collection: 'featured-projects',
-    where: { slug: { in: slugs } },
+    overrideAccess: false,
+    where: { and: [availableProjectsWhere, { slug: { in: slugs } }] },
     depth: 1,
     limit,
   })
@@ -107,6 +56,7 @@ export async function fetchPublishedBlogs(
 ): Promise<Blog[]> {
   const res = await payload.find({
     collection: 'blogs',
+    overrideAccess: false,
     where: { status: { equals: 'published' } },
     sort: '-publishedAt',
     depth: 1,
@@ -122,6 +72,7 @@ export async function fetchBlogBySlug(
 ): Promise<Blog | null> {
   const res = await payload.find({
     collection: 'blogs',
+    overrideAccess: false,
     where: {
       and: [
         { slug: { equals: slug } },
@@ -170,6 +121,7 @@ export async function fetchRelatedBlogs(
 export async function fetchPublishedBlogSlugs(payload: Payload): Promise<string[]> {
   const res = await payload.find({
     collection: 'blogs',
+    overrideAccess: false,
     where: { status: { equals: 'published' } },
     depth: 0,
     limit: 500,
@@ -195,5 +147,6 @@ export function formatBlogDate(iso: string | null | undefined): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: /^\d{4}-\d{2}-\d{2}$/.test(iso) ? 'UTC' : 'Asia/Karachi',
   })
 }

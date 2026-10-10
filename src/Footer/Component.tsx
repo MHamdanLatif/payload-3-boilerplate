@@ -1,3 +1,6 @@
+import { getPayload } from 'payload'
+import config from '@payload-config'
+import { fetchPublishedProjects } from '@/lib/featured-projects'
 import Link from 'next/link'
 import React from 'react'
 import { Instagram, Facebook, Phone, Mail, MapPin, ArrowUpRight } from 'lucide-react'
@@ -12,19 +15,10 @@ type FooterLinkItem = { label: string; href: string; external?: boolean }
 
 const QUICK_LINKS: FooterLinkItem[] = [
   { label: 'About', href: '/#about' },
-  { label: 'Properties', href: '/properties' },
+  { label: 'Projects', href: '/properties' },
   { label: 'Blogs', href: '/blog' },
   { label: 'Services', href: '/#services' },
-  { label: 'Builder', href: 'https://www.lateefbuilders.pk/', external: true },
   { label: 'Contact', href: '/#contact' },
-]
-
-const PROJECTS = [
-  { label: 'Pre-launch projects', href: '/properties?status=Pre-launch' },
-  { label: 'Under-construction', href: '/properties?status=Under+Construction' },
-  { label: 'Ready-to-move flats', href: '/properties?status=Ready' },
-  { label: 'Commercial property', href: '/properties?propertyType=Commercial' },
-  { label: 'Off-market resale', href: '/#contact' },
 ]
 
 const SOCIAL = [
@@ -33,7 +27,39 @@ const SOCIAL = [
   { icon: WhatsAppIcon, href: WHATSAPP_URL, label: 'WhatsApp', whatsapp: true },
 ]
 
-export function Footer() {
+export async function Footer() {
+  const payload = await getPayload({ config })
+  const projects = await fetchPublishedProjects(payload)
+  const categories = [
+    {
+      label: 'Pre-Launch Projects',
+      href: '/properties?status=Pre-launch',
+      exists: projects.some((p) => p.status === 'Pre-launch'),
+    },
+    {
+      label: 'New Launches',
+      href: '/properties?status=Newly+launched',
+      exists: projects.some((p) => p.highlightTag === 'newly-launched'),
+    },
+    {
+      label: 'Under-Construction Projects',
+      href: '/properties?status=Under+Construction',
+      exists: projects.some((p) => p.status === 'Under Construction'),
+    },
+    {
+      label: 'Ready-to-Move Projects',
+      href: '/properties?status=Ready',
+      exists: projects.some((p) => p.status === 'Ready to Move'),
+    },
+    ...['Commercial', 'Office', 'Shop'].map((type) => ({
+      label:
+        type === 'Commercial'
+          ? 'Commercial Projects'
+          : `${type === 'Office' ? 'Office' : 'Shop'} Projects`,
+      href: `/properties?propertyType=${type}`,
+      exists: projects.some((p) => p.propertyType === type),
+    })),
+  ].filter((c) => c.exists)
   return (
     <footer className="relative overflow-hidden bg-brand-deep text-ivory">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
@@ -43,25 +69,23 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-14 border-b border-ivory/10 pb-14 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
             <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
-              MODERN MARKETING ARM
+              LATEEF PROPERTIES
             </span>
             <h3 className="mt-5 font-serif text-4xl leading-[1.05] tracking-tight text-balance md:text-5xl lg:text-6xl">
-              Karachi&rsquo;s authorised desk for{' '}
-              <span className="italic text-gold">new launches</span> and ready-to-move resale.
+              Your next property starts with{' '}
+              <span className="italic text-gold">a conversation.</span>
             </h3>
           </div>
           <div className="lg:col-span-5 lg:pl-8">
             <p className="text-sm leading-relaxed text-ivory/75">
-              Authorised marketing agency for Karachi&rsquo;s leading developers.
-              Pre-launch allocations, ready-to-move resale and off-market deals
-              across Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton,
-              M.A. Jinnah Road, Jinnah Avenue and Malir.
+              Explore apartments and commercial property projects in Karachi, from pre-launch to
+              ready to move, with guidance on locations, layouts and payment options.
             </p>
             <a
               href="/#contact"
               className="group mt-6 inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.2em] text-gold transition-colors hover:text-ivory"
             >
-              Begin a conversation
+              Book a Consultation
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
           </div>
@@ -77,8 +101,8 @@ export function Footer() {
             ))}
           </FooterCol>
 
-          <FooterCol heading="Developments">
-            {PROJECTS.map((p) => (
+          <FooterCol heading="Projects">
+            {categories.map((p) => (
               <FooterLink key={p.label} href={p.href}>
                 {p.label}
               </FooterLink>
@@ -129,6 +153,15 @@ export function Footer() {
           </FooterCol>
         </div>
 
+        <p className="mb-6 text-sm text-ivory/75">Your Partner in Property &amp; Prosperity.</p>
+        <a
+          href="https://www.lateefbuilders.pk/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-6 inline-block text-xs text-ivory/60 hover:text-gold"
+        >
+          Lateef Builders
+        </a>
         {/* Bottom strip */}
         <div className="flex flex-col items-start justify-between gap-6 border-t border-ivory/10 pt-8 sm:flex-row sm:items-center">
           <div className="flex items-baseline gap-2">
@@ -158,7 +191,13 @@ export function Footer() {
               // WhatsApp taps count as leads (form_name: 'whatsapp'); other socials
               // stay plain links. Behaviour is otherwise identical.
               return whatsapp ? (
-                <WhatsAppLink key={label} href={href} project="global" aria-label={label} className={cls}>
+                <WhatsAppLink
+                  key={label}
+                  href={href}
+                  project="global"
+                  aria-label={label}
+                  className={cls}
+                >
                   <Icon className="h-3.5 w-3.5" />
                 </WhatsAppLink>
               ) : (

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -22,7 +23,7 @@ import { getServerSideURL } from '@/utilities/getURL'
 export const metadata: Metadata = {
   title: 'Karachi Property by Area | Lateef Properties',
   description:
-    'Browse property for sale across Karachi by area — Gulistan-e-Johar, Gulshan-e-Iqbal, Scheme 33, DHA, Clifton, Malir and more. Projects and resale listings.',
+    'Browse property for sale across Karachi by area — Gulistan-e-Johar, Gulshan-e-Iqbal, Scheme 33, DHA, Clifton, Malir and more. Builder projects from pre-launch to ready to move.',
   alternates: { canonical: `${getServerSideURL().replace(/\/$/, '')}/locations` },
 }
 
@@ -36,11 +37,8 @@ export default async function LocationsIndexPage() {
   let counts = new Map<string, number>()
   try {
     const payload = await getPayload({ config })
-    const [projects, listings] = await Promise.all([
-      payload.find({ collection: 'featured-projects', depth: 0, limit: 500, pagination: false }),
-      payload.find({ collection: 'property-listings', depth: 0, limit: 500, pagination: false }),
-    ])
-    for (const d of [...projects.docs, ...listings.docs] as { location?: string | null }[]) {
+    const projects = await payload.find({ collection: 'featured-projects', overrideAccess: false, where: availableProjectsWhere, depth: 0, limit: 500, pagination: false })
+    for (const d of projects.docs as { location?: string | null }[]) {
       if (d.location) counts.set(d.location, (counts.get(d.location) ?? 0) + 1)
     }
   } catch {
@@ -81,7 +79,7 @@ export default async function LocationsIndexPage() {
             <SectionRule className="mt-7" />
             <p className="mt-7 max-w-2xl text-lg leading-relaxed text-white/85">
               Where you buy in Karachi changes the price, the commute and the resale market as much
-              as the building itself does. Pick an area to see the projects and resale inventory we
+              as the building itself does. Pick an area to see the property projects we
               currently have there.
             </p>
           </div>
@@ -101,7 +99,7 @@ export default async function LocationsIndexPage() {
                       {a.name}
                     </h2>
                     <span className="shrink-0 text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/45">
-                      {a.count > 0 ? `${a.count} listed` : 'Enquire'}
+                      {a.count > 0 ? `${a.count} projects` : 'Enquire'}
                     </span>
                   </div>
                   {a.blurb && (

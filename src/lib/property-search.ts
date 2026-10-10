@@ -1,8 +1,15 @@
 import type { Payload, Where } from 'payload'
-import type { FeaturedProject, PropertyListing, Media } from '@/payload-types'
+import { PROJECT_BUDGETS, priceMatchesBudget, propertyTypeLabel } from './project-budgets'
+import { availableProjectsWhere } from './project-visibility'
+import type { FeaturedProject, Media } from '@/payload-types'
 
 export const VALID_PROPERTY_TYPES = ['Flat', 'Plot', 'Office', 'Shop', 'Commercial'] as const
-export const VALID_FILTER_STATUSES = ['Ready', 'Under Construction', 'Pre-launch'] as const
+export const VALID_FILTER_STATUSES = [
+  'Ready',
+  'Under Construction',
+  'Pre-launch',
+  'Newly launched',
+] as const
 export const VALID_LOCATIONS = [
   'Gulshan-e-Iqbal',
   'Gulistan-e-Johar',
@@ -34,23 +41,6 @@ export type FilterStatus = (typeof VALID_FILTER_STATUSES)[number]
 export type FilterLocation = (typeof VALID_LOCATIONS)[number]
 export type UnitType = (typeof VALID_UNIT_TYPES)[number]
 
-/**
- * Translate a Unit Type label to a room-count filter usable against PropertyListings.
- * `exact` means listings with that exact `rooms` count match.
- * `atLeast` means listings with `rooms >= n` match. Used for the open-ended "4+ Rooms".
- * `oneOf` matches any of the listed counts (used for convertible units like
- *   "2 Bed DD / 3 Bed Lounge" where the same flat can be laid out as 2 or 3 rooms).
- */
-export function unitTypeRoomCount(
-  t: UnitType,
-): { exact?: number; atLeast?: number; oneOf?: number[] } {
-  if (t === '4+ Rooms') return { atLeast: 4 }
-  if (t === '2 Bed DD / 3 Bed Lounge') return { oneOf: [2, 3] }
-  const match = t.match(/^(\d+)/)
-  if (!match) return {}
-  return { exact: Number(match[1]) }
-}
-
 export type RawSearchParams = {
   location?: string
   propertyType?: string
@@ -58,6 +48,7 @@ export type RawSearchParams = {
   unitType?: string
   /** Layout, orthogonal to unitType. Currently only 'duplex'. */
   layout?: string
+  budget?: string
   minPrice?: string
   maxPrice?: string
 }
@@ -71,12 +62,13 @@ export type ParsedSearchParams = {
   status?: FilterStatus
   unitType?: UnitType
   layout?: Layout
+  budget?: string
   minPrice?: number
   maxPrice?: number
 }
 
 export type UnifiedListing = {
-  kind: 'project' | 'listing'
+  kind: 'project'
   id: string | number
   slug: string
   title: string
@@ -107,6 +99,7 @@ export function parseSearchParams(sp: RawSearchParams): ParsedSearchParams {
   if (sp.layout && (VALID_LAYOUTS as readonly string[]).includes(sp.layout)) {
     out.layout = sp.layout as Layout
   }
+  if (PROJECT_BUDGETS.some((b) => b.value === sp.budget)) out.budget = sp.budget
   const min = Number(sp.minPrice)
   if (sp.minPrice && Number.isFinite(min) && min >= 0) out.minPrice = min
   const max = Number(sp.maxPrice)
@@ -114,12 +107,46 @@ export function parseSearchParams(sp: RawSearchParams): ParsedSearchParams {
   return out
 }
 
-function priceWhere(min?: number, max?: number, field = 'price'): Where | null {
-  if (min == null && max == null) return null
-  const w: Where = {}
-  if (min != null) w[field] = { ...(w[field] ?? {}), greater_than_equal: min }
-  if (max != null) w[field] = { ...(w[field] ?? {}), less_than_equal: max }
-  return w
+export type ProjectFilterOptions = {
+  locations: string[]
+  propertyTypes: string[]
+  budgetLabel: 'Total Budget' | 'Starting Price Budget'
+  hasStartingPriceFallback: boolean
+}
+
+export function projectFilterOptions(projects: FeaturedProject[]): ProjectFilterOptions {
+  return {
+    locations: [...new Set(projects.map((p) => p.location).filter(Boolean))].sort(),
+    propertyTypes: [
+      ...new Set(projects.map((p) => p.propertyType).filter((t): t is PropertyType => Boolean(t))),
+    ].sort(),
+    budgetLabel: projects.some((p) => p.unitTypes?.some((u) => Number.isFinite(u.price)))
+      ? 'Total Budget'
+      : 'Starting Price Budget',
+    hasStartingPriceFallback: projects.some((p) => !p.unitTypes?.length && p.startingPrice != null),
+  }
+}
+
+/** Match price and configuration on the SAME unit, not separate rows. */
+export function projectMatchesFilters(project: FeaturedProject, sp: ParsedSearchParams): boolean {
+  const hasPrice = Boolean(sp.budget) || sp.minPrice != null || sp.maxPrice != null
+  const units = project.unitTypes ?? []
+  const matchesPrice = (price: number | null | undefined) => {
+    if (!hasPrice) return true
+    if (price == null || !Number.isFinite(price)) return false
+    if (sp.budget) return priceMatchesBudget(price, sp.budget)
+    // Existing manually shared min/max URLs keep their inclusive semantics.
+    return (
+      (sp.minPrice == null || price >= sp.minPrice) && (sp.maxPrice == null || price <= sp.maxPrice)
+    )
+  }
+  if (!units.length) return !sp.unitType && !sp.layout && matchesPrice(project.startingPrice)
+  return units.some(
+    (unit) =>
+      (!sp.unitType || unit.type === sp.unitType) &&
+      (!sp.layout || unit.isDuplex === true) &&
+      matchesPrice(unit.price),
+  )
 }
 
 function formatPkr(n: number | null | undefined): string {
@@ -134,140 +161,33 @@ function imageUrl(image: number | Media | null | undefined): string | null {
   return image.url ?? null
 }
 
-export async function fetchUnified(payload: Payload, sp: ParsedSearchParams): Promise<UnifiedListing[]> {
-  const sharedListingWhere: Where = { and: [] as Where[] }
-  const sharedProjectWhere: Where = { and: [] as Where[] }
-  const pushIf = (arr: Where[], w: Where | null | undefined) => {
-    if (w) arr.push(w)
-  }
-
-  if (sp.location) {
-    pushIf(sharedListingWhere.and as Where[], { location: { equals: sp.location } })
-    pushIf(sharedProjectWhere.and as Where[], { location: { equals: sp.location } })
-  }
-  if (sp.propertyType) {
-    pushIf(sharedListingWhere.and as Where[], { propertyType: { equals: sp.propertyType } })
-    pushIf(sharedProjectWhere.and as Where[], { propertyType: { equals: sp.propertyType } })
-  }
-  // Unit-type filter:
-  //   • FeaturedProjects: match against `unitTypes.type` directly.
-  //   • PropertyListings: match the exact `unitType`. For legacy listings that
-  //     pre-date the field (unitType unset), fall back to the room-count
-  //     heuristic so they still surface instead of disappearing.
-  if (sp.unitType) {
-    pushIf(sharedProjectWhere.and as Where[], { 'unitTypes.type': { equals: sp.unitType } })
-
-    const rc = unitTypeRoomCount(sp.unitType)
-    const roomWhere: Where | null =
-      rc.exact != null
-        ? { rooms: { equals: rc.exact } }
-        : rc.atLeast != null
-          ? { rooms: { greater_than_equal: rc.atLeast } }
-          : rc.oneOf?.length
-            ? { rooms: { in: rc.oneOf } }
-            : null
-
-    pushIf(sharedListingWhere.and as Where[], {
-      or: [
-        { unitType: { equals: sp.unitType } },
-        ...(roomWhere ? [{ and: [{ unitType: { exists: false } }, roomWhere] }] : []),
-      ],
-    })
-  }
-  // Layout filter (currently duplex only). Deliberately separate from unitType:
-  // a duplex still has a bed configuration, so the two combine — ?unitType=4
-  // Bed Drawing&layout=duplex is a valid, and very commercial, query.
-  //   • FeaturedProjects: match if ANY unit row is a duplex. A project can mix
-  //     duplex and flat units (Tulip Comforts does), so this is per-unit.
-  //   • PropertyListings: the flag sits on the listing itself.
-  if (sp.layout === 'duplex') {
-    pushIf(sharedProjectWhere.and as Where[], { 'unitTypes.isDuplex': { equals: true } })
-    pushIf(sharedListingWhere.and as Where[], { isDuplex: { equals: true } })
-  }
-
-  pushIf(sharedListingWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'price'))
-  pushIf(sharedProjectWhere.and as Where[], priceWhere(sp.minPrice, sp.maxPrice, 'startingPrice'))
-
-  // Branch on status per the user's spec.
-  let queryListings = false
-  let queryProjects = false
-  let projectStatusFilter: 'Pre-launch' | 'Under Construction' | undefined
-
-  if (sp.status === 'Ready') {
-    queryListings = true
-  } else if (sp.status === 'Under Construction' || sp.status === 'Pre-launch') {
-    queryProjects = true
-    projectStatusFilter = sp.status
-  } else {
-    queryListings = true
-    queryProjects = true
-  }
-
-  const tasks: Promise<UnifiedListing[]>[] = []
-
-  if (queryListings) {
-    tasks.push(
-      payload
-        .find({
-          collection: 'property-listings',
-          where: sharedListingWhere.and && (sharedListingWhere.and as Where[]).length
-            ? sharedListingWhere
-            : undefined,
-          depth: 1,
-          limit: 50,
-        })
-        .then((res) => res.docs.map(toUnifiedListing)),
-    )
-  }
-
-  if (queryProjects) {
-    const projWhere: Where = { and: [...((sharedProjectWhere.and as Where[]) ?? [])] }
-    if (projectStatusFilter) {
-      ;(projWhere.and as Where[]).push({ status: { equals: projectStatusFilter } })
-    }
-    tasks.push(
-      payload
-        .find({
-          collection: 'featured-projects',
-          where: (projWhere.and as Where[]).length ? projWhere : undefined,
-          depth: 1,
-          limit: 50,
-        })
-        .then((res) => res.docs.map(toUnifiedProject)),
-    )
-  }
-
-  const groups = await Promise.all(tasks)
-  return groups.flat()
-}
-
-function toUnifiedListing(doc: PropertyListing): UnifiedListing {
-  const meta: string[] = []
-  if (doc.propertyType) meta.push(doc.propertyType)
-  // Prefer the exact unit-type layout (e.g. "3 Bed Drawing"); fall back to a
-  // bare bed count for legacy listings without a unitType set.
-  if (doc.unitType) meta.push(doc.unitType)
-  else if (doc.rooms) meta.push(`${doc.rooms} bed${doc.rooms === 1 ? '' : 's'}`)
-  if (doc.bathrooms) meta.push(`${doc.bathrooms} bath`)
-  if (doc.areaSqFt) meta.push(`${doc.areaSqFt.toLocaleString()} sq ft`)
-  return {
-    kind: 'listing',
-    id: doc.id,
-    slug: doc.slug ?? `${doc.id}`,
-    title: doc.title,
-    href: `/listings/${doc.slug ?? doc.id}`,
-    image: imageUrl(doc.mainImage) ?? MEDIA_FALLBACK,
-    location: doc.location ?? 'Karachi',
-    priceLabel: formatPkr(doc.price ?? null),
-    badge: doc.status ?? 'Listing',
-    meta,
-  }
+export async function fetchUnified(
+  payload: Payload,
+  sp: ParsedSearchParams,
+): Promise<UnifiedListing[]> {
+  const conditions: Where[] = [availableProjectsWhere]
+  if (sp.location) conditions.push({ location: { equals: sp.location } })
+  if (sp.propertyType) conditions.push({ propertyType: { equals: sp.propertyType } })
+  if (sp.status === 'Newly launched')
+    conditions.push({ highlightTag: { equals: 'newly-launched' } })
+  else if (sp.status)
+    conditions.push({ status: { equals: sp.status === 'Ready' ? 'Ready to Move' : sp.status } })
+  const res = await payload.find({
+    collection: 'featured-projects',
+    overrideAccess: false,
+    where: { and: conditions },
+    depth: 1,
+    limit: 500,
+    pagination: false,
+    sort: '-updatedAt',
+  })
+  return res.docs.filter((doc) => projectMatchesFilters(doc, sp)).map(toUnifiedProject)
 }
 
 function toUnifiedProject(doc: FeaturedProject): UnifiedListing {
   const firstImage = doc.elevationImages?.[0]?.image
   const meta: string[] = []
-  if (doc.propertyType) meta.push(doc.propertyType)
+  if (doc.propertyType) meta.push(propertyTypeLabel(doc.propertyType))
   if (doc.builderName) meta.push(`by ${doc.builderName}`)
   return {
     kind: 'project',
@@ -277,9 +197,7 @@ function toUnifiedProject(doc: FeaturedProject): UnifiedListing {
     href: `/projects/${doc.slug ?? doc.id}`,
     image: imageUrl(firstImage) ?? MEDIA_FALLBACK,
     location: doc.location ?? 'Karachi',
-    priceLabel: doc.startingPrice
-      ? `From ${formatPkr(doc.startingPrice)}`
-      : 'On Request',
+    priceLabel: doc.startingPrice ? `From ${formatPkr(doc.startingPrice)}` : 'On Request',
     badge: doc.status ?? 'Featured Project',
     meta,
   }

@@ -1,11 +1,12 @@
 import type { CollectionConfig } from 'payload'
 
-import { anyone } from '../access/anyone'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import { authenticated } from '../access/authenticated'
 import { slugField } from '@/fields/slug'
 import { richDescriptionEditor } from '@/fields/richDescriptionEditor'
 import { seedPaymentHeads } from './FeaturedProjects/hooks/seedPaymentHeads'
 import { indexNowAfterChange } from '@/lib/indexnow'
+import { revalidateProjectInventory, revalidateDeletedProject } from '@/hooks/revalidateProjectInventory'
 
 export const LOCATION_OPTIONS = [
   'Gulshan-e-Iqbal',
@@ -39,25 +40,42 @@ export const FeaturedProjects: CollectionConfig = {
   access: {
     create: authenticated,
     delete: authenticated,
-    read: anyone,
+    read: ({ req }) => req.user ? true : availableProjectsWhere,
     update: authenticated,
   },
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'builderName', 'location', 'status', 'startingPrice'],
     description:
-      'Ongoing developments — pre-launch or under-construction projects. Each published project auto-generates a /projects/<slug> landing page and surfaces on the home Featured section.',
+      'Builder-supplied developments — pre-launch, under-construction or ready-to-move projects. Each published project auto-generates a /projects/<slug> landing page and surfaces on the home Featured section.',
   },
   hooks: {
     beforeChange: [seedPaymentHeads],
     // Ping IndexNow (Bing/Yandex) so project pages are recrawled on change.
     afterChange: [
+      revalidateProjectInventory,
       indexNowAfterChange((doc) =>
         typeof doc.slug === 'string' && doc.slug ? `/projects/${doc.slug}` : null,
       ),
     ],
+    afterDelete: [revalidateDeletedProject],
   },
   fields: [
+    {
+      name: 'salesAvailability', type: 'select', defaultValue: 'available',
+      label: 'Sales availability',
+      options: [
+        { label: 'Available from builder', value: 'available' },
+        { label: 'Sold out', value: 'sold-out' },
+        { label: 'Withdrawn', value: 'withdrawn' },
+      ],
+      admin: { position: 'sidebar', description: 'Only available projects are public. Construction stage is separate: completed projects may still have builder stock. Confirm direct-builder inventory and marketing permission before publishing.' },
+    },
+    {
+      name: 'builderMarketingNotes', type: 'textarea', label: 'Builder relationship (internal)',
+      access: { read: ({ req }) => Boolean(req.user) },
+      admin: { description: 'Record the builder contact, inventory confirmation and marketing arrangement. Never shown publicly.' },
+    },
     {
       name: 'title',
       type: 'text',
@@ -121,7 +139,17 @@ export const FeaturedProjects: CollectionConfig = {
       options: [
         { label: 'Pre-launch', value: 'Pre-launch' },
         { label: 'Under Construction', value: 'Under Construction' },
+        { label: 'Ready to Move', value: 'Ready to Move' },
       ],
+    },
+    {
+      name: 'possessionInformation', type: 'textarea', label: 'Possession / handover information',
+      admin: { description: 'Builder-confirmed handover timing, readiness and any remaining conditions. For ready projects, describe actual possession arrangements.' },
+    },
+    {
+      name: 'readyPaymentPlanConfirmed', type: 'checkbox', defaultValue: false,
+      label: 'Builder payment plan confirmed for ready project',
+      admin: { description: 'For Ready to Move projects only: enable after entering the actual builder schedule and disabling inapplicable construction milestones. Otherwise buyers enquire about payment terms.' },
     },
     {
       name: 'highlightTag',

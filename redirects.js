@@ -60,13 +60,6 @@ const redirects = async () => {
       destination: '/properties',
       permanent: true,
     },
-    // Lateef Duplex Luxuria is a listing (not a project page) — point the old
-    // /featured URL at its listing rather than the generic /properties catch-all.
-    {
-      source: '/featured/lateef-duplex-luxuria',
-      destination: '/listings/4-bed-duplex-apartment-in-lateef-duplex-luxuria-scheme-33',
-      permanent: true,
-    },
 
     // Retired project — no destination project page, send buyers to the listings
     { source: '/featured/saima-uptown', destination: '/properties', permanent: true },
@@ -84,7 +77,7 @@ const redirects = async () => {
     { source: '/saima-uptown', destination: '/properties', permanent: false },
 
     // Anything else the old site exposed under /featured/* — funnel to listings
-    { source: '/featured/:slug*', destination: '/properties', permanent: true },
+    // Unknown legacy featured URLs have no equivalent; allow a proper 404.
 
     // Spelling: Gulistan-e-Jauhar → Gulistan-e-Johar. People search "johar",
     // not "jauhar"; the location entity slug was renamed in code and the old
@@ -127,21 +120,6 @@ const redirects = async () => {
 
     // Slug tidy-ups: stray double hyphens (from " - " / "/" in titles) collapsed
     // to single, and a trailing hyphen trimmed. formatSlug now prevents these.
-    {
-      source: '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2--urgent-sale',
-      destination: '/listings/4-bed-flat-in-saim-residency-gulshan-e-iqbal-13-d2-urgent-sale',
-      permanent: true,
-    },
-    {
-      source: '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33--roof-terrace',
-      destination: '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33-roof-terrace',
-      permanent: true,
-    },
-    {
-      source: '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal-',
-      destination: '/blog/an-opportunity-4-bed-flat-in-gulshan-e-iqbal',
-      permanent: true,
-    },
 
     // Old static blog URLs from the pre-relaunch site (indexed, now 404). The new
     // blog lives at /blog (singular). Flat .html pages and the plural /blogs path

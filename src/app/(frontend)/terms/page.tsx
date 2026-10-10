@@ -3,12 +3,12 @@ import Link from 'next/link'
 import { getServerSideURL } from '@/utilities/getURL'
 
 const base = getServerSideURL().replace(/\/$/, '')
-const EFFECTIVE_DATE = '21 May 2026'
+const EFFECTIVE_DATE = '8 October 2026'
 
 export const metadata: Metadata = {
   title: 'Terms of Use | Lateef Properties',
   description:
-    'The terms and conditions governing your use of the Lateef Properties website, lead enquiry forms, and marketing services.',
+    'The terms and conditions governing your use of the Lateef Properties website, lead enquiry forms, and property enquiry services.',
   alternates: { canonical: `${base}/terms` },
   robots: { index: true, follow: true },
 }
@@ -34,7 +34,7 @@ export default function TermsOfUsePage() {
             <p>
               These Terms of Use (&ldquo;Terms&rdquo;) govern your access to and use of
               the Lateef Properties website at <strong>lateefproperties.com</strong> (the
-              &ldquo;Site&rdquo;), our enquiry forms, and the marketing and advisory
+              &ldquo;Site&rdquo;), our enquiry forms, and the property enquiry and advisory
               services we provide. By using the Site or submitting an enquiry, you
               accept these Terms.
             </p>
@@ -46,16 +46,16 @@ export default function TermsOfUsePage() {
           <section>
             <h2>1. About Lateef Properties</h2>
             <p>
-              Lateef Properties is a real estate <strong>marketing agency</strong>{' '}
-              based in Karachi, Pakistan. We market new-development real estate
-              projects on behalf of authorised developers, and we facilitate
-              introductions between buyers and sellers for ready-to-move properties.
+              Lateef Properties is a real estate <strong>project sales advisory business</strong>{' '}
+              based in Karachi, Pakistan. We help buyers explore property projects, including pre-launch,
+              under-construction and ready-to-move developments. We present project
+              inventory and facilitate buyer enquiries, project visits and sales coordination.
             </p>
             <p>
               Lateef Properties is <strong>not</strong> a real estate developer,
               builder, contractor, or holder of property title. Any property featured
               on the Site is owned, developed, or offered by a separate third party
-              (the developer or seller). We facilitate enquiries and viewings; we do
+              (the project developer). We facilitate enquiries and viewings; we do
               not transact property ownership.
             </p>
           </section>
@@ -69,9 +69,9 @@ export default function TermsOfUsePage() {
               is provided for general guidance only.
             </p>
             <p>
-              Such information is sourced from developers and partners and may change
+              Such information is sourced from project developers and may change
               without notice. <strong>You must independently verify all property
-              details with the developer or seller before making any booking,
+              details with the project developer before making any booking,
               payment, or commitment.</strong> Lateef Properties makes no warranty
               that any specific price, unit, or feature will be available on the
               terms shown on the Site at the time of your enquiry.
@@ -116,18 +116,18 @@ export default function TermsOfUsePage() {
           </section>
 
           <section>
-            <h2>4. No Brokerage Liability</h2>
+            <h2>4. Project Marketing Role and Responsibilities</h2>
             <p>
               Any property transaction proceeds <strong>directly between you (the
-              buyer) and the developer or seller</strong>. Lateef Properties is not
+              buyer) and the project developer</strong>. Lateef Properties is not
               a party to that transaction and is not liable for:
             </p>
             <ul>
-              <li>The accuracy or completeness of representations made by the developer or seller</li>
+              <li>The accuracy or completeness of representations made by the project developer</li>
               <li>The quality, condition, or suitability of any property</li>
               <li>Title defects, NOC issues, regulatory approvals, or document irregularities</li>
               <li>Delays in possession, handover, or completion</li>
-              <li>Disputes between you and the developer or seller</li>
+              <li>Disputes between you and the project developer</li>
             </ul>
             <p>
               We strongly recommend that you engage your own legal counsel to review
@@ -214,7 +214,7 @@ export default function TermsOfUsePage() {
             </p>
             <ul>
               <li>Your use of, or inability to use, the Site.</li>
-              <li>Any property transaction you enter into with a developer or seller.</li>
+              <li>Any property transaction you enter into with a project developer.</li>
               <li>Reliance on any information published on the Site.</li>
               <li>Errors, omissions, or unavailability of the Site or its services.</li>
             </ul>

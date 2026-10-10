@@ -32,36 +32,20 @@ export function Hero() {
       <div className="container relative w-full pb-24 pt-32 md:pb-32 md:pt-36">
         <motion.div
           variants={staggerContainer}
-          initial="hidden"
+          initial={false}
           animate="show"
           className="mx-auto flex max-w-3xl flex-col items-center text-center"
         >
           {/* Eyebrow */}
-          <motion.div
-            variants={fadeUp}
-            className="mb-8 flex items-center gap-3"
-          >
-            <span className="h-px w-10 bg-gold" />
-            <span className="eyebrow text-gold">Pre-Launch · Ready to Move · Off-Market Inventory</span>
-            <span className="h-px w-10 bg-gold" />
+          <motion.div variants={fadeUp} className="mb-8 flex max-w-full items-center gap-3">
+            <span className="h-px w-5 shrink-0 bg-gold sm:w-10" />
+            <span className="eyebrow text-gold">
+              PRE-LAUNCH · UNDER CONSTRUCTION · READY TO MOVE
+            </span>
+            <span className="h-px w-5 shrink-0 bg-gold sm:w-10" />
           </motion.div>
 
-          {/*
-            Everything from here down is deliberately NOT wrapped in framer-motion.
-
-            `fadeUp.hidden` is `{ opacity: 0 }`, and `initial="hidden"` writes
-            that opacity straight into the server-rendered HTML. Chrome does not
-            count an element at opacity 0 as painted, so wrapping these made the
-            Largest Contentful Paint wait for React to hydrate and framer-motion
-            to run its first frame — on mobile (81% of our traffic) that is the
-            difference between a fast LCP and a failing one. The decorative
-            eyebrow and scroll cue above/below keep their animations because
-            neither is ever the LCP element.
-
-            Any entrance animation added here must animate `transform` only and
-            start from `opacity: 1`. Do not "fix" this by editing `_motion.ts` —
-            `fadeUp` is shared by ~10 components.
-          */}
+          {/* Keep the logo, heading and buyer actions visible in the server HTML. */}
 
           {/* Logo */}
           <div className="mb-8">
@@ -79,29 +63,30 @@ export function Hero() {
               carried by the logo directly above and the site-wide Organization
               schema; an <h1> of "Lateef Properties" told Google nothing about
               what this page sells. */}
-          <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-[5rem]">
-            Property for Sale in Karachi
+          <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-[4.5rem]">
+            Explore Property Projects in Karachi
           </h1>
 
           {/* Subtext */}
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/95 md:text-xl">
-            Apartments, plots and commercial property — pre-launch, under
-            construction and ready to move.
+            Find a home or investment that fits your budget. Explore apartments and commercial
+            properties, compare prices, floor plans and payment options, and get clear guidance from
+            enquiry to booking.
           </p>
 
           {/* Authority line */}
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 md:text-base">
-            Authorised marketing agency for Karachi&rsquo;s leading developers.
+            Your Partner in Property &amp; Prosperity.
           </p>
 
           {/* CTAs — also un-wrapped: this is the primary conversion path and
               should not wait on hydration to become visible. */}
           <div className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
             <a
-              href="#listings"
+              href="#projects"
               className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gold px-8 py-4 text-sm font-medium uppercase tracking-[0.18em] text-brand-deep shadow-gold transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover hover:shadow-luxe"
             >
-              <span className="relative z-10">Explore Listings</span>
+              <span className="relative z-10">Explore Projects</span>
               <ArrowDown className="relative z-10 h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" />
               <span
                 aria-hidden
@@ -112,12 +97,11 @@ export function Hero() {
               href="#contact"
               className="group inline-flex items-center justify-center gap-2 rounded-full border-[1.8px] border-white/60 bg-transparent px-8 py-4 text-sm font-medium uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white/10"
             >
-              Talk to an Expert
+              Talk to an Advisor
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </a>
           </div>
         </motion.div>
-
       </div>
 
       {/* Scroll cue */}

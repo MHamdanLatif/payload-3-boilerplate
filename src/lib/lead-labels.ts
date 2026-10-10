@@ -38,6 +38,7 @@ const legacySurfaces: Record<string, string> = {
   'listing-landing:final': 'Property listing: bottom (CTA) form',
   'listing-landing:modal': 'Property listing: popup enquiry form',
   'project-landing:modal': 'Project page: popup enquiry form',
+  'home:developer-partnership': 'Developer partnership enquiry',
   'home:consultation': surfaces['consultation-form'],
   'properties:zero-results': surfaces['zero-results-form'],
 }

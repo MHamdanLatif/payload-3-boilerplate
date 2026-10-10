@@ -8,24 +8,18 @@ import { fadeUp, staggerContainer, viewportOnce } from './_motion'
 const SERVICES = [
   {
     icon: Home,
-    label: 'Residential Sales',
-    title: 'Apartments and duplexes across Karachi.',
-    body: 'Flats and duplex apartments in Gulshan-e-Iqbal, Gulistan-e-Johar, Scheme 33, DHA, Clifton, M.A. Jinnah Road, Jinnah Avenue and Malir — pre-launch, under-construction and ready-to-move.',
-    bullets: ['Pre-launch allocations', 'Installment plan support', 'Possession & handover assistance'],
+    title: 'Find the Right Project',
+    body: 'Tell us your preferred location, budget and whether you’re buying for your own use or investment. We’ll help you shortlist suitable options.',
   },
   {
     icon: Building2,
-    label: 'Commercial Property',
-    title: 'Offices and shops for sale in Karachi.',
-    body: 'Plug-and-play offices, retail shops and commercial plots on M.A. Jinnah Road, Jinnah Avenue, DHA, Clifton, Scheme 33 and Gulshan-e-Iqbal. Bought, leased and negotiated end-to-end.',
-    bullets: ['Plug-and-play offices', 'Retail shops & plazas', 'Lease negotiation'],
+    title: 'Compare Layouts & Payment Options',
+    body: 'Review available unit types, booking amounts and payment schedules, with a clear explanation of the payment commitments.',
   },
   {
     icon: TrendingUp,
-    label: 'Investment Deals',
-    title: 'Pre-launch allocations and off-market deals.',
-    body: 'Allocations on new pre-launch projects, off-market resale in DHA and Clifton, and yield-focused commercial property across Karachi.',
-    bullets: ['Pre-launch allocations', 'Off-market resale', 'Rental yield deals'],
+    title: 'Arrange a Visit & Book',
+    body: 'Visit shortlisted projects, discuss unit availability and get assistance with the booking process and coordination with the developer.',
   },
 ]
 
@@ -35,44 +29,36 @@ export function Services() {
       <div className="container">
         <motion.div
           variants={staggerContainer}
-          initial="hidden"
+          initial={false}
           whileInView="show"
           viewport={viewportOnce}
           className="mb-16 max-w-3xl"
         >
           <motion.div variants={fadeUp} className="flex items-center gap-3">
-            <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">
-              05 / PRACTICE
-            </span>
+            <span className="font-mono text-[0.7rem] tracking-[0.3em] text-gold">SERVICES</span>
             <span className="h-px w-10 bg-gold" />
           </motion.div>
           <motion.h2
             variants={fadeUp}
             className="mt-6 font-serif text-4xl leading-[1.05] tracking-tight text-brand-deep text-balance md:text-5xl lg:text-6xl"
           >
-            What we sell in{' '}
-            <span className="italic text-gold">Karachi.</span>
+            Support at every step of your <span className="italic text-gold">property search.</span>
           </motion.h2>
           <motion.div variants={fadeUp}>
             <SectionRule className="mt-6" />
           </motion.div>
-          <motion.p variants={fadeUp} className="mt-6 text-base leading-relaxed text-brand/70 md:text-lg">
-            Apartments, commercial property and investment deals across Karachi.
-            First home, flagship office or growing rental portfolio — same
-            playbook, same advisor.
-          </motion.p>
         </motion.div>
 
         <motion.div
           variants={staggerContainer}
-          initial="hidden"
+          initial={false}
           whileInView="show"
           viewport={viewportOnce}
           className="grid grid-cols-1 gap-px rounded-2xl bg-border md:grid-cols-3"
         >
-          {SERVICES.map(({ icon: Icon, label, title, body, bullets }, i) => (
+          {SERVICES.map(({ icon: Icon, title, body }, i) => (
             <motion.div
-              key={label}
+              key={title}
               variants={fadeUp}
               className="group relative flex flex-col gap-6 bg-white p-8 transition-colors duration-500 hover:bg-cream md:p-10
                 first:rounded-t-2xl last:rounded-b-2xl
@@ -91,7 +77,6 @@ export function Services() {
               </div>
 
               <div>
-                <p className="eyebrow text-gold">{label}</p>
                 <h3 className="mt-3 font-serif text-2xl leading-tight tracking-tight text-brand md:text-[1.65rem]">
                   {title}
                 </h3>
@@ -101,20 +86,11 @@ export function Services() {
                 />
               </div>
 
-              <ul className="mt-auto space-y-2 border-t border-dashed border-border pt-5">
-                {bullets.map((b) => (
-                  <li key={b} className="flex items-center gap-2.5 text-sm text-brand/75">
-                    <span className="h-1 w-1 rounded-full bg-gold" />
-                    {b}
-                  </li>
-                ))}
-              </ul>
-
               <a
                 href="#contact"
-                className="inline-flex items-center gap-1.5 self-start text-xs font-medium uppercase tracking-[0.2em] text-brand transition-colors duration-300 hover:text-gold"
+                className="inline-flex items-center gap-1.5 mt-auto self-start text-xs font-medium uppercase tracking-[0.2em] text-brand transition-colors duration-300 hover:text-gold"
               >
-                Speak to an advisor
+                Talk to an Advisor
                 <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
             </motion.div>

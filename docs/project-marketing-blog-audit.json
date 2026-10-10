@@ -1,0 +1,474 @@
+{
+  "reviewedAt": "2026-10-10",
+  "scope": "Buyer-facing service claims, public listing links/cards and metadata relevance. Educational resale/rental discussion retained. CMS snapshot: 45 published articles and one unrelated draft. Changes prepared for review, not applied to production.",
+  "articles": [
+    {
+      "id": 2,
+      "title": "Saima Elite Enclave: Price, Payment Plan & Location Guide",
+      "slug": "saima-elite-enclave-price-payment-plan-location-guide",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 19,
+      "title": "Karachi Property Investment for Overseas Pakistanis in the Gulf",
+      "slug": "karachi-property-investment-for-overseas-pakistanis-in-the-gulf",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 21,
+      "title": "Renting vs Investing in Karachi: Which Makes Sense in 2026?",
+      "slug": "renting-vs-investing-in-karachi-which-makes-sense-in-2026",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 31,
+      "title": "Is a Karachi Apartment a Good Investment in 2026?",
+      "slug": "is-a-karachi-apartment-a-good-investment-in-2026",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 34,
+      "title": "Pre-Launch Apartments in Scheme 33: What Early Buyers Get",
+      "slug": "pre-launch-apartments-in-scheme-33-what-early-buyers-get",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 30,
+      "title": "Best Rental Yield Areas in Karachi for 2026",
+      "slug": "best-rental-yield-areas-in-karachi-for-2026",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 32,
+      "title": "Commercial Property Investment in Karachi vs Apartments",
+      "slug": "commercial-property-investment-in-karachi-vs-apartments",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 33,
+      "title": "How to Check an Off-Plan Apartment Karachi Before Booking",
+      "slug": "how-to-check-an-off-plan-apartment-karachi-before-booking",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 35,
+      "title": "Rooms vs Beds: How Karachi Apartments Are Really Counted",
+      "slug": "rooms-vs-beds-how-karachi-apartments-are-really-counted",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 29,
+      "title": "What a 2 Crore Apartment in Karachi Buys a Family",
+      "slug": "what-a-2-crore-apartment-in-karachi-buys-a-family",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 12,
+      "title": "DHA vs Clifton for Overseas Rental Investors",
+      "slug": "dha-vs-clifton-for-overseas-rental-investors",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 6,
+      "title": "Budget 2026 Pakistan Real Estate: What It Means for Karachi Buyers",
+      "slug": "budget-2026-pakistan-real-estate-what-it-means-for-karachi-buyers",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 8,
+      "title": "Overseas Property Investment in Karachi: A Practical Guide",
+      "slug": "overseas-property-investment-in-karachi-a-practical-guide",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 24,
+      "title": "How to Buy Property in Karachi Without Visiting: Checklist",
+      "slug": "how-to-buy-property-in-karachi-without-visiting-checklist",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 11,
+      "title": "Power of Attorney for Overseas Property Buyers in Pakistan",
+      "slug": "power-of-attorney-for-overseas-property-buyers-in-pakistan",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 3,
+      "title": "Pre-Launch Apartments Karachi: How to Lock In Equity Early",
+      "slug": "pre-launch-apartments-karachi-how-to-lock-in-equity-early",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 20,
+      "title": "An opportunity 4-Bed Flat in Gulshan-e-Iqbal ",
+      "slug": "an-opportunity-4-bed-flat-in-gulshan-e-iqbal",
+      "action": "retire",
+      "reasons": [
+        "Standalone resale flat advertisement; return to draft, preserve original record and URL slug."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 23,
+      "title": "Using a Roshan Digital Account for Property in Karachi",
+      "slug": "using-a-roshan-digital-account-for-property-in-karachi",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 25,
+      "title": "What a 30% Apartment Down Payment in Karachi Really Gets You",
+      "slug": "what-a-30-apartment-down-payment-in-karachi-really-gets-you",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 26,
+      "title": "Cash vs Installments Apartment Karachi: The Real Cost",
+      "slug": "cash-vs-installments-apartment-karachi-the-real-cost",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 27,
+      "title": "How Much Is the Monthly Installment on a Karachi Apartment?",
+      "slug": "how-much-is-the-monthly-installment-on-a-karachi-apartment",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 16,
+      "title": "M.A. Jinnah Road Commercial Property: A Frontage Buyer's Guide",
+      "slug": "m-a-jinnah-road-commercial-property-a-frontage-buyers-guide",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 4
+    },
+    {
+      "id": 4,
+      "title": "Why Scheme 33 Karachi Is a Leading Residential Hub",
+      "slug": "why-scheme-33-karachi-is-a-leading-residential-hub",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 5,
+      "title": "Gulistan-e-Johar Apartments: The Kamran Chowrangi Advantage",
+      "slug": "gulistan-e-johar-apartments-the-kamran-chowrangi-advantage",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 18,
+      "title": "Jinnah Avenue Commercial Property: Buying for Frontage and Footfall",
+      "slug": "jinnah-avenue-commercial-property-buying-for-frontage-and-footfall",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 7,
+      "title": "What a First-Time Home Buyer in Karachi Should Do First",
+      "slug": "what-a-first-time-home-buyer-in-karachi-should-do-first",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 9,
+      "title": "How to Read a Karachi Apartment Payment Plan Line by Line",
+      "slug": "how-to-read-a-karachi-apartment-payment-plan-line-by-line",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 10,
+      "title": "Ready-to-Move vs Pre-Launch in Karachi: Which Fits Your Timeline",
+      "slug": "ready-to-move-vs-pre-launch-in-karachi-which-fits-your-timeline",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 17,
+      "title": "Property in Malir Karachi: A Guide to Space, Plots and Value",
+      "slug": "property-in-malir-karachi-a-guide-to-space-plots-and-value",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 13,
+      "title": "A Buyer's Guide to Property for Sale in Gulshan-e-Iqbal",
+      "slug": "a-buyers-guide-to-property-for-sale-in-gulshan-e-iqbal",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 14,
+      "title": "DHA Karachi Property: A Buyer's Guide to the City's Top Address",
+      "slug": "dha-karachi-property-a-buyers-guide-to-the-citys-top-address",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 3
+    },
+    {
+      "id": 15,
+      "title": "Clifton Karachi Apartments: A Coastal Buyer's Guide",
+      "slug": "clifton-karachi-apartments-a-coastal-buyers-guide",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 3
+    },
+    {
+      "id": 36,
+      "title": "Family Apartments in Gulistan-e-Johar: 4, 5 & 6-Room Homes",
+      "slug": "family-apartments-in-gulistan-e-johar-4-5-6-room-homes",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 22,
+      "title": "How to Buy Apartment in Karachi from Overseas: 2026 Guide",
+      "slug": "how-to-buy-apartment-in-karachi-from-overseas-2026-guide",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 37,
+      "title": "Duplex Apartment in Karachi: Right for a Growing Family?",
+      "slug": "duplex-apartment-in-karachi-right-for-a-growing-family",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Remove obsolete standalone listing links, preserving their text.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 39,
+      "title": "The First-Time Apartment Buyer in Karachi: A 2026 Guide",
+      "slug": "the-first-time-apartment-buyer-in-karachi-a-2026-guide",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 28,
+      "title": "Apartments Under 1 Crore in Karachi: Where to Look",
+      "slug": "apartments-under-1-crore-in-karachi-where-to-look",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Remove obsolete standalone listing links, preserving their text.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 43,
+      "title": "Buying an Apartment on Installment in Karachi (2026)",
+      "slug": "buying-an-apartment-on-installment-in-karachi-2026",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 44,
+      "title": "New Apartment Projects in Scheme 33 (2026): What to Shortlist",
+      "slug": "new-apartment-projects-in-scheme-33-2026-what-to-shortlist",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 45,
+      "title": "4 Bed Duplex Karachi: What Around 3 Crore Actually Buys",
+      "slug": "4-bed-duplex-karachi-what-around-3-crore-actually-buys",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 38,
+      "title": "Documents to Buy Apartment in Karachi: Resident & Overseas",
+      "slug": "documents-to-buy-apartment-in-karachi-resident-overseas",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 2
+    },
+    {
+      "id": 42,
+      "title": "Living in Scheme 33: An Area Guide for Karachi Buyers",
+      "slug": "living-in-scheme-33-an-area-guide-for-karachi-buyers",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 40,
+      "title": "Duplex Apartments in Scheme 33 Karachi: A Buyer's Guide",
+      "slug": "duplex-apartments-in-scheme-33-karachi-a-buyers-guide",
+      "action": "revise",
+      "reasons": [
+        "Align article service claims and/or enquiry links with builder project marketing; preserve educational content and existing metadata.",
+        "Stop rendering historical listing cards; use available project recommendations."
+      ],
+      "textEdits": 1
+    },
+    {
+      "id": 46,
+      "title": "Al Wahab Builders: A Legacy Built Across Karachi",
+      "slug": "al-wahab-builders-a-legacy-built-across-karachi",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 1,
+      "title": "Tulip Comforts: Pre-Launch Apartments in Scheme 33, Karachi",
+      "slug": "tulip-comforts-pre-launch-apartments-in-scheme-33-karachi",
+      "action": "keep",
+      "reasons": [
+        "Educational guide or builder/project profile remains relevant; no service-positioning change needed."
+      ],
+      "textEdits": 0
+    },
+    {
+      "id": 47,
+      "title": "Tulip Comforts Payment Plan: Prices, Down Payment and 5-Year Installments",
+      "slug": "tulip-comforts-payment-plan",
+      "action": "keep",
+      "reasons": [
+        "Existing unrelated draft; preserved without edits."
+      ],
+      "textEdits": 0
+    }
+  ]
+}

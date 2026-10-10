@@ -2,6 +2,7 @@ import { verifyMobileCrm } from './crm-mobile'
 import { verifyPaymentPlans } from './payment-plans'
 import { verifyFollowUp } from './follow-up'
 import { verifyFinance } from './finance'
+import { verifyProjectMarketing } from './project-marketing'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 
@@ -214,6 +215,7 @@ async function verifySeededPosts(page: Page) {
 }
 
 test('supports onboarding, seeding, and comment moderation', async ({ browser, page }, testInfo) => {
+  test.setTimeout(300000)
   await createFirstAdmin(page)
   await seedDatabase(page)
   await verifyCrmActions(page)
@@ -255,6 +257,7 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
     .toBe(1)
 
   await verifyPaymentPlans(page, publicPage, testInfo)
+  await verifyProjectMarketing(page, publicPage, testInfo)
 
   if (manualReviewMode) {
     await publicPage.bringToFront()

@@ -20,7 +20,6 @@ import {
 } from '@/lib/seo-jsonld'
 import { fetchRelatedBlogs } from '@/lib/blogs'
 import { findEntityByProjectSlug } from '@/lib/project-mapper'
-import { deriveProjectKeywords } from '@/lib/seo-keywords'
 import { ProjectHero } from '@/components/projects/ProjectHero'
 import { ProjectOverview } from '@/components/projects/ProjectOverview'
 import { UnitTypesTable } from '@/components/projects/UnitTypesTable'
@@ -106,7 +105,6 @@ export async function generateMetadata({
       description: seoDescription,
       images: ogImage ? [ogImage] : undefined,
     },
-    keywords: deriveProjectKeywords(project),
   }
 }
 

@@ -18,8 +18,8 @@ export async function LatestInsights() {
     <InsightsSection
       blogs={blogs}
       eyebrow="LATEST INSIGHTS"
-      heading="Guides from our Karachi advisory desk."
-      intro="Buyer playbooks, area deep-dives and pricing breakdowns — written by the team that sources the inventory."
+      heading="Property Guides for Karachi Buyers"
+      intro="Practical guides to projects, payment plans, locations and the questions to ask before booking."
       bg="bg-cream"
     />
   )

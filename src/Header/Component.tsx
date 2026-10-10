@@ -10,11 +10,10 @@ type NavItem = { label: string; href: string; n: string; external?: boolean }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'About', href: '/#about', n: '01' },
-  { label: 'Properties', href: '/properties', n: '02' },
+  { label: 'Projects', href: '/properties', n: '02' },
   { label: 'Blogs', href: '/blog', n: '03' },
   { label: 'Services', href: '/#services', n: '04' },
-  { label: 'Builder', href: 'https://www.lateefbuilders.pk/', n: '05', external: true },
-  { label: 'Contact', href: '/#contact', n: '06' },
+  { label: 'Contact', href: '/#contact', n: '05' },
 ]
 
 export function Header() {
@@ -42,7 +41,7 @@ export function Header() {
           'fixed inset-x-0 top-0 z-50 transition-all duration-500',
           scrolled
             ? 'bg-ivory/85 shadow-[0_2px_24px_-12px_rgba(47,53,88,0.18)] backdrop-blur-md'
-            : 'bg-transparent',
+            : 'bg-brand-deep/80 backdrop-blur-md',
         )}
       >
         <div
@@ -80,7 +79,7 @@ export function Header() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 xl:flex">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
@@ -111,9 +110,9 @@ export function Header() {
           <div className="flex items-center gap-2">
             <Link
               href="/properties"
-              aria-label="Search properties"
+              aria-label="Search projects"
               className={cn(
-                'hidden h-10 w-10 items-center justify-center rounded-full border transition-colors duration-300 md:flex',
+                'hidden h-10 w-10 items-center justify-center rounded-full border transition-colors duration-300 xl:flex',
                 scrolled
                   ? 'border-brand-deep/15 text-brand-deep hover:border-gold hover:text-gold'
                   : 'border-white/30 text-white hover:border-gold hover:text-gold',
@@ -124,7 +123,7 @@ export function Header() {
 
             <a
               href="/#contact"
-              className="group relative hidden overflow-hidden rounded-full bg-gold px-5 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-brand-deep shadow-[0_8px_20px_-10px_rgba(227,176,75,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover hover:shadow-gold md:inline-flex md:items-center md:gap-2"
+              className="group relative hidden overflow-hidden rounded-full bg-gold px-5 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-brand-deep shadow-[0_8px_20px_-10px_rgba(227,176,75,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-hover hover:shadow-gold xl:inline-flex xl:items-center xl:gap-2"
             >
               <span className="relative z-10">Book a Consultation</span>
               <ArrowUpRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -133,7 +132,7 @@ export function Header() {
             <button
               onClick={() => setOpen(true)}
               className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-full border transition-colors duration-300 md:hidden',
+                'flex h-10 w-10 items-center justify-center rounded-full border transition-colors duration-300 xl:hidden',
                 scrolled
                   ? 'border-brand-deep/15 text-brand-deep hover:border-gold hover:text-gold'
                   : 'border-white/30 text-white hover:border-gold hover:text-gold',
@@ -154,7 +153,7 @@ export function Header() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[60] md:hidden"
+            className="fixed inset-0 z-[60] xl:hidden"
           >
             <button
               aria-label="Close menu backdrop"
@@ -220,9 +219,7 @@ export function Header() {
                   Book a Consultation
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </a>
-                <p className="mt-5 text-center text-xs text-white/55">
-                  +92-3363-LATEEF · Karachi
-                </p>
+                <p className="mt-5 text-center text-xs text-white/55">+92-3363-LATEEF · Karachi</p>
               </motion.div>
             </motion.div>
           </motion.div>

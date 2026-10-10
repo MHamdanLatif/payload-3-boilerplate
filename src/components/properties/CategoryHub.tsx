@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { availableProjectsWhere } from '@/lib/project-visibility'
 import type { Payload } from 'payload'
 import { formatPkr } from '@/lib/featured-projects'
 import { findLocationSlugByCanonicalName } from '@/lib/project-mapper'
@@ -41,22 +42,13 @@ type InventoryItem = {
   price?: number | null
   startingPrice?: number | null
   title?: string | null
-  /** Listings only — a project's duplex status lives on its unit rows. */
+  /** Duplex availability is derived from project unit rows. */
   isDuplex?: boolean | null
   /** Projects only. */
-  unitTypes?: { isDuplex?: boolean | null }[] | null
+  unitTypes?: { type?: string | null; isDuplex?: boolean | null }[] | null
 }
 
-/**
- * Build one category group.
- *
- * `allowed` is the set of values the /properties filter actually accepts. It
- * matters: PropertyListings carries its own status vocabulary ("Resale",
- * "Urgent Sale", "Ready for Possession") which is NOT the filter vocabulary, so
- * grouping raw field values would emit links like ?status=Urgent%20Sale that
- * silently fail to filter — a set of near-duplicate pages showing unfiltered
- * inventory. Anything outside `allowed` is dropped.
- */
+/** Build crawlable links only for supported filters with available project inventory. */
 function group(
   items: InventoryItem[],
   key: (i: InventoryItem) => string | null | undefined,
@@ -114,14 +106,8 @@ function CategoryGrid({ heading, rows }: { heading: string; rows: Row[] }) {
 export async function CategoryHub({ payload }: { payload: Payload }) {
   let items: InventoryItem[] = []
   try {
-    const [projects, listings] = await Promise.all([
-      payload.find({ collection: 'featured-projects', depth: 0, limit: 500, pagination: false }),
-      payload.find({ collection: 'property-listings', depth: 0, limit: 500, pagination: false }),
-    ])
-    items = [
-      ...(projects.docs as InventoryItem[]),
-      ...(listings.docs as InventoryItem[]),
-    ]
+    const projects = await payload.find({ collection: 'featured-projects', overrideAccess: false, where: availableProjectsWhere, depth: 0, limit: 500, pagination: false })
+    items = projects.docs
   } catch {
     return null
   }
@@ -142,7 +128,7 @@ export async function CategoryHub({ payload }: { payload: Payload }) {
     VALID_PROPERTY_TYPES,
   )
   const byUnit = group(
-    items,
+    items.flatMap((i) => [...new Set((i.unitTypes ?? []).map(u => u.type).filter(Boolean))].map(unitType => ({ ...i, unitType }))),
     (i) => i.unitType,
     (v) => `/properties?unitType=${encodeURIComponent(v)}`,
     (v) => `${v} apartments in Karachi`,
@@ -150,9 +136,9 @@ export async function CategoryHub({ payload }: { payload: Payload }) {
   )
   const byStatus = group(
     items,
-    (i) => i.status,
+    (i) => i.status === 'Ready to Move' ? 'Ready' : i.status,
     (v) => `/properties?status=${encodeURIComponent(v)}`,
-    (v) => `${v} property in Karachi`,
+    (v) => `${v === 'Ready' ? 'Ready-to-move' : v} projects in Karachi`,
     VALID_FILTER_STATUSES,
   )
 
@@ -182,7 +168,7 @@ export async function CategoryHub({ payload }: { payload: Payload }) {
     .map((i) => i.price ?? i.startingPrice)
     .filter((p): p is number => typeof p === 'number' && p > 0)
   const summary = [
-    `${items.length} propert${items.length === 1 ? 'y' : 'ies'} currently listed across Karachi`,
+    `${items.length} project${items.length === 1 ? '' : 's'} currently available across Karachi`,
     locationNames.length ? ` — including ${locationNames.join(', ')}` : '',
     allPrices.length ? `. Prices from ${formatPkr(Math.min(...allPrices))}.` : '.',
   ].join('')
