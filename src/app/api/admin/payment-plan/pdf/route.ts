@@ -2,7 +2,13 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { computeAdminPlan, validateAdminPlan, type AdminPlanInput } from '@/lib/admin-payment-plan'
+import {
+  computeAdminPlan,
+  summarizeAdminPlan,
+  validateAdminPlan,
+  type AdminPlanInput,
+} from '@/lib/admin-payment-plan'
+import { loadUnitLayout, appendLayoutPDF } from '@/lib/payment-plan-layout'
 import { PaymentPlanDocument, composeDisclaimer } from '@/components/projects/PaymentPlanPDF'
 import { getServerSideURL } from '@/utilities/getURL'
 import type { Media } from '@/payload-types'
@@ -14,7 +20,11 @@ export async function POST(req: Request) {
   const { user } = await payload.auth({ headers: req.headers })
   if (!user || user.collection !== 'users')
     return NextResponse.json({ error: 'Admin sign-in required.' }, { status: 401 })
-  let body: { plan?: AdminPlanInput; buyer?: { name?: string; phone?: string } }
+  let body: {
+    plan?: AdminPlanInput
+    buyer?: { name?: string; phone?: string }
+    format?: 'full' | 'summary'
+  }
   try {
     const text = await req.text()
     if (text.length > 200_000)
@@ -26,6 +36,8 @@ export async function POST(req: Request) {
   const errors = validateAdminPlan(body?.plan)
   if (errors.length) return NextResponse.json({ error: errors.join(' ') }, { status: 400 })
   const input = body.plan!
+  if (body.format !== undefined && !['full', 'summary'].includes(body.format))
+    return NextResponse.json({ error: 'Choose a full or summarized PDF.' }, { status: 400 })
   const project = await payload
     .findByID({
       collection: 'featured-projects',
@@ -56,6 +68,7 @@ export async function POST(req: Request) {
   const projectLogoUrl =
     logo && typeof logo === 'object' && logo.url ? new URL(logo.url, serverURL).toString() : null
   try {
+    const layout = await loadUnitLayout(unit.flatLayout, serverURL)
     const buffer = await renderToBuffer(
       PaymentPlanDocument({
         projectTitle: project.title,
@@ -67,7 +80,10 @@ export async function POST(req: Request) {
           name: body.buyer?.name?.trim().slice(0, 120) ?? '',
           phone: body.buyer?.phone?.trim().slice(0, 60) ?? '',
         },
-        plan: result.plan,
+        plan: body.format === 'summary' ? summarizeAdminPlan(result.plan) : result.plan,
+        summary: body.format === 'summary',
+        installmentStartMonth: input.installmentStartMonth,
+        layoutImage: layout?.image,
         loanIncluded: false,
         loanAmount: 0,
         lateefLogoUrl: `${serverURL}/brand/lateef-logo.png`,
@@ -78,10 +94,10 @@ export async function POST(req: Request) {
         scheduleLabel: 'Custom schedule',
       }),
     )
-    return new Response(new Uint8Array(buffer), {
+    return new Response(await appendLayoutPDF(buffer, layout?.pdf), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="Lateef-Custom-PaymentPlan.pdf"',
+        'Content-Disposition': `attachment; filename="Lateef-${body.format === 'summary' ? 'Summary' : 'Complete'}-PaymentPlan.pdf"`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
       },

@@ -194,7 +194,9 @@ test('project defaults retain builder installment values and project-specific mi
   const input = admin.initialAdminPlan(project, 'a')
   const p = admin.computeAdminPlan(input)
   assert.equal(p.remaining, 0)
-  assert.equal(p.plan.rows.find((r) => r.kind === 'installment-monthly').amount, 125000)
+  // Half-yearly starts six months after the start month, so five payments fit
+  // in the 36-month monthly window. The calculated monthly head absorbs the rest.
+  assert.equal(p.plan.rows.find((r) => r.kind === 'installment-monthly').amount, 138888.89)
   assert.equal(p.plan.rows.find((r) => r.kind === 'installment-halfyearly').amount, 500000)
   assert.equal(input.heads.filter((h) => h.kind === 'milestone').length, 0)
   project.unitTypes[0].defaultPlan = undefined
@@ -239,6 +241,7 @@ test('admin export requires a CMS user and recalculates without recording leads'
       },
     },
     '@/lib/admin-payment-plan': admin,
+    '@/lib/payment-plan-layout': { loadUnitLayout: async () => null, appendLayoutPDF: async (buffer) => new Uint8Array(buffer) },
     '@/components/projects/PaymentPlanPDF': {
       PaymentPlanDocument: (p) => p,
       composeDisclaimer: () => '',
@@ -276,6 +279,7 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
     },
   }
   const { POST } = load('src/app/api/payment-plan/pdf/route.ts', {
+    '@/lib/project-visibility': { hasPublicPaymentPlan: () => true },
     'next/server': {
       NextResponse: {
         json: (data, options) =>
@@ -352,6 +356,67 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
   fail = true
   assert.equal((await POST(request(body))).status, 500)
   assert.equal(writes, 0)
+})
+
+test('delayed installments retain the monthly count, cap other cadences and place possession last', () => {
+  const input = {
+    ...custom, duration: 60, installmentStartMonth: 2,
+    charges: [{ id: 'parking', name: 'Parking', amount: 500000, separate: true, month: 90 }],
+    heads: [...custom.heads,
+      ...[3, 6, 12].map((intervalMonths) => ({ ...custom.heads[1], id: `cadence-${intervalMonths}`, intervalMonths, method: 'entered', amount: 1000 })),
+      { ...custom.heads[0], id: 'milestone', kind: 'milestone', name: 'Roof', firstMonth: 20, amount: 1000 },
+    ],
+  }
+  const plan = admin.computeAdminPlan(input).plan
+  const monthly = plan.rows.filter((r) => r.sourceId === 'monthly')
+  assert.equal(monthly.length, 60)
+  assert.equal(monthly[0].monthOffset, 2)
+  assert.equal(monthly.at(-1).monthOffset, 61)
+  for (const [interval, count, last] of [[3, 19, 59], [6, 9, 56], [12, 4, 50]]) {
+    const payments = plan.rows.filter((r) => r.sourceId === `cadence-${interval}`)
+    assert.equal(payments[0].monthOffset, 2 + interval)
+    assert.equal(payments.length, count)
+    assert.equal(payments.at(-1).monthOffset, last)
+  }
+  assert.equal(plan.rows.at(-1).kind, 'possession')
+  assert.equal(plan.rows.at(-1).label, 'At possession')
+  assert.equal(plan.rows.find((r) => r.sourceId === 'milestone').label, 'On milestone completion')
+  assert.equal(plan.rows.find((r) => r.kind === 'extra-charge').label, 'Month 90')
+  assert.equal(sum(plan.rows), 10500000)
+  assert.ok(!plan.warnings.length)
+  const shifted = admin.computeAdminPlan({ ...input, installmentStartMonth: 8 }).plan
+  assert.equal(shifted.rows.filter((r) => r.sourceId === 'monthly').length, 60)
+  assert.equal(shifted.rows.find((r) => r.sourceId === 'monthly').monthOffset, 8)
+})
+
+test('summary retains down-payment dates, extra charge dates, milestones and exact installment rounding', () => {
+  const input = { ...custom, installmentStartMonth: 4,
+    heads: custom.heads.map((h) => h.kind === 'down-payment' ? { ...h, count: 2, amount: 1000000, intervalMonths: 2 } : h),
+    charges: [{ id: 'parking', name: 'Parking', amount: 500000, separate: true, month: 6 }],
+  }
+  const full = admin.computeAdminPlan(input).plan
+  const summary = admin.summarizeAdminPlan(full)
+  assert.equal(sum(summary.rows), sum(full.rows))
+  assert.equal(summary.rows.filter((r) => r.kind.startsWith('installment-')).length, 1)
+  const installments = summary.rows.find((r) => r.kind.startsWith('installment-'))
+  assert.match(installments.headName, /x 12/)
+  assert.match(installments.headName, /x 24/)
+  assert.equal(installments.label, 'Months 4-39')
+  assert.equal(summary.rows.filter((r) => r.kind === 'down-payment').map((r) => r.label).join('|'), 'At signing|Month 2')
+  assert.equal(summary.rows.find((r) => r.kind === 'extra-charge').label, 'Month 6')
+  assert.equal(summary.rows.at(-1).kind, 'possession')
+  assert.equal(summary.rows.at(-1).cumulativePct, 100)
+  assert.ok(engine.DEFAULT_DISCLAIMER.includes('Documentation charges for utility connections will be payable extra'))
+})
+
+test('yearly cadence and invalid duration/start controls are validated using derived timing', () => {
+  const yearly = { ...custom, installmentStartMonth: 2, duration: 60,
+    heads: custom.heads.map((h) => h.kind === 'installment' ? { ...h, intervalMonths: 12 } : h) }
+  assert.equal(admin.validateAdminPlan(yearly).length, 0)
+  assert.ok(admin.computeAdminPlan(yearly).plan.rows.some((r) => r.kind === 'installment-yearly'))
+  assert.ok(admin.validateAdminPlan({ ...yearly, duration: 6 }).length)
+  assert.ok(admin.validateAdminPlan({ ...yearly, installmentStartMonth: -1 }).length)
+  assert.ok(admin.validateAdminPlan({ ...yearly, installmentStartMonth: NaN }).length)
 })
 
 test('lead capture saves to native CRM only and reports persistence failures', async () => {

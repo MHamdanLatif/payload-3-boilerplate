@@ -41,6 +41,7 @@ export type PlanRowKind =
   | 'installment-monthly'
   | 'installment-quarterly'
   | 'installment-halfyearly'
+  | 'installment-yearly'
   | 'milestone'
   | 'possession'
   | 'extra-charge'
@@ -88,7 +89,8 @@ export type PlanResult = {
 export const DEFAULT_DISCLAIMER =
   'This generated payment plan is intended FOR ESTIMATION ONLY. ' +
   'It is NOT a binding offer and does NOT guarantee final builder approval. ' +
-  'Rates and terms are subject to change without prior notice.'
+  'Rates and terms are subject to change without prior notice.\n\n' +
+  'Documentation charges for utility connections will be payable extra, when demanded by the builder as these charges are not included in the above-mentioned cost.'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))

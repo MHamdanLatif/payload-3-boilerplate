@@ -222,6 +222,20 @@ On Android, the mobile CRM brochure button links directly to WhatsApp Business w
 
 Label, notification and Android-link regression checks: `node --test tests/unit/lead-labels.test.mjs tests/unit/follow-up.test.mjs`. Run `corepack pnpm test:e2e` for the full CRM, onboarding, seeding and comment workflow.
 
+### CRM payment schedules
+
+Open a client record in `/leads-dashboard` and choose **Make schedule**. Select a project/unit, enter negotiated terms, and explicitly **Save schedule**. Each client can have multiple named schedules. Changed saves create immutable revisions with the staff member, discussion note, buyer details and calculation settings; unchanged saves are deduplicated. Open revision history to review earlier terms or save them as a new revision. A stale tab cannot replace a newer revision. Downloads do not save changes or create marketing leads.
+
+The installment duration counts monthly payments, independently of signing. With a 60-month duration and start month 2, monthly payments run from month 2 through month 61. Quarterly payments start at month 5, half-yearly at month 8, and yearly at month 14; subsequent payments must fit within that same window (19 quarterly, 9 half-yearly or 4 yearly in this example). The editor shows the derived count. Moving the start month shifts dates without shortening that window. Down-payment installments and separate extra charges retain their individual due months. Milestones display their completion condition without month labels; possession follows all other payments without a month label.
+
+Both **Download complete PDF** and **Download summarized PDF** include buyer details, unit type, base price, charges, discounts, the utility-documentation disclaimer and the unit's CMS `flatLayout` attachment when available. The summary groups only installments, showing amount × count and exact totals (including paisa rounding). PNG/JPEG/WebP and other Sharp-readable layouts are normalized to PNG; uploaded PDF layouts are appended intact. Layout downloads are limited to 20 MB and PDF layouts to 20 pages; an unavailable layout fails the export rather than silently omitting it. Only settings and media references are stored, never generated PDFs or duplicate layout files.
+
+**Before deployment:** back up the intended database, review migration history and apply `20261012_000000_lead_schedules` with `corepack pnpm payload migrate`. The migration adds `lead_schedules` and `schedule_revisions`; it must run before starting this version. Do not run old untracked initial migrations against an existing database. No new service or environment variable is required. Collection writes are restricted to the authenticated CRM save endpoint; history is loaded on demand and paginated. Existing `/internal/payment-plans` remains available for standalone drafts.
+
+Verify with `corepack pnpm test:payment-plan`, `corepack pnpm exec tsc --noEmit --incremental false`, and `corepack pnpm test:e2e`. The E2E workflow covers save/reopen/history, stale edits, authentication, mobile layout, both PDF modes and both image/PDF unit layouts.
+
+For installations with older manually applied migrations, use the scoped runner after reviewing the target database: set `NODE_ENV=production` and `APPLY_LEAD_SCHEDULES=true`, then run `corepack pnpm payload run scripts/apply-lead-schedules.ts`. It backs up affected schema/records under `tmp/lead-schedules-release`, applies only this additive migration transactionally, and records it in `payload_migrations`. It does not run older pending migrations.
+
 ### Private finance management
 
 `/finance` runs inside this Next.js/Payload application, on the existing PostgreSQL database and Railway service. It adds no paid service, hosting instance, subscription, application dependency, or environment variable.

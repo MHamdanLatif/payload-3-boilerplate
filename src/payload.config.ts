@@ -20,6 +20,7 @@ import { FeaturedProjects } from './collections/FeaturedProjects'
 import { MarketedProjects } from './collections/MarketedProjects'
 import { PaymentPlanLeads } from './collections/PaymentPlanLeads'
 import { Leads } from './collections/Leads'
+import { LeadSchedules, ScheduleRevisions } from './collections/LeadSchedules'
 import { LinkOpens } from './collections/LinkOpens'
 import { PropertyListings } from './collections/PropertyListings'
 import { Users } from './collections/Users'
@@ -94,6 +95,8 @@ export default buildConfig({
     BlogTopics,
     PaymentPlanLeads,
     Leads,
+    LeadSchedules,
+    ScheduleRevisions,
     LinkOpens,
     PushSubscriptions,
     LeadNotifications,

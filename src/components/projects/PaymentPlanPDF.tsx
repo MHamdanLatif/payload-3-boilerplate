@@ -189,6 +189,9 @@ export type PaymentPlanPdfProps = {
   generatedAt: string
   priceBreakdown?: { label: string; amount: number }[]
   scheduleLabel?: string
+  installmentStartMonth?: number
+  layoutImage?: string
+  summary?: boolean
 }
 
 export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
@@ -220,8 +223,13 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
     <Document title={`Payment Plan — ${projectTitle}`} author="Lateef Properties">
       <Page size="A4" style={styles.page}>
         {/* ── Header band ───────────────────────────────────── */}
-        <View style={styles.headerBand}>
-          <Image src={lateefLogoUrl} style={styles.lateefLogo} />
+        <View
+          style={[styles.headerBand, props.summary ? { paddingTop: 12, paddingBottom: 12 } : {}]}
+        >
+          <Image
+            src={lateefLogoUrl}
+            style={[styles.lateefLogo, props.summary ? { height: 48 } : {}]}
+          />
           {projectLogoUrl ? (
             <Image src={projectLogoUrl} style={styles.projectLogo} />
           ) : (
@@ -244,7 +252,9 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
               <Text style={styles.factValue}>{formatPkr(plan.totals.effectivePrice)}</Text>
             </View>
             <View style={styles.fact}>
-              <Text style={styles.factLabel}>DURATION</Text>
+              <Text style={styles.factLabel}>
+                {props.installmentStartMonth === undefined ? 'DURATION' : 'INSTALLMENT WINDOW'}
+              </Text>
               <Text style={styles.factValue}>{totalDurationMonths} months</Text>
             </View>
             <View style={styles.fact}>
@@ -259,6 +269,27 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
             ) : null}
           </View>
         </View>
+
+        {props.installmentStartMonth !== undefined && (
+          <View style={styles.prep} wrap={false}>
+            <Text>
+              Prepared for {buyer.name || 'Client'}
+              {buyer.phone ? ` | ${buyer.phone}` : ''} on {generatedAt}.
+            </Text>
+            <Text style={{ marginTop: 4 }}>
+              Installments start{' '}
+              {props.installmentStartMonth === 0
+                ? 'at signing'
+                : `in month ${props.installmentStartMonth} after signing`}
+              . Signing is month 0. Down payments and possession may extend the overall schedule.
+            </Text>
+            <Text style={{ marginTop: 4 }}>
+              {props.summary
+                ? 'Summarized schedule - installment amounts x payment counts; exact totals include any paisa rounding.'
+                : 'Complete payment schedule'}
+            </Text>
+          </View>
+        )}
 
         {/* ── Loan note (conditional) ──────────────────────── */}
         {loanIncluded && loanAmount > 0 ? (
@@ -293,6 +324,7 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
             <View
               key={i}
               wrap={false}
+              minPresenceAhead={i === plan.rows.length - 1 ? 28 : 0}
               style={[
                 styles.row,
                 row.kind === 'down-payment'
@@ -316,12 +348,14 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         </View>
 
         {/* ── Prepared for ─────────────────────────────────── */}
-        <View style={styles.prep} wrap={false}>
-          <Text>
-            Prepared for {buyer.name || 'Client'}
-            {buyer.phone ? ` (${buyer.phone})` : ''} on {generatedAt}.
-          </Text>
-        </View>
+        {props.installmentStartMonth === undefined && (
+          <View style={styles.prep} wrap={false}>
+            <Text>
+              Prepared for {buyer.name || 'Client'}
+              {buyer.phone ? ` (${buyer.phone})` : ''} on {generatedAt}.
+            </Text>
+          </View>
+        )}
 
         {/* ── Disclaimer ───────────────────────────────────── */}
         <View style={styles.disclaimerWrap} wrap={false}>
@@ -339,6 +373,30 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
           />
         </View>
       </Page>
+      {props.layoutImage && (
+        <Page size="A4" style={styles.page}>
+          <View style={styles.headerBand}>
+            <Image src={lateefLogoUrl} style={styles.lateefLogo} />
+            <Text style={styles.projectWordmark}>{projectTitle}</Text>
+          </View>
+          <View style={styles.goldRule} />
+          <View style={styles.titleBlock}>
+            <Text style={styles.eyebrow}>UNIT LAYOUT</Text>
+            <Text style={styles.title}>{selectedUnitType}</Text>
+            <Text style={styles.subtitle}>
+              {projectTitle} | Prepared for {buyer.name || 'Client'}
+            </Text>
+          </View>
+          <Image
+            src={props.layoutImage}
+            style={{ marginHorizontal: 36, width: 523, height: 540, objectFit: 'contain' }}
+          />
+          <View style={styles.footer} fixed>
+            <Text>Lateef Properties | WhatsApp 03363528333</Text>
+            <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+          </View>
+        </Page>
+      )}
     </Document>
   )
 }

@@ -80,6 +80,8 @@ export interface Config {
     'blog-topics': BlogTopic;
     'payment-plan-leads': PaymentPlanLead;
     leads: Lead;
+    'lead-schedules': LeadSchedule;
+    'schedule-revisions': ScheduleRevision;
     'link-opens': LinkOpen;
     'push-subscriptions': PushSubscription;
     'lead-notifications': LeadNotification;
@@ -111,6 +113,8 @@ export interface Config {
     'blog-topics': BlogTopicsSelect<false> | BlogTopicsSelect<true>;
     'payment-plan-leads': PaymentPlanLeadsSelect<false> | PaymentPlanLeadsSelect<true>;
     leads: LeadsSelect<false> | LeadsSelect<true>;
+    'lead-schedules': LeadSchedulesSelect<false> | LeadSchedulesSelect<true>;
+    'schedule-revisions': ScheduleRevisionsSelect<false> | ScheduleRevisionsSelect<true>;
     'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
     'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
     'lead-notifications': LeadNotificationsSelect<false> | LeadNotificationsSelect<true>;
@@ -1779,6 +1783,47 @@ export interface Lead {
   createdAt: string;
 }
 /**
+ * Saved payment schedules. Edit from the client record in CRM.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lead-schedules".
+ */
+export interface LeadSchedule {
+  id: number;
+  lead: number | Lead;
+  title: string;
+  entryKey: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Immutable snapshots saved explicitly from CRM.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schedule-revisions".
+ */
+export interface ScheduleRevision {
+  id: number;
+  schedule: number | LeadSchedule;
+  revision: number;
+  revisionKey: string;
+  settings:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  buyerName: string;
+  buyerPhone: string;
+  note?: string | null;
+  createdBy: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Brochure link opens & asset engagement, logged automatically.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2123,6 +2168,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'leads';
         value: number | Lead;
+      } | null)
+    | ({
+        relationTo: 'lead-schedules';
+        value: number | LeadSchedule;
+      } | null)
+    | ({
+        relationTo: 'schedule-revisions';
+        value: number | ScheduleRevision;
       } | null)
     | ({
         relationTo: 'link-opens';
@@ -2956,6 +3009,33 @@ export interface LeadsSelect<T extends boolean = true> {
   capiStatus?: T;
   privyrForwarded?: T;
   privyrStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lead-schedules_select".
+ */
+export interface LeadSchedulesSelect<T extends boolean = true> {
+  lead?: T;
+  title?: T;
+  entryKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schedule-revisions_select".
+ */
+export interface ScheduleRevisionsSelect<T extends boolean = true> {
+  schedule?: T;
+  revision?: T;
+  revisionKey?: T;
+  settings?: T;
+  buyerName?: T;
+  buyerPhone?: T;
+  note?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

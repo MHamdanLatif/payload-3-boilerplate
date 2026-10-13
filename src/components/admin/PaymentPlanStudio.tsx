@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   computeAdminPlan,
   initialAdminPlan,
   validateAdminPlan,
+  scheduledHeads,
   type AdminPlanInput,
   type AdminHead,
   type StudioProject,
@@ -46,10 +47,38 @@ function Numeric({
   )
 }
 
-export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
-  const [projectId, setProjectId] = useState('')
-  const [input, setInput] = useState<AdminPlanInput | null>(null)
-  const [buyer, setBuyer] = useState({ name: '', phone: '' })
+export type StudioClient = {
+  leadId: number
+  name: string
+  phone: string
+  projectId?: number
+  entryKey: string
+  title?: string
+  plan?: AdminPlanInput
+  revision?: number
+  note?: string
+  buyer?: { name: string; phone: string }
+  historical?: boolean
+}
+export function PaymentPlanStudio({
+  projects,
+  client,
+}: {
+  projects: StudioProject[]
+  client?: StudioClient
+}) {
+  const [projectId, setProjectId] = useState(
+    String(client?.plan?.projectId ?? client?.projectId ?? ''),
+  )
+  const [input, setInput] = useState<AdminPlanInput | null>(client?.plan ?? null)
+  const [buyer, setBuyer] = useState(
+    client?.buyer ?? { name: client?.name ?? '', phone: client?.phone ?? '' },
+  )
+  const [title, setTitle] = useState(client?.title ?? '')
+  const [note, setNote] = useState(client?.note ?? '')
+  const [revision, setRevision] = useState(client?.revision ?? 0)
+  const [saved, setSaved] = useState('')
+  const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const project = projects.find((p) => String(p.id) === projectId)
@@ -61,6 +90,8 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
   const warnings = [...(result?.errors ?? []), ...(result?.value?.plan.warnings ?? [])]
   const change = (patch: Partial<AdminPlanInput>) => {
     setInput((p) => (p ? { ...p, ...patch } : p))
+    setDirty(true)
+    setSaved('')
     setError('')
   }
   const changeHead = (id: string, patch: Partial<AdminHead>) =>
@@ -68,7 +99,51 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
   const canReplace = () =>
     !input ||
     window.confirm('Load a different project or unit? This replaces the current unsaved plan.')
-  async function download() {
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (dirty) {
+        event.preventDefault()
+        event.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+  async function save() {
+    if (!client || !input || warnings.length) return
+    setBusy(true)
+    setError('')
+    setSaved('')
+    try {
+      const response = await fetch(`/api/crm/leads/${client.leadId}/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: input,
+          buyer,
+          title,
+          note,
+          entryKey: client.entryKey,
+          expectedRevision: revision,
+        }),
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error || 'Could not save schedule.')
+      setRevision(body.revision)
+      setDirty(false)
+      setSaved(`Saved revision ${body.revision}.`)
+      window.history.replaceState(
+        null,
+        '',
+        `/leads-dashboard/${client.leadId}/schedules/${body.id}`,
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save schedule.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function download(format: 'full' | 'summary') {
     if (!input || warnings.length) return
     setBusy(true)
     setError('')
@@ -76,7 +151,7 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
       const response = await fetch('/api/admin/payment-plan/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: input, buyer }),
+        body: JSON.stringify({ plan: input, buyer, format }),
       })
       if (!response.ok) {
         const body = await response.json()
@@ -85,7 +160,7 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
       const url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
-      link.download = `Lateef-${project?.slug ?? 'project'}-Custom-PaymentPlan.pdf`
+      link.download = `Lateef-${project?.slug ?? 'project'}-${format === 'summary' ? 'Summary' : 'Complete'}-PaymentPlan.pdf`
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (e) {
@@ -95,9 +170,12 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
     }
   }
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-      <a href="/admin" className="text-sm underline">
-        ← Admin dashboard
+    <main className="mx-auto max-w-7xl px-4 py-8 pb-28 md:px-8">
+      <a
+        href={client ? `/leads-dashboard/${client.leadId}` : '/admin'}
+        className="text-sm underline"
+      >
+        {client ? `Back to ${client.name}` : 'Admin dashboard'}
       </a>
       <div className="my-8">
         <p className="text-xs uppercase tracking-[0.25em] text-brand-deep/60">
@@ -105,11 +183,53 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
         </p>
         <h1 className="mt-2 font-serif text-4xl">Payment Plan Studio</h1>
         <p className="mt-3 max-w-3xl text-sm text-brand-deep/70">
-          Set the negotiated price, edit the payments, and export a branded plan. This draft stays
-          in this tab until you leave or reload.
+          Set the negotiated price, edit the payments, and export a branded plan.
+          {client
+            ? ' Save agreed terms to keep a revision in this client’s record.'
+            : ' This draft stays in this tab until you leave or reload.'}
         </p>
       </div>
       <fieldset disabled={busy} className="min-w-0 space-y-6">
+        {client && (
+          <section className={panel}>
+            <h2 className="mb-3 text-lg font-semibold">Schedule for {client.name}</h2>
+            {client.historical && (
+              <p role="status" className="mb-3 text-sm">
+                You are viewing an earlier revision. Saving creates a new revision; previous terms
+                remain available.
+              </p>
+            )}
+            <label className="block text-xs font-medium">
+              Schedule name
+              <input
+                className={field}
+                value={title}
+                maxLength={120}
+                readOnly={revision > 0}
+                onChange={(e) => {
+                  setTitle(e.target.value)
+                  setDirty(true)
+                }}
+                placeholder="e.g. Type A - 60-month option"
+              />
+            </label>
+            <label className="mt-3 block text-xs font-medium">
+              Discussion / revision note
+              <textarea
+                className={field}
+                value={note}
+                maxLength={1000}
+                onChange={(e) => {
+                  setNote(e.target.value)
+                  setDirty(true)
+                  setSaved('')
+                }}
+                placeholder="What changed in this discussion?"
+              />
+            </label>
+            {revision > 0 && <p className="mt-2 text-xs">Latest saved revision: {revision}</p>}
+          </section>
+        )}
         <section className={panel}>
           <h2 className="mb-4 text-lg font-semibold">1. Project &amp; unit</h2>
           <div className="grid gap-4 md:grid-cols-3">
@@ -123,6 +243,7 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                   if (canReplace()) {
                     setProjectId(e.target.value)
                     setInput(null)
+                    setDirty(true)
                     setError('')
                   }
                 }}
@@ -145,6 +266,7 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                 onChange={(e) => {
                   if (canReplace()) {
                     setInput(e.target.value ? initialAdminPlan(project!, e.target.value) : null)
+                    setDirty(true)
                     setError('')
                   }
                 }}
@@ -160,7 +282,7 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
             </label>
             {input && (
               <Numeric
-                label="Duration (months)"
+                label="Installment duration (months)"
                 step={1}
                 min={1}
                 max={120}
@@ -169,6 +291,28 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
               />
             )}
           </div>
+          {input && (
+            <div className="mt-4 max-w-lg">
+              <Numeric
+                label="Installments start (months after signing)"
+                step={1}
+                min={0}
+                max={120}
+                value={input.installmentStartMonth ?? 1}
+                onChange={(installmentStartMonth) => change({ installmentStartMonth })}
+              />
+              <p className="mt-2 text-xs text-brand-deep/70">
+                Signing is month 0. Monthly payments begin in the start month. Quarterly,
+                half-yearly and yearly payments begin 3, 6 and 12 months later and stay within the
+                monthly payment window. Possession follows the completed schedule.
+              </p>
+              <p className="mt-2 text-xs">
+                {project?.unitTypes?.find((u) => u.id === input.unitId)?.flatLayout
+                  ? 'The unit layout will be attached to both PDFs.'
+                  : 'No unit layout is uploaded for this unit.'}
+              </p>
+            </div>
+          )}
           {project && !project.unitTypes?.length && (
             <p className="mt-3 text-sm">
               Add unit types to this featured project in the CMS first.
@@ -359,8 +503,9 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
               <h2 className="text-lg font-semibold">3. Payment heads</h2>
               <p className="mt-2 text-sm text-brand-deep/65">
                 Enter amounts per payment. Choose “Calculate for me” on the payments that should
-                share the remainder equally. Entered amounts stay unchanged. Edit timing below
-                independently of the duration label; milestone month 0 means on completion.
+                share the remainder equally. Entered amounts stay unchanged. Edit timing below for
+                down payments. Installment dates follow the start month and duration. Milestones
+                have no month label; possession is always last.
               </p>
               {input.heads.map((h, i) => (
                 <div
@@ -385,7 +530,10 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                         className={field}
                         value={h.kind}
                         onChange={(e) =>
-                          changeHead(h.id, { kind: e.target.value as AdminHead['kind'] })
+                          changeHead(h.id, {
+                            kind: e.target.value as AdminHead['kind'],
+                            ...(e.target.value === 'installment' ? { intervalMonths: 1 } : {}),
+                          })
                         }
                       >
                         <option value="down-payment">Down payment</option>
@@ -430,28 +578,65 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                     )}
                   </div>
                   <div className="mt-3 grid items-end gap-3 md:grid-cols-4">
-                    <Numeric
-                      label={`Head ${i + 1} payment count`}
-                      min={1}
-                      max={120}
-                      step={1}
-                      value={h.count}
-                      onChange={(count) => changeHead(h.id, { count })}
-                    />
-                    <Numeric
-                      label={`Head ${i + 1} first month`}
-                      max={240}
-                      step={1}
-                      value={h.firstMonth}
-                      onChange={(firstMonth) => changeHead(h.id, { firstMonth })}
-                    />
-                    <Numeric
-                      label={`Head ${i + 1} repeat every (months)`}
-                      max={240}
-                      step={1}
-                      value={h.intervalMonths}
-                      onChange={(intervalMonths) => changeHead(h.id, { intervalMonths })}
-                    />
+                    {h.kind === 'installment' && input.installmentStartMonth !== undefined ? (
+                      <>
+                        <label className="text-xs">
+                          Frequency
+                          <select
+                            className={field}
+                            aria-label={`Head ${i + 1} frequency`}
+                            value={h.intervalMonths}
+                            onChange={(e) =>
+                              changeHead(h.id, { intervalMonths: Number(e.target.value) })
+                            }
+                          >
+                            <option value={1}>Monthly</option>
+                            <option value={3}>Quarterly</option>
+                            <option value={6}>Half-yearly</option>
+                            <option value={12}>Yearly</option>
+                          </select>
+                        </label>
+                        <p className="text-sm md:col-span-2">
+                          {scheduledHeads(input)[i].count} payments, starting month{' '}
+                          {scheduledHeads(input)[i].firstMonth}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Numeric
+                          label={`Head ${i + 1} payment count`}
+                          min={1}
+                          max={120}
+                          step={1}
+                          value={h.count}
+                          onChange={(count) => changeHead(h.id, { count })}
+                        />
+                        {h.kind === 'down-payment' || h.kind === 'installment' ? (
+                          <>
+                            <Numeric
+                              label={`Head ${i + 1} first month`}
+                              max={240}
+                              step={1}
+                              value={h.firstMonth}
+                              onChange={(firstMonth) => changeHead(h.id, { firstMonth })}
+                            />
+                            <Numeric
+                              label={`Head ${i + 1} repeat every (months)`}
+                              max={240}
+                              step={1}
+                              value={h.intervalMonths}
+                              onChange={(intervalMonths) => changeHead(h.id, { intervalMonths })}
+                            />
+                          </>
+                        ) : (
+                          <p className="text-xs md:col-span-2">
+                            {h.kind === 'possession'
+                              ? 'At possession, after all other payments.'
+                              : 'Due on milestone completion; no month is printed.'}
+                          </p>
+                        )}
+                      </>
+                    )}
                     <button
                       type="button"
                       className={button}
@@ -544,7 +729,11 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                     className={field}
                     value={buyer.name}
                     maxLength={120}
-                    onChange={(e) => setBuyer({ ...buyer, name: e.target.value })}
+                    onChange={(e) => {
+                      setBuyer({ ...buyer, name: e.target.value })
+                      setDirty(true)
+                      setSaved('')
+                    }}
                   />
                 </label>
                 <label className="text-xs">
@@ -553,7 +742,11 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
                     className={field}
                     value={buyer.phone}
                     maxLength={60}
-                    onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
+                    onChange={(e) => {
+                      setBuyer({ ...buyer, phone: e.target.value })
+                      setDirty(true)
+                      setSaved('')
+                    }}
                   />
                 </label>
               </div>
@@ -568,12 +761,49 @@ export function PaymentPlanStudio({ projects }: { projects: StudioProject[] }) {
               )}
               <button
                 type="button"
-                onClick={download}
+                onClick={() => download('full')}
                 disabled={busy || warnings.length > 0 || !result?.value}
                 className="mt-5 rounded-lg bg-brand-deep px-6 py-3 font-medium text-white disabled:opacity-50"
               >
-                {busy ? 'Preparing PDF…' : 'Export branded PDF'}
+                {busy ? 'Please wait…' : 'Download complete PDF'}
               </button>
+              <button
+                type="button"
+                onClick={() => download('summary')}
+                disabled={busy || warnings.length > 0 || !result?.value}
+                className={`${button} mt-3 md:ml-3`}
+              >
+                Download summarized PDF
+              </button>
+              {client && (
+                <div className="mt-5 border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={save}
+                    disabled={
+                      busy ||
+                      warnings.length > 0 ||
+                      !result?.value ||
+                      !title.trim() ||
+                      !buyer.name.trim() ||
+                      !buyer.phone.trim()
+                    }
+                    className="rounded-lg bg-brand-deep px-6 py-3 text-white disabled:opacity-50"
+                  >
+                    Save schedule
+                  </button>
+                  <p className="mt-2 text-xs">
+                    {dirty
+                      ? 'Unsaved changes. Downloading a PDF does not save these terms.'
+                      : 'Save changed terms to create a revision.'}
+                  </p>
+                  {saved && (
+                    <p role="status" className="mt-2 text-sm text-green-800">
+                      {saved}
+                    </p>
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

@@ -24,6 +24,7 @@ export type AdminPlanInput = {
   unitId: string
   basePrice: number
   duration: number
+  installmentStartMonth?: number
   charges: Charge[]
   discounts: Discount[]
   heads: AdminHead[]
@@ -48,6 +49,24 @@ const textOK = (s: unknown): s is string =>
 const monthOK = (n: unknown): n is number =>
   Number.isInteger(n) && Number(n) >= 0 && Number(n) <= 240
 
+/** The duration is an installment window, independent of signing and possession. */
+export function scheduledHeads(input: AdminPlanInput): AdminHead[] {
+  if (input.installmentStartMonth === undefined) return input.heads
+  const start = input.installmentStartMonth
+  return input.heads.map((h) =>
+    h.kind !== 'installment'
+      ? h
+      : {
+          ...h,
+          firstMonth: start + (h.intervalMonths === 1 ? 0 : h.intervalMonths),
+          count:
+            h.intervalMonths === 1
+              ? input.duration
+              : Math.floor((input.duration - 1) / h.intervalMonths),
+        },
+  )
+}
+
 /** Shared by the browser and authenticated export. Never trust client totals. */
 export function validateAdminPlan(value: unknown): string[] {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -59,6 +78,11 @@ export function validateAdminPlan(value: unknown): string[] {
     errors.push('Base price must be positive, with at most two decimal places.')
   if (!Number.isInteger(p.duration) || p.duration < 1 || p.duration > 120)
     errors.push('Duration must be between 1 and 120 whole months.')
+  if (
+    p.installmentStartMonth !== undefined &&
+    (!monthOK(p.installmentStartMonth) || p.installmentStartMonth > 120)
+  )
+    errors.push('Installment start must be between 0 and 120 whole months after signing.')
   if (
     !Array.isArray(p.charges) ||
     p.charges.length > 50 ||
@@ -96,16 +120,28 @@ export function validateAdminPlan(value: unknown): string[] {
         h.count > 120 ||
         !monthOK(h.firstMonth) ||
         !monthOK(h.intervalMonths) ||
-        (h.count > 1 && h.intervalMonths < 1) ||
-        h.firstMonth + (h.count - 1) * h.intervalMonths > 240,
+        ((h.kind === 'down-payment' ||
+          (h.kind === 'installment' && p.installmentStartMonth === undefined)) &&
+          ((h.count > 1 && h.intervalMonths < 1) ||
+            h.firstMonth + (h.count - 1) * h.intervalMonths > 240)),
     )
   )
     errors.push('Check payment heads, amounts, counts and timing (up to month 240).')
   if (!errors.length) {
+    for (const h of scheduledHeads(p)) {
+      if (
+        p.installmentStartMonth !== undefined &&
+        h.kind === 'installment' &&
+        (![1, 3, 6, 12].includes(h.intervalMonths) || h.count < 1)
+      )
+        errors.push(
+          'Choose a monthly, quarterly, half-yearly or yearly frequency that fits the installment duration.',
+        )
+    }
     const ids = [...p.heads, ...p.charges, ...p.discounts].map((x) => x.id)
     if (new Set(ids).size !== ids.length)
       errors.push('Each payment and adjustment must have a unique identity.')
-    if (p.heads.reduce((s, h) => s + h.count, 0) + p.charges.length > 1000)
+    if (scheduledHeads(p).reduce((s, h) => s + h.count, 0) + p.charges.length > 1000)
       errors.push('Limit the schedule to 1,000 payments.')
   }
   return errors
@@ -114,17 +150,16 @@ export function validateAdminPlan(value: unknown): string[] {
 export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
   const invalid = validateAdminPlan(input)
   if (invalid.length) throw new Error(invalid.join(' '))
+  const heads = scheduledHeads(input)
   const extra = input.charges.reduce((s, c) => s + cents(c.amount), 0)
   const discount = input.discounts.reduce((s, d) => s + cents(d.amount), 0)
   const final = cents(input.basePrice) + extra - discount
   const separate = input.charges.filter((c) => c.separate).reduce((s, c) => s + cents(c.amount), 0)
   const regular = final - separate
-  const entered = input.heads
+  const entered = heads
     .filter((h) => h.method === 'entered')
     .reduce((s, h) => s + cents(h.amount) * h.count, 0)
-  const autoCount = input.heads
-    .filter((h) => h.method === 'calculated')
-    .reduce((s, h) => s + h.count, 0)
+  const autoCount = heads.filter((h) => h.method === 'calculated').reduce((s, h) => s + h.count, 0)
   const available = regular - entered
   const warnings: string[] = []
   if (final <= 0 || regular < 0 || final > 1e12 * 100)
@@ -138,7 +173,7 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
   const perEvent = autoCount ? Math.floor(Math.max(0, available) / autoCount) : 0
   let tail = autoCount ? Math.max(0, available) - perEvent * autoCount : 0
   const rows: PlanRow[] = []
-  for (const head of input.heads) {
+  for (const head of heads) {
     for (let i = 0; i < head.count; i++) {
       const month = head.firstMonth + i * head.intervalMonths
       const value = head.method === 'entered' ? cents(head.amount) : perEvent + (tail-- > 0 ? 1 : 0)
@@ -148,18 +183,22 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
             ? 'installment-quarterly'
             : head.intervalMonths === 6
               ? 'installment-halfyearly'
-              : 'installment-monthly'
+              : head.intervalMonths === 12
+                ? 'installment-yearly'
+                : 'installment-monthly'
           : head.kind
       rows.push({
         sourceId: head.id,
         kind,
         headName: head.name,
         label:
-          head.kind === 'milestone' && month === 0
-            ? 'On completion'
-            : month === 0
-              ? 'At signing'
-              : `Month ${month}`,
+          head.kind === 'possession'
+            ? 'At possession'
+            : head.kind === 'milestone'
+              ? 'On milestone completion'
+              : month === 0
+                ? 'At signing'
+                : `Month ${month}`,
         monthOffset: head.kind === 'milestone' && month === 0 ? input.duration + 0.5 : month,
         amount: value / 100,
         cumulativeAmount: 0,
@@ -177,6 +216,14 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
       cumulativeAmount: 0,
       cumulativePct: 0,
     })
+  const lastDatedMonth = Math.max(
+    0,
+    ...rows.filter((r) => !['milestone', 'possession'].includes(r.kind)).map((r) => r.monthOffset),
+  )
+  rows.forEach((r) => {
+    if (r.kind === 'milestone') r.monthOffset = lastDatedMonth + 0.5
+    if (r.kind === 'possession') r.monthOffset = lastDatedMonth + 1
+  })
   rows.sort((a, b) => a.monthOffset - b.monthOffset)
   let running = 0
   rows.forEach((r) => {
@@ -311,8 +358,45 @@ export function initialAdminPlan(project: StudioProject, unitId: string): AdminP
     unitId,
     basePrice: config?.priceOverride ?? unit.price,
     duration,
+    installmentStartMonth: 1,
     charges: [],
     discounts: [],
     heads: result,
   }
+}
+
+/** Aggregate only installments; retain exact rounding, down-payment dates and milestones. */
+export function summarizeAdminPlan(plan: PlanResult): PlanResult {
+  const rows: PlanRow[] = []
+  const seen = new Set<string>()
+  for (const row of plan.rows) {
+    if (!row.kind.startsWith('installment-')) {
+      rows.push({ ...row })
+      continue
+    }
+    const key = row.sourceId || row.headName
+    if (seen.has(key)) continue
+    seen.add(key)
+    const payments = plan.rows.filter(
+      (r) => r.kind.startsWith('installment-') && (r.sourceId || r.headName) === key,
+    )
+    const amounts = new Map<number, number>()
+    payments.forEach((r) => amounts.set(cents(r.amount), (amounts.get(cents(r.amount)) || 0) + 1))
+    const detail = [...amounts]
+      .map(([amount, count]) => `PKR ${(amount / 100).toLocaleString('en-PK')} x ${count}`)
+      .join(' + ')
+    rows.push({
+      ...row,
+      label: `Months ${payments[0].monthOffset}-${payments[payments.length - 1].monthOffset}`,
+      headName: `${row.headName}\n${detail}`,
+      amount: payments.reduce((sum, r) => sum + cents(r.amount), 0) / 100,
+    })
+  }
+  let total = 0
+  rows.forEach((r) => {
+    total += cents(r.amount)
+    r.cumulativeAmount = total / 100
+    r.cumulativePct = Math.round((total / cents(plan.totals.effectivePrice)) * 10000) / 100
+  })
+  return { ...plan, rows }
 }

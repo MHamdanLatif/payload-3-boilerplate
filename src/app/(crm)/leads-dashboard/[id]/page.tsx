@@ -16,6 +16,7 @@ import { fmtDurationLong, platformOf } from '@/lib/engagement'
 import { LeadFollowUp } from '@/components/LeadFollowUp'
 import { crmPushConfigured } from '@/lib/crm-push'
 import { hasFinanceAccess } from '@/access/finance'
+import { LeadSchedules } from '@/components/crm/LeadSchedules'
 
 export const metadata: Metadata = {
   title: 'Client record',
@@ -52,11 +53,12 @@ const ASSET_LABEL: Record<string, string> = {
   video: 'Played the video',
 }
 
-export default async function LeadActivity({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadActivity({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ schedulePage?: string }> }) {
   const payload = await getPayload({ config })
   const h = await nextHeaders()
   const { user } = await payload.auth({ headers: h })
   const { id } = await params
+  const query = await searchParams ?? {}
   if (!user) redirect(`/leads-dashboard/login?next=/leads-dashboard/${id}`)
 
   let lead: Lead | null = null
@@ -196,6 +198,7 @@ export default async function LeadActivity({ params }: { params: Promise<{ id: s
           status={lead.followUpStatus}
           configured={crmPushConfigured()}
         />
+        <LeadSchedules leadId={lead.id} payload={payload} user={user} page={Math.max(1, Math.floor(Number(query.schedulePage) || 1))} />
         {lead.notes && (
           <section className="mt-4 rounded-xl border border-brand-deep/10 bg-white p-5">
             <h2 className="font-serif text-lg text-brand-deep">Original enquiry notes</h2>

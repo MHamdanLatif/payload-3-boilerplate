@@ -23,6 +23,8 @@ import * as migration_20260818_000000_lead_status_site_visit_closed_won from './
 import * as migration_20260829_000000_builder_track_record from './20260829_000000_builder_track_record';
 import * as migration_20260903_000000_marketed_projects from './20260903_000000_marketed_projects';
 
+import * as leadSchedules from './20261012_000000_lead_schedules'
+
 export const migrations = [
   {
     up: migration_20241125_222020_initial.up,
@@ -104,4 +106,5 @@ export const migrations = [
   { up: simpleFinance.up, down: simpleFinance.down, name: '20261003_000000_simple_finance' },
   { up: projectMarketing.up, down: projectMarketing.down, name: '20261008_000000_project_marketing' },
   { up: projectMarketingContent.up, down: projectMarketingContent.down, name: '20261008_000001_project_marketing_content' },
+  { up: leadSchedules.up, down: leadSchedules.down, name: '20261012_000000_lead_schedules' },
 ];

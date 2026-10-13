@@ -1,6 +1,7 @@
 import { expect, type Page, type TestInfo } from '@playwright/test'
 import { DEFAULT_PAYMENT_HEADS } from '../../src/lib/payment-heads'
 import { initialAdminPlan } from '../../src/lib/admin-payment-plan'
+import { PDFDocument } from 'pdf-lib'
 
 export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info: TestInfo) {
   const media = await (await adminPage.request.get('/api/media?limit=1')).json()
@@ -14,7 +15,13 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
       status: 'Pre-launch',
       elevationImages: [{ image: media.docs[0].id }],
       unitTypes: [
-        { name: 'Type A', type: '2 Bed Lounge', rooms: 3, price: 10000000 },
+        {
+          name: 'Type A',
+          type: '2 Bed Lounge',
+          rooms: 3,
+          price: 10000000,
+          flatLayout: media.docs[0].id,
+        },
         { name: 'Type B', type: '2 Bed Lounge', rooms: 3, price: 12000000 },
       ],
       paymentPlan: {
@@ -64,10 +71,13 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
   await added.getByRole('button', { name: 'Remove head' }).click()
   const before = await (await adminPage.request.get('/api/leads?limit=0')).json()
   const downloadPromise = adminPage.waitForEvent('download')
-  await adminPage.getByRole('button', { name: 'Export branded PDF' }).click()
+  await adminPage.getByRole('button', { name: 'Download complete PDF' }).click()
   const download = await downloadPromise
   await download.saveAs(info.outputPath('admin-payment-plan.pdf'))
   expect(await download.failure()).toBeNull()
+  const summaryPromise = adminPage.waitForEvent('download')
+  await adminPage.getByRole('button', { name: 'Download summarized PDF' }).click()
+  await (await summaryPromise).saveAs(info.outputPath('admin-payment-plan-summary.pdf'))
   const after = await (await adminPage.request.get('/api/leads?limit=0')).json()
   expect(after.totalDocs).toBe(before.totalDocs)
   await adminPage.screenshot({ path: info.outputPath('studio-desktop.png'), fullPage: true })
@@ -84,6 +94,116 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
       await adminPage.request.post('/api/admin/payment-plan/pdf', { data: { plan: invalid } })
     ).status(),
   ).toBe(400)
+
+  // CRM schedules persist settings, preserve revisions, and remain private.
+  const leadResponse = await adminPage.request.post('/api/leads', {
+    data: {
+      name: 'Schedule Client',
+      phone: '03001234567',
+      sourceKind: 'listing',
+      currentInterestedProject: project.id,
+    },
+  })
+  expect(leadResponse.ok()).toBeTruthy()
+  const lead = (await leadResponse.json()).doc
+  const scheduleURL = `/api/crm/leads/${lead.id}/schedules`
+  expect((await publicPage.request.post(scheduleURL, { data: {} })).status()).toBe(401)
+  expect((await publicPage.request.get('/api/schedule-revisions')).status()).toBe(403)
+  expect((await adminPage.request.post('/api/lead-schedules', { data: {} })).status()).toBe(403)
+  await adminPage.goto(`/leads-dashboard/${lead.id}`)
+  await adminPage.getByRole('link', { name: 'Make schedule' }).click()
+  await expect(adminPage.getByLabel('Project', { exact: true })).toHaveValue(String(project.id))
+  await adminPage.getByLabel('Unit', { exact: true }).selectOption(project.unitTypes[0].id)
+  await adminPage.getByLabel('Schedule name', { exact: true }).fill('Type A - discussed terms')
+  await adminPage.getByLabel('Installment duration (months)').fill('60')
+  await adminPage.getByLabel('Installments start (months after signing)').fill('2')
+  await expect(adminPage.getByLabel('Prepared for (optional)')).toHaveValue(lead.name)
+  await adminPage.getByLabel('Discussion / revision note').fill('Initial discussion')
+  await adminPage.getByRole('button', { name: 'Save schedule', exact: true }).click()
+  await expect(adminPage.getByRole('status')).toContainText('Saved revision 1.')
+  const savedURL = adminPage.url()
+  const scheduleId = Number(savedURL.split('/').pop())
+  await adminPage.getByRole('button', { name: 'Save schedule', exact: true }).click()
+  await expect(adminPage.getByRole('status')).toContainText('Saved revision 1.')
+  const revision1 = (
+    await (
+      await adminPage.request.get(
+        `/api/schedule-revisions?where[schedule][equals]=${scheduleId}&depth=0`,
+      )
+    ).json()
+  ).docs[0]
+  await adminPage.getByRole('button', { name: 'Add discount' }).click()
+  await adminPage.getByLabel('Discount 1 amount (PKR)').fill('100000')
+  await adminPage.getByLabel('Discussion / revision note').fill('Negotiated a discount')
+  await adminPage.getByRole('button', { name: 'Save schedule', exact: true }).click()
+  await expect(adminPage.getByRole('status')).toContainText('Saved revision 2.')
+  await adminPage.reload()
+  await expect(adminPage.getByTestId('final-price')).toHaveText('PKR 9,900,000')
+  await expect(adminPage.getByLabel('Installments start (months after signing)')).toHaveValue('2')
+  await adminPage.getByRole('link', { name: 'View revision history' }).click()
+  await adminPage.getByRole('link', { name: 'Open revision 1', exact: true }).click()
+  await expect(adminPage.getByTestId('final-price')).toHaveText('PKR 10,000,000')
+  await expect(adminPage.getByLabel('Discussion / revision note')).toHaveValue('Initial discussion')
+  const schedule = await (await adminPage.request.get(`/api/lead-schedules/${scheduleId}`)).json()
+  const origin = new URL(adminPage.url()).origin
+  const stale = await adminPage.request.post(scheduleURL, {
+    headers: { origin },
+    data: {
+      plan: revision1.settings,
+      buyer: { name: lead.name, phone: lead.phone },
+      title: schedule.title,
+      note: 'Stale edit',
+      entryKey: schedule.entryKey,
+      expectedRevision: 1,
+    },
+  })
+  expect(stale.status()).toBe(409)
+  const count = await (
+    await adminPage.request.get(
+      `/api/schedule-revisions?where[schedule][equals]=${scheduleId}&limit=1`,
+    )
+  ).json()
+  expect(count.totalDocs).toBe(2)
+  await adminPage.setViewportSize({ width: 390, height: 844 })
+  await adminPage.screenshot({ path: info.outputPath('crm-schedule-mobile.png'), fullPage: true })
+  expect(
+    await adminPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  await adminPage.setViewportSize({ width: 1280, height: 900 })
+  // A PDF layout is appended intact, alongside image layout coverage above.
+  const layout = await PDFDocument.create()
+  layout.addPage().drawText('E2E unit layout')
+  const uploaded = await adminPage.request.post('/api/media', {
+    multipart: {
+      file: {
+        name: 'e2e-unit-layout.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from(await layout.save()),
+      },
+      _payload: JSON.stringify({ alt: 'Unit layout PDF' }),
+    },
+  })
+  expect(uploaded.ok(), await uploaded.text()).toBeTruthy()
+  const pdfMedia = (await uploaded.json()).doc
+  const patched = await adminPage.request.patch(`/api/featured-projects/${project.id}`, {
+    data: {
+      unitTypes: project.unitTypes.map((u, i) => ({
+        ...u,
+        flatLayout: i === 0 ? pdfMedia.id : u.flatLayout,
+      })),
+    },
+  })
+  expect(patched.ok()).toBeTruthy()
+  const exported = await adminPage.request.post('/api/admin/payment-plan/pdf', {
+    data: {
+      plan: revision1.settings,
+      buyer: { name: lead.name, phone: lead.phone },
+      format: 'summary',
+    },
+  })
+  expect(exported.ok(), exported.ok() ? '' : await exported.text()).toBeTruthy()
+  const parsed = await PDFDocument.load(await exported.body())
+  expect(parsed.getPageCount()).toBeGreaterThanOrEqual(2)
 
   await publicPage.goto(`/projects/${project.slug}`)
   // Wait for the controlled price to update, so SSR controls are not used before hydration.
