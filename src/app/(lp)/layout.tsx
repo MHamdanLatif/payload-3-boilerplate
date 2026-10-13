@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { cn } from 'src/utilities/cn'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
-import { Playfair_Display, Poppins } from 'next/font/google'
+import { playfair, poppins } from '@/fonts'
 import React from 'react'
 
 import { MetaPixel } from '@/components/MetaPixel'
@@ -38,21 +38,6 @@ import { getServerSideURL } from '@/utilities/getURL'
  *   - AdminBar / LivePreviewListener
  *   - Route trackers — nothing here navigates client-side
  */
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-playfair',
-  display: 'swap',
-})
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-poppins',
-  display: 'swap',
-})
 
 export default function LandingPageLayout({ children }: { children: React.ReactNode }) {
   return (

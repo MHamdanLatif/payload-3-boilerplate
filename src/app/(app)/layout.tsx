@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { cn } from 'src/utilities/cn'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
-import { Playfair_Display, Poppins } from 'next/font/google'
+import { playfair, poppins } from '@/fonts'
 import React from 'react'
 
 import { AdminBar } from '@/components/AdminBar'
@@ -24,21 +24,6 @@ import { draftMode } from 'next/headers'
 
 import '../(frontend)/globals.css'
 import { getServerSideURL } from '@/utilities/getURL'
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-playfair',
-  display: 'swap',
-})
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-poppins',
-  display: 'swap',
-})
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { isEnabled } = await draftMode()

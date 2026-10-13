@@ -294,3 +294,7 @@ corepack pnpm payload run scripts/apply-project-marketing.ts
 This explicitly applies only the two project migrations. Do not run it as a routine local-preview command against production. The editorial changes were applied to production on 10 October 2026 after an explicit request and a content backup: 33 existing articles updated, the owner-deleted Saim Residency article skipped, and the buyer guide added as a draft. Existing publication dates and project/listing records were preserved.
 
 Focused validation: `node --test tests/unit/project-search.test.mjs`. Run `corepack pnpm test:e2e` for project availability, retired routes, optional buyer fields and project attribution, alongside the existing onboarding/payment/CRM/finance checks. Keep tests on a disposable local database and disable notifications/CAPI. See `docs/buyer-site-review.md` for the current validation record.
+
+### Fonts and reproducible builds
+
+The public layouts use bundled Playfair Display and Poppins Latin WOFF2 assets via `next/font/local`. Build and browser font loading do not depend on Google Fonts requests. Keep the font assets and SIL licenses in `src/fonts` committed; see `src/fonts/README.md` for sources. Geist remains supplied by the existing `geist` package.
