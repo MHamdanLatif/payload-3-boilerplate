@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { authenticated } from '../../access/authenticated'
 import { financeAdminField, isFinanceAdmin } from '../../access/finance'
+import { forgetLoggedOutSession, limitMobileSessions } from '../../lib/crm-devices'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -21,6 +22,9 @@ export const Users: CollectionConfig = {
     tokenExpiration: 30 * 24 * 60 * 60,
   },
   hooks: {
+    // At most two signed-in phones/tablets per account; laptops never count.
+    beforeLogin: [limitMobileSessions],
+    afterLogout: [forgetLoggedOutSession],
     beforeChange: [
       async ({ data, operation, req }) => {
         // Payload's first-user onboarding bypasses create access. Bootstrap only an

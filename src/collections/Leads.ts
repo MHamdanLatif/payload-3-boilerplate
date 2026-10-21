@@ -5,6 +5,7 @@ import { statusOptions } from '@/lib/lead-status'
 import { leadAfterChange } from './Leads/hooks/leadAfterChange'
 import { seedLeadDefaults } from './Leads/hooks/seedLeadDefaults'
 import { prepareFollowUp } from './Leads/hooks/prepareFollowUp'
+import { guardLeadDelete } from './Leads/hooks/guardLeadDelete'
 
 /**
  * Every website / Meta lead lives here — the native CRM that replaces Privyr.
@@ -38,6 +39,9 @@ export const Leads: CollectionConfig = {
     // afterChange: WhatsApp owner alert + brochure auto-send (create); Meta CAPI
     // on qualify/junk. Never throws.
     afterChange: [leadAfterChange],
+    // beforeDelete: leads with saved schedules or a finance deal are deleted
+    // from the CRM record, which asks what happens to them first.
+    beforeDelete: [guardLeadDelete],
   },
   fields: [
     // ── Qualification (sidebar, prominent) ──────────────────────────────────
@@ -162,10 +166,11 @@ export const Leads: CollectionConfig = {
       index: true,
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'No reminder by default. Choose a future date and time to receive a CRM app notification. Clear to cancel. The admin picker uses your browser timezone.',
+        description: 'No reminder by default. Choose a future date and time to receive a CRM app notification. The lead stays in Follow-ups until marked contacted or the reminder is cleared. The admin picker uses your browser timezone.',
       },
     },
     { name: 'followUpSentAt', type: 'date', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
+    { name: 'followUpRepeatSentAt', type: 'date', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
     { name: 'followUpStatus', type: 'text', access: { create: () => false, update: () => false }, admin: { readOnly: true } },
     { name: 'followUpRetryAt', type: 'date', access: { create: () => false, update: () => false }, admin: { hidden: true } },
     { name: 'followUpClaim', type: 'text', access: { create: () => false, update: () => false }, admin: { hidden: true } },

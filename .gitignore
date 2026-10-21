@@ -40,3 +40,6 @@ pdfs for seo/
 # committed. pnpm-workspace.yaml here is only pnpm's unfilled allowBuilds stub.
 pnpm-lock.yaml
 pnpm-workspace.yaml
+
+# Local scratch work: logs, prod backups, throwaway scripts. Never commit.
+/tmp/

@@ -17,6 +17,7 @@ import { LeadFollowUp } from '@/components/LeadFollowUp'
 import { crmPushConfigured } from '@/lib/crm-push'
 import { hasFinanceAccess } from '@/access/finance'
 import { LeadSchedules } from '@/components/crm/LeadSchedules'
+import { DeleteLead } from '@/components/crm/DeleteLead'
 
 export const metadata: Metadata = {
   title: 'Client record',
@@ -256,6 +257,7 @@ export default async function LeadActivity({ params, searchParams }: { params: P
           Time on page counts foreground time only and is capped at 30 minutes per visit. Visits
           from before time-tracking shipped show no duration.
         </p>
+        <DeleteLead id={lead.id} />
       </div>
     </main>
   )

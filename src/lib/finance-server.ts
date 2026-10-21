@@ -28,7 +28,7 @@ export function dealWhere(p: FinanceParams) {
   const salesperson = positiveID(param(p, 'salesperson'))
   const status = param(p, 'status')
   const month = param(p, 'expectedMonth')
-  return sql`${dateWhere('d.date_closed', period(p))}
+  return sql`${dateWhere('d.date_closed', period(p, 'all'))}
     AND (${search}='' OR d.client_name ILIKE ${`%${search}%`} OR d.contact ILIKE ${`%${search}%`} OR d.unit_number ILIKE ${`%${search}%`} OR d.project_name ILIKE ${`%${search}%`})
     AND (${project}=0 OR d.project_id=${project}) AND (${param(p, 'project')} != 'other' OR d.project_id IS NULL) AND (${salesperson}=0 OR d.salesperson_id=${salesperson})
     AND (${status}='' OR d.status=${status})

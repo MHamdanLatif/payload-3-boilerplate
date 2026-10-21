@@ -22,7 +22,7 @@ export function RemoveEntry({
   const message = cancel
     ? 'Cancel this deal? Future receivables will stop. Existing payments and expenses will stay in your reports.'
     : kind === 'deals'
-      ? 'Delete this deal and ALL its recorded payments and deal expenses? Their amounts will be removed from reports. This cannot be undone. To keep payment history, choose Cancel deal instead.'
+      ? 'Delete this deal and ALL its recorded commission payments? Their amounts will be removed from reports. Its expenses are kept, unlinked from the deal, and still count in reports. This cannot be undone. To keep payment history, choose Cancel deal instead.'
       : `Delete this ${kind === 'receipts' ? 'payment' : 'expense'}? Totals will be recalculated. This cannot be undone.`
   return (
     <form

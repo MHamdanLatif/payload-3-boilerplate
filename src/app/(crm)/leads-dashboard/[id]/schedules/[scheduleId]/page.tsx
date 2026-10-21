@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { notFound } from 'next/navigation'
 import { crmSession } from '@/lib/crm-server'
 import { PaymentPlanStudio, type StudioClient } from '@/components/admin/PaymentPlanStudio'
-import { computeAdminPlan, type AdminPlanInput } from '@/lib/admin-payment-plan'
-import { formatPlanMoney } from '@/lib/payment-plan'
+import { validateAdminPlan, type AdminPlanInput } from '@/lib/admin-payment-plan'
+import { scheduleTotal } from '@/components/crm/LeadSchedules'
 
 export const dynamic = 'force-dynamic'
 export default async function ClientSchedule({
@@ -43,7 +43,7 @@ export default async function ClientSchedule({
     revision: number
     createdAt: string
     note?: string | null
-    total: number
+    total: string
     author: string
   }[] = []
   let hasNext = false
@@ -89,10 +89,16 @@ export default async function ClientSchedule({
         ).docs[0]
       : latest
     if (!selected) notFound()
+    // A revision the current code cannot read opens as needing review instead of crashing.
+    const readable = !validateAdminPlan(selected.settings).length
     Object.assign(client, {
       title: schedule.title,
       entryKey: schedule.entryKey,
-      plan: selected.settings as unknown as AdminPlanInput,
+      plan: readable ? (selected.settings as unknown as AdminPlanInput) : undefined,
+      needsReview: !readable,
+      savedRevision: readable
+        ? { scheduleId: schedule.id, revision: selected.revision }
+        : undefined,
       buyer: { name: selected.buyerName, phone: selected.buyerPhone },
       note: selected.note || '',
       revision: latest.revision,
@@ -115,8 +121,13 @@ export default async function ClientSchedule({
         revision: r.revision,
         createdAt: r.createdAt,
         note: r.note,
-        total: computeAdminPlan(r.settings as unknown as AdminPlanInput).finalPrice,
-        author: typeof r.createdBy === 'object' ? r.createdBy.name || r.createdBy.email : 'Staff',
+        total: scheduleTotal(r.settings),
+        author:
+          r.createdBy && typeof r.createdBy === 'object'
+            ? r.createdBy.name || r.createdBy.email
+            : r.createdBy
+              ? 'Staff'
+              : 'Former staff member',
       }))
     }
   }
@@ -144,7 +155,7 @@ export default async function ClientSchedule({
                 Open revision {r.revision}
               </a>
               <p className="mt-1">
-                {formatPlanMoney(r.total)} ·{' '}
+                {r.total} ·{' '}
                 {new Date(r.createdAt).toLocaleString('en-GB', { timeZone: 'Asia/Karachi' })} PKT ·{' '}
                 {r.author}
               </p>

@@ -126,6 +126,14 @@ export async function verifyFinance(page: Page, browser: Browser) {
       .locator('strong')
   await expect(card('Outstanding commission')).toHaveText('Rs. 400,000')
   await expect(page.getByText('Overdue', { exact: true })).toBeVisible()
+  // Ledger tabs default to all dates: last month's unpaid commission must not be hidden.
+  await page.goto('/finance/receivables')
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Finance Scenario A–G' }).filter({ hasText: 'Overdue' }),
+  ).toBeVisible()
+  await page.goto('/finance/deals')
+  await expect(page.getByRole('link', { name: 'Finance Scenario A–G' })).toBeVisible()
+  await page.goto(`/finance/deals/${deal.id}`)
   expect(
     (
       await page.request.post('/api/finance-receipts', {
@@ -215,7 +223,12 @@ export async function verifyFinance(page: Page, browser: Browser) {
     const csv = await page.request.get(`/finance/export?kind=${kind}`)
     expect(csv.ok()).toBeTruthy()
     expect(csv.headers()['cache-control']).toContain('no-store')
-    expect((await csv.text()).length).toBeGreaterThan(0)
+    const bytes = await csv.body()
+    // UTF-8 BOM so Excel shows Urdu names correctly.
+    expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    expect(bytes.length).toBeGreaterThan(3)
+    // Closed at PKT midnight on 10 Sep; a UTC export would show 2026-09-09.
+    if (kind === 'deals') expect(bytes.toString('utf8')).toContain('"2026-09-10"')
   }
   await page.goto('/finance/reports?period=month&month=2026-10')
   await expect(page.getByRole('heading', { name: 'Property profitability' })).toBeVisible()
@@ -390,8 +403,11 @@ export async function verifyFinance(page: Page, browser: Browser) {
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Delete deal', exact: true }).click()
   await expect(page).toHaveURL(/\/finance\/deals\?period=all$/)
+  // Deleting the deal removes its payments but keeps its expense, unlinked, as overhead.
   await page.goto('/finance/expenses?period=all')
-  await expect(page.getByText('Brokerage site visit', { exact: true })).toHaveCount(0)
+  const keptExpense = page.getByRole('row').filter({ hasText: 'Brokerage site visit' })
+  await expect(keptExpense).toContainText('General expense')
+  await expect(keptExpense).not.toContainText('Brokerage buyer')
   expect((await page.request.get(`/api/finance-receipts/${cascadeReceipt.id}`)).status()).toBe(404)
   await anonymous.close()
   await denied.close()

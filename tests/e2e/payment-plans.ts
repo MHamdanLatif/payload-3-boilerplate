@@ -23,6 +23,7 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
           flatLayout: media.docs[0].id,
         },
         { name: 'Type B', type: '2 Bed Lounge', rooms: 3, price: 12000000 },
+        { name: 'Type C', type: '3 Bed Lounge', rooms: 4, price: 15000000, loanAmount: 2000000 },
       ],
       paymentPlan: {
         enabled: true,
@@ -94,6 +95,24 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
       await adminPage.request.post('/api/admin/payment-plan/pdf', { data: { plan: invalid } })
     ).status(),
   ).toBe(400)
+  // A CMS loan is optional, read-only and held outside the scheduled payments.
+  await expect(adminPage.getByRole('switch', { name: 'Include loan' })).toHaveCount(0)
+  adminPage.once('dialog', (dialog) => dialog.accept())
+  await adminPage.getByLabel('Unit', { exact: true }).selectOption(project.unitTypes[2].id)
+  const loanSwitch = adminPage.getByRole('switch', { name: 'Include loan' })
+  await expect(loanSwitch).not.toBeChecked()
+  await expect(adminPage.getByTestId('loan-amount')).toHaveCount(0)
+  await loanSwitch.check()
+  await expect(adminPage.getByTestId('loan-amount')).toHaveText('PKR 2,000,000')
+  await expect(adminPage.getByTestId('final-price')).toHaveText('PKR 15,000,000')
+  await expect(adminPage.getByTestId('remaining')).toHaveText('PKR 0')
+  const loanRequest = adminPage.waitForRequest((r) =>
+    r.url().endsWith('/api/admin/payment-plan/pdf'),
+  )
+  const loanDownload = adminPage.waitForEvent('download')
+  await adminPage.getByRole('button', { name: 'Download complete PDF' }).click()
+  expect((await loanRequest).postDataJSON().plan.includeLoan).toBe(true)
+  expect(await (await loanDownload).failure()).toBeNull()
 
   // CRM schedules persist settings, preserve revisions, and remain private.
   const leadResponse = await adminPage.request.post('/api/leads', {
@@ -132,6 +151,8 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
       )
     ).json()
   ).docs[0]
+  // New schedules use the current quarterly/half-yearly/yearly timing.
+  expect(revision1.settings.cadence).toBe(2)
   await adminPage.getByRole('button', { name: 'Add discount' }).click()
   await adminPage.getByLabel('Discount 1 amount (PKR)').fill('100000')
   await adminPage.getByLabel('Discussion / revision note').fill('Negotiated a discount')
@@ -144,6 +165,14 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
   await adminPage.getByRole('link', { name: 'Open revision 1', exact: true }).click()
   await expect(adminPage.getByTestId('final-price')).toHaveText('PKR 10,000,000')
   await expect(adminPage.getByLabel('Discussion / revision note')).toHaveValue('Initial discussion')
+  // Revision notes are internal and are never sent for a client PDF.
+  const noteRequest = adminPage.waitForRequest((r) =>
+    r.url().endsWith('/api/admin/payment-plan/pdf'),
+  )
+  const noteDownload = adminPage.waitForEvent('download')
+  await adminPage.getByRole('button', { name: 'Download summarized PDF' }).click()
+  expect((await noteRequest).postData()).not.toContain('Initial discussion')
+  expect(await (await noteDownload).failure()).toBeNull()
   const schedule = await (await adminPage.request.get(`/api/lead-schedules/${scheduleId}`)).json()
   const origin = new URL(adminPage.url()).origin
   const stale = await adminPage.request.post(scheduleURL, {
@@ -164,6 +193,48 @@ export async function verifyPaymentPlans(adminPage: Page, publicPage: Page, info
     )
   ).json()
   expect(count.totalDocs).toBe(2)
+  // A forged loan amount is replaced with the CMS unit's loan when saving.
+  const loanPlan = {
+    ...initialAdminPlan(project, project.unitTypes[2].id),
+    includeLoan: true,
+    loanAmount: 1,
+  }
+  const loanSave = await adminPage.request.post(scheduleURL, {
+    headers: { origin },
+    data: {
+      plan: loanPlan,
+      buyer: { name: lead.name, phone: lead.phone },
+      title: 'Type C - with loan',
+      note: '',
+      entryKey: crypto.randomUUID(),
+      expectedRevision: 0,
+    },
+  })
+  expect(loanSave.ok(), await loanSave.text()).toBeTruthy()
+  const loanRevision = (
+    await (
+      await adminPage.request.get(
+        `/api/schedule-revisions?where[schedule][equals]=${(await loanSave.json()).id}&depth=0`,
+      )
+    ).json()
+  ).docs[0]
+  expect(loanRevision.settings.includeLoan).toBe(true)
+  expect(loanRevision.settings.loanAmount).toBe(2000000)
+  expect(
+    (
+      await adminPage.request.post(`/api/crm/leads/999999999/schedules`, {
+        headers: { origin },
+        data: {
+          plan: loanPlan,
+          buyer: { name: lead.name, phone: lead.phone },
+          title: 'Missing client',
+          note: '',
+          entryKey: crypto.randomUUID(),
+          expectedRevision: 0,
+        },
+      })
+    ).status(),
+  ).toBe(404)
   await adminPage.setViewportSize({ width: 390, height: 844 })
   await adminPage.screenshot({ path: info.outputPath('crm-schedule-mobile.png'), fullPage: true })
   expect(

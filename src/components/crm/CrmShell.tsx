@@ -114,10 +114,13 @@ export function CrmShell({ children, canFinance = false }: { children: React.Rea
           {!login && (
             <button
               onClick={async () => {
+                // Best effort: alerts stop on this device even if the server is unreachable,
+                // and the server also drops this session's subscription on logout.
+                await disableCrmNotifications().catch(() => {})
                 try {
-                  await disableCrmNotifications()
                   const result = await fetch('/api/users/logout', { method: 'POST' })
-                  if (!result.ok) throw Error()
+                  // 4xx means the session had already ended, so this device is signed out.
+                  if (result.status >= 500) throw Error()
                   window.location.assign('/leads-dashboard/login')
                 } catch {
                   setHint('Could not sign out. Check your connection and try again.')

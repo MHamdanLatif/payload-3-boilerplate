@@ -10,10 +10,10 @@ import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/
 import { searchFields } from '@/search/fieldOverrides'
 import { beforeSyncWithSearch } from '@/search/beforeSync'
 
-import { FeaturedProject, Page, Post, PropertyListing } from '@/payload-types'
+import { Blog, FeaturedProject, Page, Post } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
 
-type SeoDoc = Post | Page | FeaturedProject | PropertyListing
+type SeoDoc = Post | Page | FeaturedProject | Blog
 
 const generateTitle: GenerateTitle<SeoDoc> = ({ doc }) => {
   return doc?.title ? `${doc.title} | Lateef Properties` : 'Lateef Properties'
@@ -61,7 +61,7 @@ export const plugins: Plugin[] = [
     collections: ['categories'],
   }),
   seoPlugin({
-    collections: ['pages', 'posts', 'featured-projects', 'property-listings', 'blogs'],
+    collections: ['pages', 'posts', 'featured-projects', 'blogs'],
     uploadsCollection: 'media',
     generateTitle,
     generateURL,

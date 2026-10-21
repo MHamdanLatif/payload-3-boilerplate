@@ -20,6 +20,25 @@ async function handle(req: Request) {
       return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 })
   }
   const payload = await getPayload({ config })
+  if (req.method === 'DELETE') {
+    // The endpoint is a per-device secret, so whoever holds it may remove it.
+    // No session is required: sign-out must work even after the session ended.
+    try {
+      const body = await req.json()
+      if (!validPushEndpoint(body?.endpoint)) throw Error('Invalid notification subscription.')
+      await payload.delete({
+        collection: 'push-subscriptions',
+        where: { endpointHash: { equals: endpointHash(body.endpoint) } },
+        overrideAccess: true,
+      })
+      return NextResponse.json({ ok: true })
+    } catch {
+      return NextResponse.json(
+        { error: 'Could not update notifications. Reload the app and try again.' },
+        { status: 400 },
+      )
+    }
+  }
   const { user } = await payload.auth({ headers: req.headers })
   if (!user) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 })
   try {
@@ -59,23 +78,9 @@ async function handle(req: Request) {
     })
     const device = existing.docs[0]
     const owner = typeof device?.owner === 'object' ? device.owner?.id : device?.owner
-    if (device && owner !== user.id)
-      return NextResponse.json(
-        { error: 'Sign out of the previous account on this device before enabling notifications.' },
-        { status: 409 },
-      )
-    if (req.method === 'DELETE') {
-      if (device)
-        await payload.delete({
-          collection: 'push-subscriptions',
-          id: device.id,
-          overrideAccess: true,
-        })
-      return NextResponse.json({ ok: true })
-    }
     if (!crmPushConfigured()) throw Error('Notifications are disabled on the server.')
     if (body.test === true) {
-      if (!device) throw Error('Enable notifications first.')
+      if (!device || owner !== user.id) throw Error('Enable notifications first.')
       const result = await sendCrmPush(
         payload,
         {
@@ -88,7 +93,10 @@ async function handle(req: Request) {
       )
       return NextResponse.json(result, { status: result.ok ? 200 : 503 })
     }
-    const data = { ...parseSubscription(body), owner: user.id }
+    // Enabling takes the device over from a previous account (or none), so the
+    // last person signed in on this phone is the only one who gets its alerts.
+    const sessionId = (user as { _sid?: string })._sid ?? null
+    const data = { ...parseSubscription(body), owner: user.id, sessionId }
     if (device)
       await payload.update({
         collection: 'push-subscriptions',

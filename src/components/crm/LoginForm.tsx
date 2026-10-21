@@ -15,15 +15,25 @@ export function LoginForm() {
           const result = await fetch('/api/users/login', {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              // iPadOS reports a Mac user agent; touch support tells the server it is a tablet.
+              'X-CRM-Touch-Points': String(navigator.maxTouchPoints || 0),
+            },
             body: JSON.stringify(body),
           })
-          if (!result.ok)
+          if (!result.ok) {
+            // 403 carries the phone/tablet limit message from the server.
+            const message =
+              result.status === 403
+                ? (await result.json().catch(() => null))?.errors?.[0]?.message
+                : null
             throw Error(
               result.status === 429
                 ? 'Too many attempts. Please try again shortly.'
-                : 'Check your email and password.',
+                : message || 'Check your email and password.',
             )
+          }
           const next = new URLSearchParams(window.location.search).get('next') || '/leads-dashboard'
           const safe = next === '/leads-dashboard' || /^\/leads-dashboard[/?]/.test(next)
           window.location.assign(safe && !next.includes('\\') ? next : '/leads-dashboard')

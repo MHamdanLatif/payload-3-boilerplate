@@ -10,16 +10,20 @@ export default async function Receivables({
   searchParams: Promise<FinanceParams>
 }) {
   const p = await searchParams,
-    page = pageNumber(p)
+    page = pageNumber(p),
+    // All dates by default: commission that fell due last month and is still unpaid must show.
+    range = period(p, 'all')
   const rows = await financeQuery(
-    sql`SELECT *,count(*) OVER() AS total_count FROM schedules WHERE ${dateWhere('date', period(p))} AND (${param(p, 'status')}='' OR status=${param(p, 'status')}) ORDER BY date,id LIMIT 25 OFFSET ${(page - 1) * 25}`,
+    sql`SELECT *,count(*) OVER() AS total_count FROM schedules WHERE ${dateWhere('date', range)} AND (${param(p, 'status')}='' OR status=${param(p, 'status')}) ORDER BY date,id LIMIT 25 OFFSET ${(page - 1) * 25}`,
   )
   return (
     <>
       <h2>Expected commission</h2>
-      <PeriodFilter params={p} />
+      <PeriodFilter params={p} fallback="all" />
       <form className="finance-filters">
-        <input type="hidden" name="period" value="all" />
+        {['period', 'month', 'from', 'to'].map((k) => (
+          <input key={k} type="hidden" name={k} value={param(p, k)} />
+        ))}
         <label>
           Status
           <select name="status" defaultValue={param(p, 'status')}>
@@ -29,8 +33,9 @@ export default async function Receivables({
             ))}
           </select>
         </label>
-        <button className="finance-button">Filter all dates</button>
+        <button className="finance-button">Filter status</button>
       </form>
+      <p>{range.label}. Overdue payments are listed first.</p>
       <ScheduleTable rows={rows} />
       <Pager params={p} page={page} total={Number(rows[0]?.total_count || 0)} />
       <p>

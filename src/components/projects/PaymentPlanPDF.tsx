@@ -192,6 +192,10 @@ export type PaymentPlanPdfProps = {
   installmentStartMonth?: number
   layoutImage?: string
   summary?: boolean
+  /** False when page numbers are stamped after merging (CRM exports with layouts). */
+  pageNumbers?: boolean
+  /** CRM schedules: the loan is payable when demanded, outside the scheduled payments. */
+  loanOnDemand?: boolean
 }
 
 export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
@@ -213,6 +217,7 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
     scheduleLabel,
   } = props
 
+  const onDemandLoan = Boolean(props.loanOnDemand && loanIncluded && loanAmount > 0)
   // Active frequencies summary for the title-block facts row.
   const freqSummary =
     plan.cadence.activeFrequencies
@@ -249,7 +254,13 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
           <View style={styles.factsRow}>
             <View style={styles.fact}>
               <Text style={styles.factLabel}>TOTAL PRICE</Text>
-              <Text style={styles.factValue}>{formatPkr(plan.totals.effectivePrice)}</Text>
+              <Text style={styles.factValue}>
+                {formatPkr(
+                  onDemandLoan
+                    ? Math.round((plan.totals.effectivePrice + loanAmount) * 100) / 100
+                    : plan.totals.effectivePrice,
+                )}
+              </Text>
             </View>
             <View style={styles.fact}>
               <Text style={styles.factLabel}>
@@ -292,7 +303,13 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         )}
 
         {/* ── Loan note (conditional) ──────────────────────── */}
-        {loanIncluded && loanAmount > 0 ? (
+        {onDemandLoan ? (
+          <View style={styles.loanNote}>
+            <Text style={styles.loanNoteText}>
+              Loan amount: {formatPkr(loanAmount)} – payable when demanded by the company.
+            </Text>
+          </View>
+        ) : loanIncluded && loanAmount > 0 ? (
           <View style={styles.loanNote}>
             <Text style={styles.loanNoteText}>
               Expected Loan Component: {formatPkr(loanAmount)} — Payable after completion of grey
@@ -341,7 +358,9 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
             </View>
           ))}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>
+              {onDemandLoan ? 'Total scheduled payments (excluding loan)' : 'Total'}
+            </Text>
             <Text style={styles.totalAmount}>{formatPkr(plan.totals.effectivePrice)}</Text>
             <Text style={styles.totalPct}>100%</Text>
           </View>
@@ -366,11 +385,13 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
         {/* ── Footer ───────────────────────────────────────── */}
         <View style={styles.footer} fixed>
           <Text>Lateef Properties · Karachi · WhatsApp 03363528333</Text>
-          <Text
-            render={({ pageNumber, totalPages }) =>
-              `lateefproperties.com | ${pageNumber} / ${totalPages}`
-            }
-          />
+          {props.pageNumbers !== false && (
+            <Text
+              render={({ pageNumber, totalPages }) =>
+                `lateefproperties.com | ${pageNumber} / ${totalPages}`
+              }
+            />
+          )}
         </View>
       </Page>
       {props.layoutImage && (
@@ -383,9 +404,7 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
           <View style={styles.titleBlock}>
             <Text style={styles.eyebrow}>UNIT LAYOUT</Text>
             <Text style={styles.title}>{selectedUnitType}</Text>
-            <Text style={styles.subtitle}>
-              {projectTitle} | Prepared for {buyer.name || 'Client'}
-            </Text>
+            <Text style={styles.subtitle}>{projectTitle}</Text>
           </View>
           <Image
             src={props.layoutImage}
@@ -393,7 +412,9 @@ export function PaymentPlanDocument(props: PaymentPlanPdfProps) {
           />
           <View style={styles.footer} fixed>
             <Text>Lateef Properties | WhatsApp 03363528333</Text>
-            <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+            {props.pageNumbers !== false && (
+              <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+            )}
           </View>
         </Page>
       )}

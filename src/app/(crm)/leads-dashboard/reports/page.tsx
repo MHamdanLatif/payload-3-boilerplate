@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
-import type { Where } from 'payload'
 import config from '@payload-config'
 import type { Lead } from '@/payload-types'
 import { fmtDuration } from '@/lib/engagement'
 import { LEAD_STATUSES, atLeast, statusLabel } from '@/lib/lead-status'
+import { brochureOpenTotals, leadReportWhere, reportRange } from '@/lib/lead-report'
 
 export const metadata: Metadata = {
   title: 'Leads Dashboard | Lateef Properties',
@@ -37,52 +37,48 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   if (!user) redirect('/leads-dashboard/login?next=/leads-dashboard/reports')
 
   const sp = await searchParams
-  const and: Where[] = []
-  if (sp.from)
-    and.push({
-      createdAt: { greater_than_equal: new Date(`${sp.from}T00:00:00+05:00`).toISOString() },
-    })
-  if (sp.to) {
-    const to = new Date(`${sp.to}T23:59:59.999+05:00`)
-    and.push({ createdAt: { less_than_equal: to.toISOString() } })
-  }
-  if (sp.status && (STATUSES as readonly string[]).includes(sp.status)) {
-    and.push({ status: { equals: sp.status } })
-  }
-  const where: Where = and.length ? { and } : {}
+  // Invalid dates (?from=abc, 2026-02-30) are ignored and the normal unbounded range is used.
+  const range = reportRange(sp.from, sp.to)
+  const status =
+    sp.status && (STATUSES as readonly string[]).includes(sp.status) ? sp.status : undefined
 
-  const [leadsRes, opensRes] = await Promise.all([
+  // Every lead in range (no row cap), trimmed to the fields this page reads, so
+  // the funnel counts stay exact however many leads a range holds.
+  const [leadsRes, totals] = await Promise.all([
     payload.find({
       collection: 'leads',
-      where,
+      where: leadReportWhere(range, status),
       depth: 0,
-      limit: 1000,
+      limit: 0,
       pagination: false,
       sort: '-createdAt',
+      select: {
+        name: true,
+        phone: true,
+        status: true,
+        brochureId: true,
+        followUpAt: true,
+        followUpSentAt: true,
+        createdAt: true,
+        source: true,
+        acquisitionSource: true,
+        sourceKind: true,
+        metaAdName: true,
+        conversionSurface: true,
+        sourceName: true,
+        brochureHeadline: true,
+      },
     }),
-    payload.find({
-      collection: 'link-opens',
-      where: { asset: { equals: 'page' } },
-      depth: 0,
-      limit: 5000,
-      pagination: false,
-    }),
+    // opens + total time on page per brochureId, counted in SQL. Dwell is summed
+    // across visits, so the column answers "how long has this lead spent with the
+    // brochure", not "how long was one sitting". Opens with no beacon (bounced
+    // instantly, or the browser killed the page before the first heartbeat) contribute 0.
+    brochureOpenTotals(payload, range, status),
   ])
   let leads = leadsRes.docs as Lead[]
   if (sp.source) leads = leads.filter((l) => sourceOf(l) === sp.source)
 
-  // opens + total time on page per brochureId. Dwell is summed across visits,
-  // so the column answers "how long has this lead spent with the brochure", not
-  // "how long was one sitting". Opens with no beacon (bounced instantly, or the
-  // browser killed the page before the first heartbeat) contribute 0.
-  const opensByBrochure = new Map<string, number>()
-  const dwellByBrochure = new Map<string, number>()
-  for (const o of opensRes.docs as { brochureId?: string | null; dwellMs?: number | null }[]) {
-    if (!o.brochureId) continue
-    opensByBrochure.set(o.brochureId, (opensByBrochure.get(o.brochureId) ?? 0) + 1)
-    if (o.dwellMs)
-      dwellByBrochure.set(o.brochureId, (dwellByBrochure.get(o.brochureId) ?? 0) + o.dwellMs)
-  }
+  const { opens: opensByBrochure, dwell: dwellByBrochure } = totals
   const openedLeads = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId))
   const openedCount = openedLeads.length
 
@@ -119,7 +115,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   const allSources = [...new Set((leadsRes.docs as Lead[]).map(sourceOf))].sort()
 
   const exportQuery = new URLSearchParams(
-    Object.entries({ from: sp.from, to: sp.to, status: sp.status, source: sp.source }).filter(
+    Object.entries({ from: range.from, to: range.to, status, source: sp.source }).filter(
       (e): e is [string, string] => Boolean(e[1]),
     ),
   ).toString()

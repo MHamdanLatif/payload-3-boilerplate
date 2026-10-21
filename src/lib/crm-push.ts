@@ -82,7 +82,7 @@ export async function sendCrmPush(
   message: CrmPushMessage,
   only?: { owner: number; endpointHash: string },
   delivery?: { id: number; exclude: string[]; receipt: (hash: string) => string },
-): Promise<{ ok: boolean; status: string; pendingDevices?: number }> {
+): Promise<{ ok: boolean; status: string; pendingDevices?: number; attempted?: string[] }> {
   if (!crmPushConfigured()) return { ok: false, status: 'Notifications disabled' }
   try {
     const where: Where | undefined = only
@@ -106,7 +106,7 @@ export async function sendCrmPush(
         !delivery?.exclude.includes(endpointHash(device.endpoint)),
     )
     if (delivery && targets.length === 0 && delivery.exclude.length > 0)
-      return { ok: true, status: 'Display confirmed', pendingDevices: 0 }
+      return { ok: true, status: 'Display confirmed', pendingDevices: 0, attempted: [] }
     const keys = await getPushKeys(payload)
     const body = {
       title: message.title.slice(0, 100),
@@ -143,7 +143,9 @@ export async function sendCrmPush(
               return
             } catch (error) {
               const code = (error as { statusCode?: number }).statusCode
-              if (code === 404 || code === 410) {
+              // The push service permanently rejected this subscription (revoked,
+              // expired or created for another key). 400 and 5xx are not proof.
+              if (code === 401 || code === 403 || code === 404 || code === 410) {
                 await payload.delete({
                   collection: 'push-subscriptions',
                   id: device.id,
@@ -162,6 +164,7 @@ export async function sendCrmPush(
     return {
       ok: sent > 0,
       pendingDevices: targets.length,
+      attempted: targets.map((device) => endpointHash(device.endpoint)),
       status: sent
         ? `Accepted by push service for ${sent}/${subscriptions.docs.length} devices`
         : 'Push service rejected delivery; enable notifications again',

@@ -260,6 +260,7 @@ export async function POST(req: Request) {
       : null
   const disclaimer = composeDisclaimer(planConfig?.planDisclaimer)
   const generatedAt = new Date().toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Karachi',
     day: '2-digit',
     month: 'long',
     year: 'numeric',

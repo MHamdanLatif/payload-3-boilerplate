@@ -1,6 +1,7 @@
 import type { CollectionBeforeChangeHook, Payload } from 'payload'
 import type { Blog } from '@/payload-types'
 import { findEntityByLocationSlug } from '@/lib/project-mapper'
+import { isProjectAvailable } from '@/lib/project-visibility'
 
 /**
  * Idempotent publish-time link injector. Triggers on every save where
@@ -76,7 +77,8 @@ async function resolveUrl(payload: Payload, link: LinkSpec): Promise<string | nu
         id,
         depth: 0,
       })
-      return proj?.slug ? `/projects/${proj.slug}` : null
+      // Sold-out/withdrawn projects redirect to /properties; never add new links to them.
+      return proj?.slug && isProjectAvailable(proj) ? `/projects/${proj.slug}` : null
     } catch {
       return null
     }

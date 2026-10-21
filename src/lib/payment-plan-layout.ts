@@ -1,5 +1,5 @@
 import sharp from 'sharp'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import type { Media } from '@/payload-types'
 
 /** Use the CMS asset reference, never an arbitrary URL supplied in a plan request. */
@@ -24,12 +24,31 @@ export async function loadUnitLayout(media: Media | number | null | undefined, s
   return { image: `data:image/png;base64,${png.toString('base64')}`, pdf: undefined }
 }
 
-export async function appendLayoutPDF(schedule: Buffer, layout?: Buffer): Promise<Uint8Array> {
-  if (!layout) return new Uint8Array(schedule)
+/**
+ * Appends an uploaded PDF layout intact, then numbers every page of the merged file.
+ * Render the schedule with `pageNumbers: false`; react-pdf cannot count appended pages.
+ */
+export async function finishSchedulePDF(schedule: Buffer, layout?: Buffer): Promise<Uint8Array> {
   const document = await PDFDocument.load(schedule)
-  const attachment = await PDFDocument.load(layout)
-  if (attachment.getPageCount() > 20) throw new Error('Unit layout must contain at most 20 pages.')
-  const pages = await document.copyPages(attachment, attachment.getPageIndices())
-  pages.forEach((page) => document.addPage(page))
+  if (layout) {
+    const attachment = await PDFDocument.load(layout)
+    if (attachment.getPageCount() > 20)
+      throw new Error('Unit layout must contain at most 20 pages.')
+    const pages = await document.copyPages(attachment, attachment.getPageIndices())
+    pages.forEach((page) => document.addPage(page))
+  }
+  const font = await document.embedFont(StandardFonts.Helvetica)
+  const pages = document.getPages()
+  pages.forEach((page, i) => {
+    const text = `lateefproperties.com | ${i + 1} / ${pages.length}`
+    // Matches the react-pdf footer: 7pt, 36pt from the right edge, 16pt from the bottom.
+    page.drawText(text, {
+      x: page.getWidth() - 36 - font.widthOfTextAtSize(text, 7),
+      y: 18,
+      size: 7,
+      font,
+      color: rgb(0x5c / 255, 0x62 / 255, 0x71 / 255),
+    })
+  })
   return document.save()
 }

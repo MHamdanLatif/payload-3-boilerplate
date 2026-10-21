@@ -40,6 +40,8 @@ export const ScheduleRevisions: CollectionConfig = {
     { name: 'buyerName', type: 'text', required: true, maxLength: 120 },
     { name: 'buyerPhone', type: 'text', required: true, maxLength: 60 },
     { name: 'note', type: 'textarea', maxLength: 1000 },
-    { name: 'createdBy', type: 'relationship', relationTo: 'users', required: true },
+    // Optional so a revision outlives the staff account that saved it; the
+    // CRM always sets it and shows "Former staff member" once it is cleared.
+    { name: 'createdBy', type: 'relationship', relationTo: 'users' },
   ],
 }

@@ -31,9 +31,11 @@ export const positiveID = (value: string) =>
     ? Number(value)
     : 0
 export const pageNumber = (p: FinanceParams) => Math.min(1000000, positiveID(param(p, 'page')) || 1)
-export function period(p: FinanceParams) {
+// Ledger tabs (Deals, Receivables) default to all dates so overdue money from earlier
+// months is never hidden; summary pages default to the current month.
+export function period(p: FinanceParams, fallback: 'current' | 'all' = 'current') {
   const now = new Date(Date.now() + 5 * 3600000)
-  const mode = param(p, 'period') || 'current'
+  const mode = param(p, 'period') || fallback
   let start = '',
     end = ''
   const valid = (s: string) =>
@@ -80,3 +82,17 @@ export const displayDate = (d: unknown) =>
       })
     : '—'
 export const todayPKT = () => new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10)
+// Pakistan has no daylight saving, so a fixed +05:00 shift is exact.
+const pktISO = (value: unknown) => {
+  const d = value instanceof Date ? value : new Date(String(value))
+  return Number.isNaN(d.getTime()) ? '' : new Date(d.getTime() + 5 * 3600000).toISOString()
+}
+export const pktDate = (value: unknown) => pktISO(value).slice(0, 10)
+export const pktDateTime = (value: unknown) => pktISO(value).slice(0, 16).replace('T', ' ')
+/** CSV value for an exported column: date fields as PKT YYYY-MM-DD, *_at timestamps as PKT YYYY-MM-DD HH:mm. */
+export function exportValue(column: string, value: unknown) {
+  if (value == null || value === '') return value
+  if (/_at$/.test(column)) return pktDateTime(value)
+  if (/(^|_)date($|_)/.test(column)) return pktDate(value)
+  return value instanceof Date ? pktDateTime(value) : value
+}

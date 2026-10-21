@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { isProjectAvailable } from '@/lib/project-visibility'
 import type { FeaturedProject } from '@/payload-types'
-import { notFound } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
@@ -80,7 +80,8 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
   const { slug } = await params
   const payload = await getPayload({ config })
   const blog = await fetchBlogBySlug(payload, slug)
-  if (!blog) notFound()
+  // Unpublished, deleted and unknown articles forward to the live directory.
+  if (!blog) permanentRedirect('/properties')
 
   const base = getServerSideURL().replace(/\/$/, '')
   const canonical = `${base}/blog/${blog.slug}`

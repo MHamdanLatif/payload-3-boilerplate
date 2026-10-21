@@ -1,9 +1,13 @@
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from 'payload'
+
+/** Cached footer category data (src/Footer/projectCategories.ts). */
+export const FOOTER_PROJECT_CATEGORIES_TAG = 'footer_project_categories'
 
 function refresh(prefix: string, slugs: unknown[]) {
   // Local API scripts have no Next cache. Their next build reads fresh data.
   if (!process.env.NEXT_RUNTIME) return
+  revalidateTag(FOOTER_PROJECT_CATEGORIES_TAG, 'max')
   // The layout invalidation includes project cards embedded in blogs and area pages.
   revalidatePath('/', 'layout')
   revalidatePath('/sitemap.xml')

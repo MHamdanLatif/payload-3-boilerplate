@@ -28,10 +28,20 @@ export type AdminPlanInput = {
   charges: Charge[]
   discounts: Discount[]
   heads: AdminHead[]
+  /** Installment timing version; absent on schedules saved before 2026-10 (see scheduledHeads). */
+  cadence?: typeof CURRENT_CADENCE
+  /** Staff choice only. Servers replace loanAmount with the CMS unit's value (withUnitLoan). */
+  includeLoan?: boolean
+  loanAmount?: number
 }
 export type AdminPlanResult = {
   plan: PlanResult
+  /** Final payable price, including any loan. */
   finalPrice: number
+  /** Loan payable when demanded by the company; zero without a loan. */
+  loanAmount: number
+  /** Final payable price minus the loan: what the schedule allocates. */
+  scheduledPrice: number
   regularPrice: number
   allocated: number
   remaining: number
@@ -49,22 +59,50 @@ const textOK = (s: unknown): s is string =>
 const monthOK = (n: unknown): n is number =>
   Number.isInteger(n) && Number(n) >= 0 && Number(n) <= 240
 
-/** The duration is an installment window, independent of signing and possession. */
+export const CURRENT_CADENCE = 2
+
+/**
+ * The duration is an installment window, independent of signing and possession.
+ * Cadence 2: quarterly, half-yearly and yearly payments fall due at the end of each
+ * 3/6/12-month period of that window (start 3, 60 months: quarterly 5, 8 … 62).
+ * Settings saved without the marker keep the original timing, so sent schedules never change.
+ */
 export function scheduledHeads(input: AdminPlanInput): AdminHead[] {
   if (input.installmentStartMonth === undefined) return input.heads
   const start = input.installmentStartMonth
+  const current = input.cadence === CURRENT_CADENCE
   return input.heads.map((h) =>
     h.kind !== 'installment'
       ? h
-      : {
-          ...h,
-          firstMonth: start + (h.intervalMonths === 1 ? 0 : h.intervalMonths),
-          count:
-            h.intervalMonths === 1
-              ? input.duration
-              : Math.floor((input.duration - 1) / h.intervalMonths),
-        },
+      : h.intervalMonths === 1
+        ? { ...h, firstMonth: start, count: input.duration }
+        : current
+          ? {
+              ...h,
+              firstMonth: start + h.intervalMonths - 1,
+              count: Math.floor(input.duration / h.intervalMonths),
+            }
+          : {
+              ...h,
+              firstMonth: start + h.intervalMonths,
+              count: Math.floor((input.duration - 1) / h.intervalMonths),
+            },
   )
+}
+
+/** The Studio saves new schedules and new revisions with the current timing. */
+export const withCurrentCadence = (input: AdminPlanInput): AdminPlanInput =>
+  input.cadence === CURRENT_CADENCE ? input : { ...input, cadence: CURRENT_CADENCE }
+
+/** The loan is fixed per unit in the CMS; an amount sent with the plan is never trusted. */
+export function withUnitLoan(
+  input: AdminPlanInput,
+  unitLoanAmount: number | null | undefined,
+): AdminPlanInput {
+  const plan = { ...input }
+  delete plan.loanAmount
+  if (plan.includeLoan) plan.loanAmount = unitLoanAmount ?? 0
+  return plan
 }
 
 /** Shared by the browser and authenticated export. Never trust client totals. */
@@ -83,6 +121,13 @@ export function validateAdminPlan(value: unknown): string[] {
     (!monthOK(p.installmentStartMonth) || p.installmentStartMonth > 120)
   )
     errors.push('Installment start must be between 0 and 120 whole months after signing.')
+  if (p.cadence !== undefined && p.cadence !== CURRENT_CADENCE)
+    errors.push('Unknown installment timing. Reload the studio.')
+  if (
+    (p.includeLoan !== undefined && typeof p.includeLoan !== 'boolean') ||
+    (p.loanAmount !== undefined && !amountOK(p.loanAmount))
+  )
+    errors.push('Check the loan setting.')
   if (
     !Array.isArray(p.charges) ||
     p.charges.length > 50 ||
@@ -154,14 +199,21 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
   const extra = input.charges.reduce((s, c) => s + cents(c.amount), 0)
   const discount = input.discounts.reduce((s, d) => s + cents(d.amount), 0)
   const final = cents(input.basePrice) + extra - discount
+  const loan = input.includeLoan ? cents(input.loanAmount ?? 0) : 0
+  // The loan is paid when the company demands it; the schedule allocates the rest.
+  const scheduled = final - loan
   const separate = input.charges.filter((c) => c.separate).reduce((s, c) => s + cents(c.amount), 0)
-  const regular = final - separate
+  const regular = scheduled - separate
   const entered = heads
     .filter((h) => h.method === 'entered')
     .reduce((s, h) => s + cents(h.amount) * h.count, 0)
   const autoCount = heads.filter((h) => h.method === 'calculated').reduce((s, h) => s + h.count, 0)
   const available = regular - entered
   const warnings: string[] = []
+  if (input.includeLoan && loan <= 0)
+    warnings.push('This unit has no loan amount in the CMS. Turn off Include loan.')
+  if (loan > 0 && scheduled <= 0)
+    warnings.push('The loan must leave an amount to schedule. Check the price and discounts.')
   if (final <= 0 || regular < 0 || final > 1e12 * 100)
     warnings.push(
       'Discounts must leave a positive total and a non-negative regular schedule price.',
@@ -229,9 +281,9 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
   rows.forEach((r) => {
     running += cents(r.amount)
     r.cumulativeAmount = running / 100
-    r.cumulativePct = final > 0 ? Math.round((running / final) * 10000) / 100 : 0
+    r.cumulativePct = scheduled > 0 ? Math.round((running / scheduled) * 10000) / 100 : 0
   })
-  const remaining = (final - running) / 100
+  const remaining = (scheduled - running) / 100
   if (Math.abs(remaining) > 0.005)
     warnings.push(
       `Allocate the remaining PKR ${remaining.toLocaleString('en-PK')} before exporting.`,
@@ -243,8 +295,8 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
     warnings,
     totals: {
       unitPrice: input.basePrice,
-      effectivePrice: final / 100,
-      loanAmount: 0,
+      effectivePrice: scheduled / 100,
+      loanAmount: loan / 100,
       downPayment: sum('down-payment'),
       installmentTotal: sum('installment-'),
       milestoneTotal: sum('milestone'),
@@ -267,6 +319,8 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
   return {
     plan,
     finalPrice: final / 100,
+    loanAmount: loan / 100,
+    scheduledPrice: scheduled / 100,
     regularPrice: regular / 100,
     allocated: running / 100,
     remaining,
@@ -277,7 +331,13 @@ export function computeAdminPlan(input: AdminPlanInput): AdminPlanResult {
         amount: c.amount,
       })),
       ...input.discounts.map((d) => ({ label: d.name, amount: -d.amount })),
-      { label: 'Final payable price', amount: final / 100 },
+      ...(loan > 0
+        ? [
+            { label: 'Final payable price (including loan)', amount: final / 100 },
+            { label: 'Loan amount (payable when demanded by the company)', amount: -loan / 100 },
+            { label: 'Scheduled payments', amount: scheduled / 100 },
+          ]
+        : [{ label: 'Final payable price', amount: final / 100 }]),
     ],
   }
 }
@@ -359,6 +419,7 @@ export function initialAdminPlan(project: StudioProject, unitId: string): AdminP
     basePrice: config?.priceOverride ?? unit.price,
     duration,
     installmentStartMonth: 1,
+    cadence: CURRENT_CADENCE,
     charges: [],
     discounts: [],
     heads: result,
@@ -392,6 +453,8 @@ export function summarizeAdminPlan(plan: PlanResult): PlanResult {
       amount: payments.reduce((sum, r) => sum + cents(r.amount), 0) / 100,
     })
   }
+  // Grouped rows sit at their first payment; order by start so dates and cumulative read in order.
+  rows.sort((a, b) => a.monthOffset - b.monthOffset)
   let total = 0
   rows.forEach((r) => {
     total += cents(r.amount)

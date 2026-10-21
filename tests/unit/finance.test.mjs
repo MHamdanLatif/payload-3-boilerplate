@@ -96,3 +96,81 @@ test('transaction edits cannot rewrite posted financial identity or restore a vo
     /cannot be restored/,
   )
 })
+const { exportValue } = load('src/lib/finance-query.ts', {
+  '@payloadcms/db-postgres': { sql: () => '' },
+})
+test('ledger tabs can default to all dates while summary pages keep the current month', () => {
+  assert.equal(period({}, 'all').start, '')
+  assert.equal(period({ period: '' }, 'all').label, 'All time')
+  assert.notEqual(period({}).start, '')
+  assert.equal(period({ period: 'month', month: '2026-09' }, 'all').start, '2026-09-01')
+})
+test('exports write dates and timestamps in Pakistan time', () => {
+  // PKT midnight is 19:00 UTC the previous day; it must still export as the PKT date.
+  assert.equal(exportValue('date', new Date('2026-10-04T19:00:00Z')), '2026-10-05')
+  assert.equal(exportValue('date_closed', '2026-10-04T19:00:00.000Z'), '2026-10-05')
+  assert.equal(exportValue('expected_payment_date', new Date('2026-12-31T19:00:00Z')), '2027-01-01')
+  assert.equal(exportValue('created_at', new Date('2026-10-04T20:30:00Z')), '2026-10-05 01:30')
+  assert.equal(exportValue('updated_at', null), null)
+  assert.equal(exportValue('amount', '1500'), '1500')
+  assert.equal(exportValue('client_name', 'Ali'), 'Ali')
+})
+test('deleting a deal keeps its expenses, unlinked with the project kept, and deletes receipts', async () => {
+  const { FinanceDeals } = load('src/collections/Finance.ts', {
+    '@/access/finance': access,
+    payload: { APIError: class extends Error {} },
+  })
+  const calls = []
+  const req = {
+    context: { original: true },
+    payload: {
+      findByID: async () => ({ id: 7, clientName: 'Ali', project: { id: 3, title: 'Tulip' } }),
+      find: async () => ({ docs: [{ id: 11, notes: 'Paid cash' }, { id: 12 }] }),
+      update: async (args) => calls.push(['update', args]),
+      delete: async (args) => (calls.push(['delete', args.collection]), { errors: [] }),
+    },
+  }
+  await FinanceDeals.hooks.beforeDelete[0]({ id: 7, req })
+  const updates = calls.filter((c) => c[0] === 'update').map((c) => c[1])
+  assert.deepEqual(
+    updates.map((u) => [u.id, u.data.deal, u.data.project, u.req, u.context.unlinkDeletedDeal]),
+    [
+      [11, null, 3, req, true],
+      [12, null, 3, req, true],
+    ],
+  )
+  assert.equal(updates[0].data.notes, 'Paid cash\nLinked deal deleted: Ali · Tulip.')
+  assert.deepEqual(
+    calls.filter((c) => c[0] === 'delete').map((c) => c[1]),
+    ['finance-receipts', 'finance-receivables'],
+  )
+  assert.deepEqual(req.context, { original: true }, 'shared request context is restored')
+  req.payload.delete = async () => ({ errors: [{ message: 'denied' }] })
+  await assert.rejects(() => FinanceDeals.hooks.beforeDelete[0]({ id: 7, req }), /Nothing was deleted/)
+})
+test('only the deal-delete hook may detach an expense from its deal', async () => {
+  const hook = FinanceExpenses.hooks.beforeChange[0]
+  const args = {
+    operation: 'update',
+    originalDoc: { id: 1, amount: 100, deal: 7, project: 9, createdBy: 2, entryKey: 'k' },
+    collection: { slug: 'finance-expenses' },
+    req: { user: { id: 3 }, payload: { findByID: async () => ({ id: 8 }) } },
+  }
+  await assert.rejects(() => hook({ ...args, data: { deal: null, project: 3 } }), /Posted (project|deal)/)
+  await assert.rejects(
+    () => hook({ ...args, context: { unlinkDeletedDeal: true }, data: { deal: 8 } }),
+    /Posted deal/,
+  )
+  await assert.rejects(
+    () =>
+      hook({ ...args, context: { unlinkDeletedDeal: true }, data: { deal: null, amount: 5 } }),
+    /Posted amount/,
+  )
+  const data = await hook({
+    ...args,
+    context: { unlinkDeletedDeal: true },
+    data: { deal: null, project: 3 },
+  })
+  assert.equal(data.deal, null)
+  assert.equal(data.project, 3)
+})

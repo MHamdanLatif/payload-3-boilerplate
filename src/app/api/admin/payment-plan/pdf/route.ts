@@ -6,9 +6,10 @@ import {
   computeAdminPlan,
   summarizeAdminPlan,
   validateAdminPlan,
+  withUnitLoan,
   type AdminPlanInput,
 } from '@/lib/admin-payment-plan'
-import { loadUnitLayout, appendLayoutPDF } from '@/lib/payment-plan-layout'
+import { loadUnitLayout, finishSchedulePDF } from '@/lib/payment-plan-layout'
 import { PaymentPlanDocument, composeDisclaimer } from '@/components/projects/PaymentPlanPDF'
 import { getServerSideURL } from '@/utilities/getURL'
 import type { Media } from '@/payload-types'
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     plan?: AdminPlanInput
     buyer?: { name?: string; phone?: string }
     format?: 'full' | 'summary'
+    savedRevision?: { scheduleId?: number; revision?: number }
   }
   try {
     const text = await req.text()
@@ -33,26 +35,63 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 })
   }
+  // An unedited saved revision exports from its stored settings, exactly as it was sent
+  // (including its stored loan amount). Only unsaved Studio plans take the CMS loan below.
+  const saved = body?.savedRevision
+  if (saved !== undefined) {
+    if (
+      !saved ||
+      typeof saved !== 'object' ||
+      !Number.isSafeInteger(saved.scheduleId) ||
+      !Number.isSafeInteger(saved.revision)
+    )
+      return NextResponse.json({ error: 'Invalid saved revision.' }, { status: 400 })
+    const stored = (
+      await payload
+        .find({
+          collection: 'schedule-revisions',
+          where: {
+            and: [
+              { schedule: { equals: saved.scheduleId } },
+              { revision: { equals: saved.revision } },
+            ],
+          },
+          limit: 1,
+          depth: 0,
+          user,
+          overrideAccess: false,
+        })
+        .catch(() => null)
+    )?.docs[0]
+    if (!stored)
+      return NextResponse.json(
+        { error: 'This saved revision no longer exists. Reload the schedule.' },
+        { status: 404 },
+      )
+    body.plan = stored.settings as unknown as AdminPlanInput
+  }
   const errors = validateAdminPlan(body?.plan)
   if (errors.length) return NextResponse.json({ error: errors.join(' ') }, { status: 400 })
-  const input = body.plan!
   if (body.format !== undefined && !['full', 'summary'].includes(body.format))
     return NextResponse.json({ error: 'Choose a full or summarized PDF.' }, { status: 400 })
   const project = await payload
     .findByID({
       collection: 'featured-projects',
-      id: input.projectId,
+      id: body.plan!.projectId,
       user,
       overrideAccess: false,
       depth: 1,
     })
     .catch(() => null)
-  const unit = project?.unitTypes?.find((u) => u.id === input.unitId)
+  const unit = project?.unitTypes?.find((u) => u.id === body.plan!.unitId)
   if (!project || !unit)
     return NextResponse.json(
       { error: 'Project or unit no longer exists. Reload the studio.' },
       { status: 404 },
     )
+  const input = saved ? body.plan! : withUnitLoan(body.plan!, unit.loanAmount)
+  const loanErrors = validateAdminPlan(input)
+  if (loanErrors.length) return NextResponse.json({ error: loanErrors.join(' ') }, { status: 400 })
   const result = computeAdminPlan(input)
   if (result.plan.warnings.length)
     return NextResponse.json({ error: result.plan.warnings.join(' ') }, { status: 400 })
@@ -84,17 +123,19 @@ export async function POST(req: Request) {
         summary: body.format === 'summary',
         installmentStartMonth: input.installmentStartMonth,
         layoutImage: layout?.image,
-        loanIncluded: false,
-        loanAmount: 0,
+        pageNumbers: false,
+        loanIncluded: result.loanAmount > 0,
+        loanAmount: result.loanAmount,
+        loanOnDemand: true,
         lateefLogoUrl: `${serverURL}/brand/lateef-logo.png`,
         projectLogoUrl,
         disclaimer: composeDisclaimer(project.paymentPlan?.planDisclaimer),
-        generatedAt: new Date().toLocaleDateString('en-GB'),
+        generatedAt: new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi' }),
         priceBreakdown: result.breakdown,
         scheduleLabel: 'Custom schedule',
       }),
     )
-    return new Response(await appendLayoutPDF(buffer, layout?.pdf), {
+    return new Response(await finishSchedulePDF(buffer, layout?.pdf), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="Lateef-${body.format === 'summary' ? 'Summary' : 'Complete'}-PaymentPlan.pdf"`,

@@ -2,8 +2,43 @@ import { NextResponse } from 'next/server'
 import { isDeepStrictEqual } from 'node:util'
 import { createLocalReq, getPayload } from 'payload'
 import config from '@payload-config'
-import { computeAdminPlan, validateAdminPlan, type AdminPlanInput } from '@/lib/admin-payment-plan'
+import {
+  computeAdminPlan,
+  validateAdminPlan,
+  withUnitLoan,
+  type AdminPlanInput,
+} from '@/lib/admin-payment-plan'
 import { getServerSideURL } from '@/utilities/getURL'
+
+/** Messages written for staff; anything else is logged and replaced with a generic reply. */
+class ScheduleError extends Error {
+  constructor(
+    message: string,
+    readonly status = 400,
+  ) {
+    super(message)
+  }
+}
+
+const STALE = 'Someone saved a newer version of this schedule – reload to see it.'
+
+/** Unique revisionKey/entryKey rejects a concurrent save from the same starting revision. */
+function isUniqueViolation(error: unknown) {
+  const e = error as {
+    code?: string
+    cause?: { code?: string }
+    data?: { errors?: { path?: string }[] }
+  } | null
+  return (
+    e?.code === '23505' ||
+    e?.cause?.code === '23505' ||
+    Boolean(
+      e?.data?.errors?.some((x) =>
+        ['revisionKey', 'revision_key', 'entryKey', 'entry_key'].includes(x?.path ?? ''),
+      ),
+    )
+  )
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const payload = await getPayload({ config })
@@ -21,12 +56,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const text = await req.text()
     if (text.length > 200_000)
       return NextResponse.json({ error: 'Schedule is too large.' }, { status: 413 })
-    const body = JSON.parse(text)
+    const body = (() => {
+      try {
+        return JSON.parse(text)
+      } catch {
+        throw new ScheduleError('Invalid JSON.')
+      }
+    })()
     const errors = validateAdminPlan(body?.plan)
-    if (errors.length) throw new Error(errors.join(' '))
-    const plan = body.plan as AdminPlanInput
-    const computed = computeAdminPlan(plan)
-    if (computed.plan.warnings.length) throw new Error(computed.plan.warnings.join(' '))
+    if (errors.length) throw new ScheduleError(errors.join(' '))
     if (
       typeof body.title !== 'string' ||
       !body.title.trim() ||
@@ -44,24 +82,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       !Number.isSafeInteger(body.expectedRevision) ||
       body.expectedRevision < 0
     )
-      throw new Error('Check the schedule name and client details.')
+      throw new ScheduleError('Check the schedule name and client details.')
     const { id } = await params
-    const lead = await payload.findByID({
-      collection: 'leads',
-      id,
-      depth: 0,
-      overrideAccess: false,
-      user,
-    })
-    const project = await payload.findByID({
-      collection: 'featured-projects',
-      id: plan.projectId,
-      depth: 0,
-      overrideAccess: false,
-      user,
-    })
-    if (!project.unitTypes?.some((u) => u.id === plan.unitId))
-      throw new Error('The selected unit no longer exists.')
+    const lead = await payload
+      .findByID({ collection: 'leads', id, depth: 0, overrideAccess: false, user })
+      .catch(() => null)
+    if (!lead) throw new ScheduleError('This client no longer exists.', 404)
+    const project = await payload
+      .findByID({
+        collection: 'featured-projects',
+        id: (body.plan as AdminPlanInput).projectId,
+        depth: 0,
+        overrideAccess: false,
+        user,
+      })
+      .catch(() => null)
+    const unit = project?.unitTypes?.find((u) => u.id === body.plan.unitId)
+    if (!unit) throw new ScheduleError('The selected project or unit no longer exists.', 404)
+    // The loan amount always comes from the CMS unit, never from the request.
+    const plan = withUnitLoan(body.plan as AdminPlanInput, unit.loanAmount)
+    const loanErrors = validateAdminPlan(plan)
+    if (loanErrors.length) throw new ScheduleError(loanErrors.join(' '))
+    const computed = computeAdminPlan(plan)
+    if (computed.plan.warnings.length) throw new ScheduleError(computed.plan.warnings.join(' '))
     const existing = await payload.find({
       collection: 'lead-schedules',
       where: { entryKey: { equals: body.entryKey } },
@@ -72,7 +115,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })
     let schedule = existing.docs[0]
     if (schedule && schedule.lead !== lead.id)
-      throw new Error('This schedule belongs to another client.')
+      throw new ScheduleError('This schedule was not found for this client.', 404)
     const latest = schedule
       ? (
           await payload.find({
@@ -95,14 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       (latest.note || '') === body.note.trim()
     )
       return NextResponse.json({ id: schedule.id, revision: latest.revision })
-    if ((latest?.revision || 0) !== body.expectedRevision)
-      return NextResponse.json(
-        {
-          error:
-            'A newer revision was saved. Reload the latest schedule before saving your changes.',
-        },
-        { status: 409 },
-      )
+    if ((latest?.revision || 0) !== body.expectedRevision) throw new ScheduleError(STALE, 409)
     transactionID = await payload.db.beginTransaction()
     if (!transactionID) throw new Error('Could not start a save transaction.')
     const localReq = await createLocalReq({ user }, payload)
@@ -133,13 +169,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     transactionID = null
     return NextResponse.json({ id: schedule.id, revision })
   } catch (error) {
-    if (transactionID) await payload.db.rollbackTransaction(transactionID)
+    if (transactionID)
+      await payload.db.rollbackTransaction(transactionID).catch((rollbackError: unknown) => {
+        console.error('[crm/schedules] rollback failed', rollbackError)
+      })
+    if (error instanceof ScheduleError)
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    if (isUniqueViolation(error)) return NextResponse.json({ error: STALE }, { status: 409 })
+    console.error('[crm/schedules] save failed', error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Could not save schedule. Reload and try again.',
-      },
-      { status: 400 },
+      { error: 'Could not save schedule. Reload and try again.' },
+      { status: 500 },
     )
   }
 }

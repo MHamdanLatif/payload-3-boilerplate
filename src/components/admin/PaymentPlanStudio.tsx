@@ -6,6 +6,9 @@ import {
   initialAdminPlan,
   validateAdminPlan,
   scheduledHeads,
+  withCurrentCadence,
+  withUnitLoan,
+  CURRENT_CADENCE,
   type AdminPlanInput,
   type AdminHead,
   type StudioProject,
@@ -59,6 +62,9 @@ export type StudioClient = {
   note?: string
   buyer?: { name: string; phone: string }
   historical?: boolean
+  needsReview?: boolean
+  /** The revision shown when the page opened; unedited exports use its stored settings. */
+  savedRevision?: { scheduleId: number; revision: number }
 }
 export function PaymentPlanStudio({
   projects,
@@ -77,11 +83,27 @@ export function PaymentPlanStudio({
   const [title, setTitle] = useState(client?.title ?? '')
   const [note, setNote] = useState(client?.note ?? '')
   const [revision, setRevision] = useState(client?.revision ?? 0)
+  const [savedRevision, setSavedRevision] = useState(client?.savedRevision)
   const [saved, setSaved] = useState('')
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const project = projects.find((p) => String(p.id) === projectId)
+  const unitLoan = (plan: AdminPlanInput) =>
+    projects.find((p) => p.id === plan.projectId)?.unitTypes?.find((u) => u.id === plan.unitId)
+      ?.loanAmount ?? 0
+  // A saved revision is shown exactly as sent. The first edit starts a new revision, which
+  // uses the current installment timing and the CMS loan amount, so the preview matches the save.
+  const revise = (plan: AdminPlanInput, patch: Partial<AdminPlanInput> = {}) => {
+    const next = withCurrentCadence({ ...plan, ...patch })
+    return withUnitLoan(next, unitLoan(next))
+  }
+  const legacyTiming = Boolean(
+    input &&
+    input.cadence !== CURRENT_CADENCE &&
+    input.installmentStartMonth !== undefined &&
+    input.heads.some((h) => h.kind === 'installment' && h.intervalMonths !== 1),
+  )
   const result = useMemo(() => {
     if (!input) return null
     const errors = validateAdminPlan(input)
@@ -89,10 +111,16 @@ export function PaymentPlanStudio({
   }, [input])
   const warnings = [...(result?.errors ?? []), ...(result?.value?.plan.warnings ?? [])]
   const change = (patch: Partial<AdminPlanInput>) => {
-    setInput((p) => (p ? { ...p, ...patch } : p))
+    setInput((p) => (p ? revise(p, patch) : p))
     setDirty(true)
     setSaved('')
     setError('')
+  }
+  /** Name, note and buyer edits also start a new revision. */
+  const edited = () => {
+    setInput((p) => (p ? revise(p) : p))
+    setDirty(true)
+    setSaved('')
   }
   const changeHead = (id: string, patch: Partial<AdminHead>) =>
     change({ heads: input!.heads.map((h) => (h.id === id ? { ...h, ...patch } : h)) })
@@ -130,6 +158,7 @@ export function PaymentPlanStudio({
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Could not save schedule.')
       setRevision(body.revision)
+      setSavedRevision({ scheduleId: body.id, revision: body.revision })
       setDirty(false)
       setSaved(`Saved revision ${body.revision}.`)
       window.history.replaceState(
@@ -151,7 +180,13 @@ export function PaymentPlanStudio({
       const response = await fetch('/api/admin/payment-plan/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: input, buyer, format }),
+        // Until something is edited, the server exports the saved revision exactly as stored.
+        body: JSON.stringify({
+          plan: input,
+          buyer,
+          format,
+          ...(!dirty && savedRevision ? { savedRevision } : {}),
+        }),
       })
       if (!response.ok) {
         const body = await response.json()
@@ -208,7 +243,7 @@ export function PaymentPlanStudio({
                 readOnly={revision > 0}
                 onChange={(e) => {
                   setTitle(e.target.value)
-                  setDirty(true)
+                  edited()
                 }}
                 placeholder="e.g. Type A - 60-month option"
               />
@@ -221,13 +256,24 @@ export function PaymentPlanStudio({
                 maxLength={1000}
                 onChange={(e) => {
                   setNote(e.target.value)
-                  setDirty(true)
-                  setSaved('')
+                  edited()
                 }}
                 placeholder="What changed in this discussion?"
               />
             </label>
             {revision > 0 && <p className="mt-2 text-xs">Latest saved revision: {revision}</p>}
+            {client.needsReview && !input && (
+              <p role="status" className="mt-3 text-sm text-red-800">
+                Needs review: this revision&apos;s saved settings could not be read. Choose the
+                project and unit to rebuild the terms, then save a new revision.
+              </p>
+            )}
+            {legacyTiming && (
+              <p role="status" className="mt-3 text-sm">
+                This revision uses the earlier quarterly, half-yearly and yearly timing and is shown
+                as it was sent. Any change applies the current timing to the new revision.
+              </p>
+            )}
           </section>
         )}
         <section className={panel}>
@@ -303,8 +349,9 @@ export function PaymentPlanStudio({
               />
               <p className="mt-2 text-xs text-brand-deep/70">
                 Signing is month 0. Monthly payments begin in the start month. Quarterly,
-                half-yearly and yearly payments begin 3, 6 and 12 months later and stay within the
-                monthly payment window. Possession follows the completed schedule.
+                half-yearly and yearly payments fall due at the end of each 3, 6 or 12 months of the
+                monthly payment window (start month 3: months 5, 8 and 14 onwards). Possession
+                follows the completed schedule.
               </p>
               <p className="mt-2 text-xs">
                 {project?.unitTypes?.find((u) => u.id === input.unitId)?.flatLayout
@@ -482,16 +529,49 @@ export function PaymentPlanStudio({
               >
                 Add discount
               </button>
+              {unitLoan(input) > 0 && (
+                <label className="mt-6 flex items-center gap-3 rounded-xl bg-cream/50 p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label="Include loan"
+                    checked={Boolean(input.includeLoan)}
+                    onChange={(e) => change({ includeLoan: e.target.checked })}
+                  />
+                  <span>
+                    Include loan: <strong>{formatPlanMoney(unitLoan(input))}</strong>
+                    <span className="block text-xs text-brand-deep/65">
+                      Set on the unit in the CMS. Payable when demanded by the company; the schedule
+                      covers the rest of the final price.
+                    </span>
+                  </span>
+                </label>
+              )}
               {result?.value && (
-                <div className="mt-6 grid gap-3 rounded-xl bg-brand-deep p-5 text-white md:grid-cols-2">
+                <div
+                  className={`mt-6 grid gap-3 rounded-xl bg-brand-deep p-5 text-white ${result.value.loanAmount > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}
+                >
                   <div>
-                    <p className="text-xs">Final payable price</p>
+                    <p className="text-xs">
+                      Final payable price{result.value.loanAmount > 0 ? ' (including loan)' : ''}
+                    </p>
                     <p data-testid="final-price" className="mt-1 text-2xl">
                       {formatPlanMoney(result.value.finalPrice)}
                     </p>
                   </div>
+                  {result.value.loanAmount > 0 && (
+                    <div>
+                      <p className="text-xs">Loan, payable when demanded</p>
+                      <p data-testid="loan-amount" className="mt-1 text-2xl">
+                        {formatPlanMoney(result.value.loanAmount)}
+                      </p>
+                    </div>
+                  )}
                   <div>
-                    <p className="text-xs">Regular schedule, excluding separate charges</p>
+                    <p className="text-xs">
+                      Regular schedule, excluding separate charges
+                      {result.value.loanAmount > 0 ? ' and loan' : ''}
+                    </p>
                     <p data-testid="regular-price" className="mt-1 text-2xl">
                       {formatPlanMoney(result.value.regularPrice)}
                     </p>
@@ -731,8 +811,7 @@ export function PaymentPlanStudio({
                     maxLength={120}
                     onChange={(e) => {
                       setBuyer({ ...buyer, name: e.target.value })
-                      setDirty(true)
-                      setSaved('')
+                      edited()
                     }}
                   />
                 </label>
@@ -744,8 +823,7 @@ export function PaymentPlanStudio({
                     maxLength={60}
                     onChange={(e) => {
                       setBuyer({ ...buyer, phone: e.target.value })
-                      setDirty(true)
-                      setSaved('')
+                      edited()
                     }}
                   />
                 </label>

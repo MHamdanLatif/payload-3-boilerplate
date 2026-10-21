@@ -10,5 +10,7 @@ export const PushSubscriptions: CollectionConfig = {
     { name: 'p256dh', type: 'text', required: true },
     { name: 'auth', type: 'text', required: true },
     { name: 'owner', type: 'relationship', relationTo: 'users', required: true, index: true },
+    // The login session that enabled alerts, so ending that session removes them.
+    { name: 'sessionId', type: 'text', index: true },
   ],
 }

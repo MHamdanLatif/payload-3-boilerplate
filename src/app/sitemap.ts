@@ -94,7 +94,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       })
 
-    // Keep only locations that have at least one project or listing tagged to
+    // Keep only locations that have at least one available project tagged to
     // them — the rest are noindexed, and listing a noindexed URL in the sitemap
     // is a contradictory signal. Matches on the canonical name, exactly as the
     // location page's own queries do.

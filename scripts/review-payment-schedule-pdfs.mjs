@@ -9,13 +9,23 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { PDFDocument } from 'pdf-lib'
 
 const require = createRequire(import.meta.url)
-const { build } = require('../node_modules/.pnpm/node_modules/esbuild')
+// esbuild is not a direct dependency; use it directly when hoisted, otherwise through
+// payload's own tsx dependency, rather than a pnpm store path.
+function loadEsbuild() {
+  try {
+    return require('esbuild')
+  } catch {
+    const payloadRequire = createRequire(import.meta.resolve('payload'))
+    return createRequire(payloadRequire.resolve('tsx'))('esbuild')
+  }
+}
+const { build } = loadEsbuild()
 const root = process.cwd()
 const out = path.join(root, 'test-results/payment-schedule-pdfs')
 await mkdir(out, { recursive: true })
 await build({
   stdin: {
-    contents: `export { PaymentPlanDocument, composeDisclaimer } from './src/components/projects/PaymentPlanPDF'; export { computeAdminPlan, summarizeAdminPlan } from './src/lib/admin-payment-plan'; export { appendLayoutPDF, loadUnitLayout } from './src/lib/payment-plan-layout'`,
+    contents: `export { PaymentPlanDocument, composeDisclaimer } from './src/components/projects/PaymentPlanPDF'; export { computeAdminPlan, summarizeAdminPlan } from './src/lib/admin-payment-plan'; export { finishSchedulePDF, loadUnitLayout } from './src/lib/payment-plan-layout'`,
     resolveDir: root,
   },
   bundle: true,
@@ -29,7 +39,7 @@ const {
   composeDisclaimer,
   computeAdminPlan,
   summarizeAdminPlan,
-  appendLayoutPDF,
+  finishSchedulePDF,
   loadUnitLayout,
 } = await import(pathToFileURL(path.join(out, 'review.mjs')))
 const layout = await sharp(
@@ -46,6 +56,7 @@ const input = {
   basePrice: 10000000,
   duration: 60,
   installmentStartMonth: 2,
+  cadence: 2,
   charges: [
     { id: 'parking', name: 'Parking', amount: 500000, separate: true, month: 6 },
     { id: 'corner', name: 'Corner premium', amount: 100000, separate: false, month: 0 },
@@ -126,6 +137,8 @@ const input = {
 }
 const computed = computeAdminPlan(input)
 assert.equal(computed.plan.warnings.length, 0)
+const withLoan = computeAdminPlan({ ...input, includeLoan: true, loanAmount: 1000000 })
+assert.equal(withLoan.plan.warnings.length, 0)
 const props = {
   projectTitle: 'Payment Schedule Review',
   projectLocation: 'Scheme 33, Karachi',
@@ -143,26 +156,32 @@ const props = {
   priceBreakdown: computed.breakdown,
   scheduleLabel: 'Custom schedule',
   layoutImage: `data:image/png;base64,${layout.toString('base64')}`,
+  pageNumbers: false,
+  loanOnDemand: true,
 }
 const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
 const canvasRequire = createRequire(require.resolve('pdfjs-dist/package.json'))
 const { createCanvas } = canvasRequire('@napi-rs/canvas')
-for (const format of ['full', 'summary']) {
-  const buffer = await renderToBuffer(
+const standardFontDataUrl =
+  path
+    .join(path.dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts')
+    .replaceAll('\\', '/') + '/'
+for (const format of ['full', 'summary', 'loan']) {
+  const result = format === 'loan' ? withLoan : computed
+  const rendered = await renderToBuffer(
     PaymentPlanDocument({
       ...props,
       summary: format === 'summary',
-      plan: format === 'summary' ? summarizeAdminPlan(computed.plan) : computed.plan,
+      plan: format === 'summary' ? summarizeAdminPlan(result.plan) : result.plan,
+      priceBreakdown: result.breakdown,
+      loanIncluded: result.loanAmount > 0,
+      loanAmount: result.loanAmount,
     }),
   )
+  // The route numbers pages after merging; review the same final output.
+  const buffer = Buffer.from(await finishSchedulePDF(rendered))
   await writeFile(path.join(out, `${format}.pdf`), buffer)
-  const pdf = await pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    standardFontDataUrl:
-      path
-        .join(path.dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts')
-        .replaceAll('\\', '/') + '/',
-  }).promise
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer), standardFontDataUrl }).promise
   let text = ''
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber)
@@ -178,19 +197,32 @@ for (const format of ['full', 'summary']) {
   assert.match(text.replaceAll(' ', ''), /UNITLAYOUT/)
   assert.match(text, /Schedule Review Client/)
   assert.match(text, /03001234567/)
+  // The unit layout page (last) names the project only, never the client.
+  assert.doesNotMatch(text.trim().split('\n').at(-1), /Prepared for|Schedule Review Client/)
+  for (let n = 1; n <= pdf.numPages; n++) assert.match(text, new RegExp(`${n} / ${pdf.numPages}`))
   if (format === 'summary') {
-    assert.match(text, /x 19/)
-    assert.match(text, /x 9/)
-    assert.match(text, /x 4/)
+    assert.match(text, /x 20/)
+    assert.match(text, /x 10/)
+    assert.match(text, /x 5 /)
   }
+  if (format === 'loan') {
+    assert.match(text, /Loan amount: PKR 1,000,000 – payable when demanded by the company./)
+    assert.match(text, /including loan/)
+  } else assert.doesNotMatch(text, /Loan amount/)
   await writeFile(path.join(out, `${format}.txt`), text)
   console.log(`${format}: ${pdf.numPages} pages rendered and content verified`)
   const attachment = await PDFDocument.create()
   attachment.addPage().drawText('Original PDF unit layout')
-  const joined = await appendLayoutPDF(buffer, Buffer.from(await attachment.save()))
-  assert.equal(
-    (await PDFDocument.load(joined)).getPageCount(),
-    (await PDFDocument.load(buffer)).getPageCount() + 1,
+  const joined = await finishSchedulePDF(rendered, Buffer.from(await attachment.save()))
+  assert.equal((await PDFDocument.load(joined)).getPageCount(), pdf.numPages + 1)
+  const merged = await pdfjs.getDocument({
+    data: new Uint8Array(joined),
+    standardFontDataUrl,
+  }).promise
+  const last = await merged.getPage(merged.numPages)
+  assert.match(
+    (await last.getTextContent()).items.map((i) => i.str).join(' '),
+    new RegExp(`${merged.numPages} / ${merged.numPages}`),
   )
 }
 // WebP is the CMS default, but the PDF renderer needs a PNG/JPEG source.

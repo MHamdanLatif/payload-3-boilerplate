@@ -8,14 +8,16 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   const p = await searchParams,
     range = period(p),
     page = pageNumber(p)
+  // A deal-linked expense is attributed only through its deal, so moving the deal to another
+  // property never counts it twice; unlinked expenses use their own project.
   const projects = await financeQuery(sql`SELECT p.key,p.id,p.title,count(*) OVER() AS total_count,
     (SELECT COUNT(*) FROM deals d WHERE (d.project_id=p.id OR (p.id IS NULL AND d.project_id IS NULL AND d.project_name=p.title)) AND NOT COALESCE(d.cancelled,false) AND ${dateWhere('d.date_closed', range)}) AS deals,
     (SELECT COALESCE(SUM(d.sale_value),0) FROM deals d WHERE (d.project_id=p.id OR (p.id IS NULL AND d.project_id IS NULL AND d.project_name=p.title)) AND NOT COALESCE(d.cancelled,false) AND ${dateWhere('d.date_closed', range)}) AS sales,
     (SELECT COALESCE(SUM(d.commission),0) FROM deals d WHERE (d.project_id=p.id OR (p.id IS NULL AND d.project_id IS NULL AND d.project_name=p.title)) AND NOT COALESCE(d.cancelled,false) AND ${dateWhere('d.date_closed', range)}) AS generated,
     (SELECT COALESCE(SUM(r.amount),0) FROM finance_receipts r JOIN deals d ON d.id=r.deal_id WHERE (d.project_id=p.id OR (p.id IS NULL AND d.project_id IS NULL AND d.project_name=p.title)) AND NOT COALESCE(r.voided,false) AND ${dateWhere('r.date', range)}) AS received,
     (SELECT COALESCE(SUM(d.outstanding),0) FROM deals d WHERE (d.project_id=p.id OR (p.id IS NULL AND d.project_id IS NULL AND d.project_name=p.title))) AS outstanding,
-    (SELECT COALESCE(SUM(e.amount),0) FROM finance_expenses e LEFT JOIN deals ed ON ed.id=e.deal_id WHERE (COALESCE(ed.project_id,e.project_id)=p.id OR (p.id IS NULL AND ed.project_id IS NULL AND ed.project_name=p.title)) AND NOT COALESCE(e.voided,false) AND ${dateWhere('e.date', range)}) AS expenses
-    FROM (SELECT 'p:'||id AS key,id,title FROM featured_projects WHERE EXISTS(SELECT 1 FROM deals d WHERE d.project_id=featured_projects.id) OR EXISTS(SELECT 1 FROM finance_expenses e WHERE e.project_id=featured_projects.id) UNION SELECT 'o:'||project_name,NULL::integer,project_name FROM deals WHERE project_id IS NULL) p ORDER BY p.title,p.id LIMIT 25 OFFSET ${(page - 1) * 25}`)
+    (SELECT COALESCE(SUM(e.amount),0) FROM finance_expenses e LEFT JOIN deals ed ON ed.id=e.deal_id WHERE (CASE WHEN e.deal_id IS NOT NULL THEN ed.project_id=p.id OR (p.id IS NULL AND ed.project_id IS NULL AND ed.project_name=p.title) ELSE e.project_id=p.id END) AND NOT COALESCE(e.voided,false) AND ${dateWhere('e.date', range)}) AS expenses
+    FROM (SELECT 'p:'||id AS key,id,title FROM featured_projects WHERE EXISTS(SELECT 1 FROM deals d WHERE d.project_id=featured_projects.id) OR EXISTS(SELECT 1 FROM finance_expenses e WHERE e.deal_id IS NULL AND e.project_id=featured_projects.id) UNION SELECT 'o:'||project_name,NULL::integer,project_name FROM deals WHERE project_id IS NULL) p ORDER BY p.title,p.id LIMIT 25 OFFSET ${(page - 1) * 25}`)
   const monthly = await financeQuery(sql`SELECT to_char(month,'YYYY-MM') AS month,
     (SELECT COUNT(*) FROM deals d WHERE NOT COALESCE(d.cancelled,false) AND date_trunc('month',d.date_closed AT TIME ZONE 'Asia/Karachi')=month) AS deals,
     (SELECT COALESCE(SUM(d.sale_value),0) FROM deals d WHERE NOT COALESCE(d.cancelled,false) AND date_trunc('month',d.date_closed AT TIME ZONE 'Asia/Karachi')=month) AS sales,

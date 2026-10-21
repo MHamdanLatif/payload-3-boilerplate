@@ -67,6 +67,9 @@ function fixture(authenticated = true) {
     '@/lib/crm-input': input,
     '@/lib/lead-status': statuses,
     '@/utilities/getURL': { getServerSideURL: () => 'https://crm.test' },
+    '@/access/finance': { hasFinanceAccess: (user) => user?.financeAccess === true },
+    '@/lib/finance-query': { rupees: (n) => `Rs. ${n}` },
+    '@/collections/Leads/hooks/guardLeadDelete': { CRM_LEAD_DELETE: 'crmLeadDelete' },
   }
   return {
     writes,

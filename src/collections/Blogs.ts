@@ -222,7 +222,8 @@ export const Blogs: CollectionConfig = {
         {
           name: 'cardType',
           admin: { hidden: true },
-          hooks: { beforeChange: [() => 'project'] },
+          // New cards are always projects; archived 'listing' cards keep their value.
+          hooks: { beforeChange: [({ value }) => value || 'project'] },
           type: 'select',
           required: true,
           defaultValue: 'project',

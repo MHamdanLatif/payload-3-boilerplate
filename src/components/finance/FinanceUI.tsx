@@ -1,12 +1,18 @@
 import Link from 'next/link'
 import { displayDate, rupees, param, type FinanceParams } from '@/lib/finance-query'
 
-export function PeriodFilter({ params }: { params: FinanceParams }) {
+export function PeriodFilter({
+  params,
+  fallback = 'current',
+}: {
+  params: FinanceParams
+  fallback?: 'current' | 'all'
+}) {
   return (
     <form className="finance-filters">
       <label>
         Period
-        <select name="period" defaultValue={param(params, 'period') || 'current'}>
+        <select name="period" defaultValue={param(params, 'period') || fallback}>
           <option value="current">Current month</option>
           <option value="previous">Previous month</option>
           <option value="month">Custom month</option>

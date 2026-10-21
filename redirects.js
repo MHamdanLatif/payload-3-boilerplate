@@ -34,6 +34,11 @@ const redirects = async () => {
       '/listings/3-bed-drawing-lounge-flat-in-rim-jhim-villas-scheme-33--roof-terrace',
     ].map(source => ({ source, destination: '/properties', permanent: true })),
 
+    // Standalone listings are retired. Every other /listings URL (including the
+    // bare /listings path) forwards to the project directory; the specific
+    // rules above stay first so their targets never change.
+    { source: '/listings/:path*', destination: '/properties', permanent: true },
+
     // Live projects — direct equivalents on the new site
     {
       source: '/featured/tulip-comfort',
@@ -86,8 +91,8 @@ const redirects = async () => {
     { source: '/locations/ma-jinnah-road', destination: '/properties', permanent: true },
 
     // Placeholder: /saima-uptown has no page yet. TEMPORARY (307) redirect to
-    // /properties until Saima Uptown is added as a listing — then repoint this
-    // to /listings/<slug> (keep it temporary, or drop it once the page exists).
+    // /properties until Saima Uptown is added as a project — then repoint this
+    // to /projects/<slug> (keep it temporary, or drop it once the page exists).
     { source: '/saima-uptown', destination: '/properties', permanent: false },
 
     // Anything else the old site exposed under /featured/* — funnel to listings

@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Browser, type Page } from '@playwright/test'
 export async function verifyMobileCrm(page: Page) {
   const media = await (await page.request.get('/api/media?limit=1')).json()
   const projectRes = await page.request.post('/api/featured-projects', {
@@ -159,4 +159,61 @@ export async function verifyMobileCrm(page: Page) {
   await page.request.delete('/api/leads/' + id)
   await page.request.delete('/api/featured-projects/' + project.id)
   if (oldViewport) await page.setViewportSize(oldViewport)
+}
+
+const iphone =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+
+// Each account may be signed in on 2 phones/tablets; laptops never count. Uses its
+// own user and signs every session out, so other specs keep logging in freely.
+export async function verifyDeviceLimit(browser: Browser, admin: Page) {
+  const email = 'device-limit@example.com',
+    password = 'DeviceLimit123!'
+  const created = await admin.request.post('/api/users', {
+    data: { email, password, name: 'Device limit check' },
+  })
+  expect(created.ok(), await created.text()).toBeTruthy()
+  const user = (await created.json()).doc
+  const signIn = async (phone: boolean) => {
+    const context = await browser.newContext(
+      phone ? { userAgent: iphone, viewport: { width: 390, height: 844 } } : {},
+    )
+    const page = await context.newPage()
+    await page.goto('/leads-dashboard/login')
+    await page.getByLabel('Email', { exact: true }).fill(email)
+    await page.getByLabel('Password', { exact: true }).fill(password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    return { context, page }
+  }
+  const phones = [await signIn(true), await signIn(true)]
+  for (const { page } of phones) await expect(page).toHaveURL(/\/leads-dashboard$/)
+  const third = await signIn(true)
+  await expect(
+    third.page.getByText(/already signed in on 2 phones\/tablets.*Signed-in devices/),
+  ).toBeVisible()
+  await expect(third.page).toHaveURL(/\/login/)
+
+  const laptop = await signIn(false)
+  await expect(laptop.page).toHaveURL(/\/leads-dashboard$/)
+  await laptop.page.goto('/leads-dashboard/devices')
+  const rows = laptop.page.getByRole('article')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first()).toContainText('iPhone')
+  await expect(rows.first()).toContainText('PKT')
+  await rows.first().getByRole('button', { name: /^Sign out / }).click()
+  await expect(rows).toHaveCount(1)
+  // The signed-out phone lost its session.
+  await phones[0].page.goto('/leads-dashboard')
+  await expect(phones[0].page).toHaveURL(/\/login/)
+
+  await third.page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(third.page).toHaveURL(/\/leads-dashboard$/)
+  for (const { page } of [phones[1], third]) {
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await expect(page).toHaveURL(/\/login/)
+  }
+  await laptop.page.reload()
+  await expect(rows).toHaveCount(0)
+  for (const { context } of [...phones, third, laptop]) await context.close()
+  await admin.request.delete('/api/users/' + user.id)
 }

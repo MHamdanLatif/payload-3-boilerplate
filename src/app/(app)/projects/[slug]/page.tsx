@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
@@ -119,7 +119,9 @@ export default async function ProjectLandingPage({
   const { slug } = await params
   const payload = await getPayload({ config })
   const project = await fetchProjectBySlug(payload, slug)
-  if (!project) notFound()
+  // Sold-out, withdrawn and deleted projects (and unknown slugs) forward to the
+  // live directory rather than 404, so indexed and shared links keep working.
+  if (!project) permanentRedirect('/properties')
 
   // Reverse internal links: surface articles that mention this project. Match on
   // the project title plus its entity aliases (so "Saima Elite" / "Tulip" hit too).

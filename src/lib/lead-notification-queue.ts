@@ -5,6 +5,12 @@ import { crmPushConfigured, sendCrmPush } from './crm-push'
 import { leadNotificationMessage } from './lead-notification-message'
 import { signLeadAction } from './lead-action-link'
 
+// Queue passes that may target one device before it is treated as done, so a
+// dead phone cannot keep every alert retrying until the 24-hour expiry.
+export const MAX_DEVICE_ATTEMPTS = 3
+// Leads typed into the CRM by the person who just spoke to them need no alert.
+const MANUAL_SURFACE = 'crm-manual'
+
 // Reconcile from committed leads instead of relying on a detached afterChange promise.
 // Unique event keys make this safe across restarts and multiple Railway replicas.
 export async function reconcileLeadNotifications(payload: Payload) {
@@ -27,6 +33,7 @@ export async function reconcileLeadNotifications(payload: Payload) {
       l.created_at + k.delay + INTERVAL '24 hours', 0, '[]'::jsonb, NOW(), NOW()
     FROM leads l CROSS JOIN (VALUES ('new', INTERVAL '0 minutes'), ('30m', INTERVAL '30 minutes'), ('2h', INTERVAL '2 hours')) k(kind, delay)
     WHERE l.created_at >= COALESCE((SELECT notification_start_at FROM crm_settings LIMIT 1), NOW())
+      AND l.conversion_surface IS DISTINCT FROM ${MANUAL_SURFACE}
       AND l.created_at + k.delay + INTERVAL '24 hours' > NOW()
       AND ((k.kind = 'new' AND l.owner_notified_at IS NULL) OR
         (k.kind <> 'new' AND l.status = 'unqualified' AND
@@ -63,32 +70,56 @@ export async function deliverLeadNotifications(payload: Payload) {
     const settings = await payload.findGlobal({ slug: 'crm-settings', depth: 0 })
     const cancelled =
       !lead ||
+      lead.conversionSurface === MANUAL_SURFACE ||
       (job.kind !== 'new' &&
         (lead.status !== 'unqualified' || settings.automaticUncontactedReminders === false))
     if (cancelled) {
       await payload.db.drizzle
         .execute(sql`UPDATE lead_notifications SET finished_at = NOW(), claim = NULL,
-        delivery_status = 'Cancelled: lead contacted, deleted or automatic reminders disabled' WHERE id = ${job.id} AND claim = ${claim}`)
+        delivery_status = 'Cancelled: lead contacted, deleted, added in the CRM or automatic reminders disabled' WHERE id = ${job.id} AND claim = ${claim}`)
       continue
     }
     const receipts = Array.isArray(job.receipts)
       ? job.receipts.filter((v): v is string => typeof v === 'string')
       : []
+    const attempts: Record<string, number> = {}
+    if (job.deviceAttempts && typeof job.deviceAttempts === 'object' && !Array.isArray(job.deviceAttempts))
+      for (const [hash, count] of Object.entries(job.deviceAttempts))
+        if (typeof count === 'number') attempts[hash] = count
+    const exhausted = Object.keys(attempts).filter((hash) => attempts[hash] >= MAX_DEVICE_ATTEMPTS)
     const response = await sendCrmPush(
       payload,
       leadNotificationMessage(lead!, job.kind),
       undefined,
       {
         id: job.id,
-        exclude: receipts,
+        exclude: [...receipts, ...exhausted],
         receipt: (hash) =>
           `/api/crm/push/receipt?id=${job.id}&device=${hash}&sig=${signLeadAction(job.id, 'push-receipt:' + hash)}`,
       },
     )
-    const complete = response.ok && response.pendingDevices === 0
+    const attempted = response.attempted ?? []
+    for (const hash of attempted) attempts[hash] = (attempts[hash] ?? 0) + 1
+    const stopped = Object.keys(attempts).filter(
+      (hash) => attempts[hash] >= MAX_DEVICE_ATTEMPTS && !receipts.includes(hash),
+    ).length
+    const displayed = response.ok && response.pendingDevices === 0
+    // Every device tried in this pass has now used its attempts without confirming.
+    const gaveUp =
+      !displayed &&
+      attempted.length > 0 &&
+      attempted.every((hash) => attempts[hash] >= MAX_DEVICE_ATTEMPTS)
+    const complete = displayed || gaveUp
+    const status = displayed
+      ? stopped
+        ? `Displayed on subscribed devices; ${stopped} device(s) stopped after ${MAX_DEVICE_ATTEMPTS} attempts`
+        : 'Displayed on subscribed devices'
+      : gaveUp
+        ? `Stopped after ${MAX_DEVICE_ATTEMPTS} attempts per device without display confirmation`
+        : response.status
     await payload.db.drizzle.execute(sql`
       UPDATE lead_notifications SET finished_at = ${complete ? new Date().toISOString() : null}::timestamptz,
-        delivery_status = ${complete ? 'Displayed on subscribed devices' : response.status},
+        delivery_status = ${status}, device_attempts = ${JSON.stringify(attempts)}::jsonb,
         claim = NULL WHERE id = ${job.id} AND claim = ${claim}
     `)
     if (job.kind === 'new')
@@ -99,9 +130,11 @@ export async function deliverLeadNotifications(payload: Payload) {
         context: { skipLeadHooks: true },
         data: {
           ...(complete ? { ownerNotifiedAt: new Date().toISOString() } : {}),
-          ownerNotifyStatus: complete
+          ownerNotifyStatus: displayed
             ? 'CRM push: display confirmed by app'
-            : `CRM push: ${response.status}; awaiting display confirmation, retrying`,
+            : gaveUp
+              ? `CRM push: no display confirmation after ${MAX_DEVICE_ATTEMPTS} attempts per device`
+              : `CRM push: ${response.status}; awaiting display confirmation, retrying`,
         },
       })
   }

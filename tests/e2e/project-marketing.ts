@@ -78,7 +78,20 @@ export async function verifyProjectMarketing(admin: Page, visitor: Page, info: T
       expect(new URL(response.headers().location, visitor.url()).pathname).toBe('/properties')
     }
 
-    expect((await visitor.request.get(`/projects/${withdrawn.slug}`)).status()).toBe(404)
+    // Hidden, unknown and retired detail URLs forward permanently to the
+    // directory; junk URLs elsewhere still 404.
+    for (const path of [
+      `/projects/${withdrawn.slug}`,
+      '/projects/no-such-project-e2e',
+      '/blog/no-such-article-e2e',
+      '/listings/any-other-listing-e2e',
+      `/listings/${listing.slug}`,
+    ]) {
+      const response = await visitor.request.get(path, { maxRedirects: 0 })
+      expect(response.status(), path).toBe(308)
+      expect(new URL(response.headers().location, visitor.url()).pathname).toBe('/properties')
+    }
+    expect((await visitor.request.get('/no-such-page-e2e')).status()).toBe(404)
     expect(
       (await visitor.request.get(`/api/property-listings/${listing.id}`)).status(),
     ).toBeGreaterThanOrEqual(400)

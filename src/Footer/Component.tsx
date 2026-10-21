@@ -1,6 +1,4 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
-import { fetchPublishedProjects } from '@/lib/featured-projects'
+import { getFooterProjectFacets, type FooterProjectFacet } from './projectCategories'
 import Link from 'next/link'
 import React from 'react'
 import { Instagram, Facebook, Phone, Mail, MapPin, ArrowUpRight } from 'lucide-react'
@@ -28,8 +26,14 @@ const SOCIAL = [
 ]
 
 export async function Footer() {
-  const payload = await getPayload({ config })
-  const projects = await fetchPublishedProjects(payload)
+  // A database hiccup must not take down every page (including 404s) with it:
+  // the footer then renders without its project category links.
+  let projects: FooterProjectFacet[] = []
+  try {
+    projects = await getFooterProjectFacets()
+  } catch (error) {
+    console.error('Footer project categories unavailable:', error)
+  }
   const categories = [
     {
       label: 'Pre-Launch Projects',

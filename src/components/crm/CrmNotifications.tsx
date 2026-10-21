@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 async function request(method: string, body: unknown) {
@@ -22,7 +23,9 @@ export async function disableCrmNotifications() {
   const worker = await navigator.serviceWorker.getRegistration('/leads-dashboard')
   const subscription = await worker?.pushManager.getSubscription()
   if (!subscription) return
-  await request('DELETE', { endpoint: subscription.endpoint })
+  // Best effort: an unsubscribed endpoint is rejected by the push service and the
+  // server drops it on the next send, so a failed DELETE never blocks this.
+  await request('DELETE', { endpoint: subscription.endpoint }).catch(() => {})
   await subscription.unsubscribe()
 }
 
@@ -150,7 +153,8 @@ export function CrmNotifications() {
               }
             }}
           />
-          Automatic reminders at 30 minutes and 2 hours while a new lead is Uncontacted.
+          Automatic reminders at 30 minutes and 2 hours while a new lead is Uncontacted. Leads you
+          add in the CRM yourself get no alerts.
         </label>
       )}
       <div className="flex flex-wrap gap-3 mt-3">
@@ -200,6 +204,11 @@ export function CrmNotifications() {
           </>
         )}
       </div>
+      <p className="mt-3 text-sm">
+        <Link className="underline" href="/leads-dashboard/devices">
+          Signed-in devices
+        </Link>
+      </p>
       {message && (
         <p role="status" className="mt-2 text-sm">
           {message}

@@ -12,6 +12,7 @@ export const prepareFollowUp: CollectionBeforeChangeHook = ({ data, originalDoc 
   }
   data.followUpAt = next === null ? null : new Date(next).toISOString()
   data.followUpSentAt = null
+  data.followUpRepeatSentAt = null
   data.followUpRetryAt = null
   data.followUpClaim = null
   data.followUpStatus = next === null ? null : 'Pending'

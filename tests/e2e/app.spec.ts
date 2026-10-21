@@ -1,8 +1,9 @@
-import { verifyMobileCrm } from './crm-mobile'
+import { verifyDeviceLimit, verifyMobileCrm } from './crm-mobile'
 import { verifyPaymentPlans } from './payment-plans'
 import { verifyFollowUp } from './follow-up'
 import { verifyFinance } from './finance'
 import { verifyProjectMarketing } from './project-marketing'
+import { verifyLeadDelete } from './lead-delete'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 
@@ -220,6 +221,7 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
   await seedDatabase(page)
   await verifyCrmActions(page)
   await verifyMobileCrm(page)
+  await verifyDeviceLimit(browser, page)
 
   const publicContext = await browser.newContext()
   const publicPage = await publicContext.newPage()
@@ -258,6 +260,7 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
 
   await verifyPaymentPlans(page, publicPage, testInfo)
   await verifyProjectMarketing(page, publicPage, testInfo)
+  await verifyLeadDelete(page, browser)
 
   if (manualReviewMode) {
     await publicPage.bringToFront()

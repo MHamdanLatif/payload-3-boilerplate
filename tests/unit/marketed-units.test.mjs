@@ -14,6 +14,7 @@ vm.runInNewContext(code, {
   exports: module.exports,
   require: (key) => {
     if (key === '@/collections/MarketedProjects') return { normaliseSlugKey: (value) => value }
+    if (key === './project-visibility') return { availableProjectsWhere: {} }
     throw Error(`Unexpected import ${key}`)
   },
 })

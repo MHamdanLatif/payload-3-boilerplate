@@ -1,5 +1,6 @@
 import { LeadNotifications } from './collections/LeadNotifications'
 import { PushSubscriptions } from './collections/PushSubscriptions'
+import { CrmDevices } from './collections/CrmDevices'
 import { CrmPushSettings } from './globals/CrmPushSettings'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { s3Storage } from '@payloadcms/storage-s3'
@@ -100,6 +101,7 @@ export default buildConfig({
     LinkOpens,
     PushSubscriptions,
     LeadNotifications,
+    CrmDevices,
     FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses,
   ],
   cors: [getServerSideURL()].filter(Boolean),

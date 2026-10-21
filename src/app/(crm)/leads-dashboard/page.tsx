@@ -5,6 +5,7 @@ import { Phone, MessageCircle, ArrowUpRight, Search } from 'lucide-react'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { crmSession, crmProjects } from '@/lib/crm-server'
 import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
+import { MarkContactedButton } from '@/components/crm/MarkContactedButton'
 
 type Filters = {
   q?: string
@@ -48,9 +49,10 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
           },
     )
   }
-  const pending: Where = {
-    and: [{ followUpAt: { exists: true } }, { followUpSentAt: { exists: false } }],
-  }
+  // A reminder stays pending, sent or not, until someone presses Mark contacted
+  // or clears it. Sorting by date puts every overdue reminder first.
+  const pending: Where = { followUpAt: { exists: true } }
+  const now = new Date()
   if (filters.view === 'followups') and.push(pending)
   const page = Math.max(1, Math.min(10000, Number.parseInt(filters.page || '1', 10) || 1))
   const [result, projects, all, fresh, due] = await Promise.all([
@@ -91,7 +93,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
     }),
     payload.count({
       collection: 'leads',
-      where: { and: [pending, { followUpAt: { less_than_equal: new Date().toISOString() } }] },
+      where: { and: [pending, { followUpAt: { less_than_equal: now.toISOString() } }] },
       overrideAccess: false,
       user,
     }),
@@ -252,8 +254,11 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
                     {lead.brochureOpenedAt ? 'Brochure opened' : 'Not opened yet'}
                   </span>
                 </div>
-                {lead.followUpAt && !lead.followUpSentAt && (
+                {lead.followUpAt && (
                   <p className="text-xs mt-3 text-amber-800">
+                    {new Date(lead.followUpAt) <= now && (
+                      <span className="crm-badge new mr-2">Overdue</span>
+                    )}
                     Follow-up:{' '}
                     {new Date(lead.followUpAt).toLocaleString('en-GB', {
                       timeZone: 'Asia/Karachi',
@@ -266,6 +271,11 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
                   </p>
                 )}
               </Link>
+              {lead.followUpAt && (
+                <div className="flex flex-wrap items-center gap-3 px-[18px] pb-4">
+                  <MarkContactedButton id={lead.id} className="crm-button secondary" />
+                </div>
+              )}
               <div className="crm-card-actions">
                 {phone?.isValid() && (
                   <>

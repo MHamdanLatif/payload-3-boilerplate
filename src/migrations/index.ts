@@ -24,6 +24,8 @@ import * as migration_20260829_000000_builder_track_record from './20260829_0000
 import * as migration_20260903_000000_marketed_projects from './20260903_000000_marketed_projects';
 
 import * as leadSchedules from './20261012_000000_lead_schedules'
+import * as crmFollowupsDevices from './20261021_000000_crm_followups_devices'
+import * as leadDeleteRules from './20261021_000001_lead_delete_rules'
 
 export const migrations = [
   {
@@ -107,4 +109,6 @@ export const migrations = [
   { up: projectMarketing.up, down: projectMarketing.down, name: '20261008_000000_project_marketing' },
   { up: projectMarketingContent.up, down: projectMarketingContent.down, name: '20261008_000001_project_marketing_content' },
   { up: leadSchedules.up, down: leadSchedules.down, name: '20261012_000000_lead_schedules' },
+  { up: crmFollowupsDevices.up, down: crmFollowupsDevices.down, name: '20261021_000000_crm_followups_devices' },
+  { up: leadDeleteRules.up, down: leadDeleteRules.down, name: '20261021_000001_lead_delete_rules' },
 ];

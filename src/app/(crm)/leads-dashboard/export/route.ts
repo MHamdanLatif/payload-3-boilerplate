@@ -7,10 +7,17 @@ import {
 import { NextResponse } from 'next/server'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
-import type { Where } from 'payload'
 import config from '@payload-config'
-import type { Lead, LinkOpen } from '@/payload-types'
+import type { Lead } from '@/payload-types'
 import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
+import {
+  brochureOpenTotals,
+  csvCell,
+  csvText,
+  leadReportWhere,
+  pktDateTime,
+  reportRange,
+} from '@/lib/lead-report'
 
 /**
  * CSV export of the leads pipeline.
@@ -25,19 +32,12 @@ import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
  * Deliberately narrow columns. The leads table has 39 of them, most being Meta
  * attribution plumbing (fbc, fbp, fbclid, client_ip, capi_*) that is noise in a
  * spreadsheet. What is here is what someone actually works a pipeline from.
+ *
+ * Dates and times are Pakistan time as "YYYY-MM-DD HH:mm", which Excel sorts
+ * and parses reliably. Every lead in range is exported (no row cap).
  */
 
 const STATUSES: readonly string[] = LEAD_STATUSES
-
-/** RFC 4180: wrap in quotes, double any internal quote. Guards commas, newlines and quotes in notes. */
-function csvCell(value: unknown): string {
-  if (value == null) return ''
-  const s = String(value)
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-const fmtDateTime = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Karachi', hour12: false }) : ''
 
 /** ms -> "3m 07s", matching how the dashboard renders it. */
 const fmtDuration = (ms: number) => {
@@ -54,52 +54,29 @@ export async function GET(req: Request) {
   if (!user) return new NextResponse('Unauthorized', { status: 401 })
 
   const sp = new URL(req.url).searchParams
-  const from = sp.get('from')
-  const to = sp.get('to')
-  const status = sp.get('status')
+  // Invalid dates (?from=abc, 2026-02-30) are ignored rather than throwing.
+  const range = reportRange(sp.get('from'), sp.get('to'))
+  const statusParam = sp.get('status')
+  const status = statusParam && STATUSES.includes(statusParam) ? statusParam : undefined
   const source = sp.get('source')
 
-  const and: Where[] = []
-  if (from)
-    and.push({
-      createdAt: { greater_than_equal: new Date(`${from}T00:00:00+05:00`).toISOString() },
-    })
-  if (to) {
-    const end = new Date(`${to}T23:59:59.999+05:00`)
-    and.push({ createdAt: { less_than_equal: end.toISOString() } })
-  }
-  if (status && STATUSES.includes(status)) and.push({ status: { equals: status } })
-
-  const [leadsRes, opensRes] = await Promise.all([
+  const [leadsRes, totals] = await Promise.all([
     payload.find({
       collection: 'leads',
-      where: and.length ? { and } : {},
+      where: leadReportWhere(range, status),
       depth: 0,
-      limit: 5000,
+      limit: 0,
       pagination: false,
       sort: '-createdAt',
     }),
-    payload.find({
-      collection: 'link-opens',
-      where: { asset: { equals: 'page' } },
-      depth: 0,
-      limit: 5000,
-      pagination: false,
-    }),
+    brochureOpenTotals(payload, range, status),
   ])
 
   let leads = leadsRes.docs as Lead[]
   // Source is derived rather than stored, so it filters in memory — same as the
   // dashboard does, which keeps the two in step.
   if (source) leads = leads.filter((l) => sourceOf(l) === source)
-
-  const opens = new Map<string, number>()
-  const dwell = new Map<string, number>()
-  for (const o of opensRes.docs as LinkOpen[]) {
-    if (!o.brochureId) continue
-    opens.set(o.brochureId, (opens.get(o.brochureId) ?? 0) + 1)
-    if (o.dwellMs) dwell.set(o.brochureId, (dwell.get(o.brochureId) ?? 0) + o.dwellMs)
-  }
+  const { opens, dwell } = totals
 
   const header = [
     'Name',
@@ -126,35 +103,35 @@ export async function GET(req: Request) {
   ]
 
   const rows = leads.map((l) => [
-    l.name,
-    l.phone,
-    l.email,
-    statusLabel(l.status),
-    l.unqualifiedReason,
-    leadChannelLabel(l),
-    leadFormLabel(l),
-    l.firstTouchCampaign,
-    l.firstTouchContent,
-    l.latestTouchSource,
-    l.source,
-    leadProjectLabel(l),
-    l.interestedUnitType,
-    l.propertyType,
-    l.budget,
-    fmtDateTime(l.createdAt),
-    fmtDateTime(l.brochureSentAt),
-    fmtDateTime(l.brochureOpenedAt),
-    l.brochureId ? (opens.get(l.brochureId) ?? 0) : 0,
-    fmtDuration(l.brochureId ? (dwell.get(l.brochureId) ?? 0) : 0),
-    l.notes,
+    csvCell(l.name),
+    csvText(l.phone),
+    csvCell(l.email),
+    csvCell(statusLabel(l.status)),
+    csvCell(l.unqualifiedReason),
+    csvCell(leadChannelLabel(l)),
+    csvCell(leadFormLabel(l)),
+    csvCell(l.firstTouchCampaign),
+    csvCell(l.firstTouchContent),
+    csvCell(l.latestTouchSource),
+    csvCell(l.source),
+    csvCell(leadProjectLabel(l)),
+    csvCell(l.interestedUnitType),
+    csvCell(l.propertyType),
+    csvCell(l.budget),
+    csvCell(pktDateTime(l.createdAt)),
+    csvCell(pktDateTime(l.brochureSentAt)),
+    csvCell(pktDateTime(l.brochureOpenedAt)),
+    csvCell(l.brochureId ? (opens.get(l.brochureId) ?? 0) : 0),
+    csvCell(fmtDuration(l.brochureId ? (dwell.get(l.brochureId) ?? 0) : 0)),
+    csvCell(l.notes),
   ])
 
-  const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
+  const csv = [header.map(csvCell), ...rows].map((r) => r.join(',')).join('\r\n')
 
   // Leading BOM: without it Excel reads the file as the local codepage and
-  // mangles non-ASCII names.
+  // mangles non-ASCII (e.g. Urdu) names.
   const body = `﻿${csv}`
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = pktDateTime(new Date()).slice(0, 10)
 
   return new NextResponse(body, {
     status: 200,

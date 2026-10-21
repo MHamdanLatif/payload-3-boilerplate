@@ -50,6 +50,7 @@ const audit: CollectionBeforeChangeHook = async ({
   req,
   operation,
   collection,
+  context,
 }) => {
   data.createdBy = operation === 'create' ? req.user?.id : idOf(originalDoc.createdBy)
   data.updatedBy = req.user?.id
@@ -157,8 +158,12 @@ const audit: CollectionBeforeChangeHook = async ({
       collection.slug === 'finance-expenses'
         ? ['amount', 'date', 'project', 'deal', 'category']
         : ['amount', 'date', 'deal', 'receivable', 'nextExpectedDate']
+    // Only the deal-delete hook may detach an expense from its deal (and re-home its project).
+    const unlinking =
+      collection.slug === 'finance-expenses' && context?.unlinkDeletedDeal && data.deal === null
     for (const field of immutable)
       if (
+        !(unlinking && (field === 'deal' || field === 'project')) &&
         data[field] !== undefined &&
         String(idOf(data[field]) ?? '') !== String(idOf(originalDoc[field]) ?? '')
       )
@@ -189,18 +194,61 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
     beforeDelete: [
       async ({ id, req }) => {
         if (slug !== 'finance-deals') return
-        // Keep deletion atomic, including the deal's dependent ledger entries.
-        for (const collection of [
-          'finance-receipts',
-          'finance-expenses',
-          'finance-receivables',
-        ] as const) {
-          await req.payload.delete({
+        // Everything runs on the shared req, so the delete stays atomic. Expenses are money
+        // actually spent: keep them, unlinked, with the deal's project copied on so property
+        // reports still attribute them. A brokerage ("other property") deal has no project,
+        // so its expenses become overhead and the property name is kept in their notes.
+        const deal = await req.payload.findByID({
+          collection: 'finance-deals',
+          id,
+          req,
+          overrideAccess: false,
+          depth: 1,
+        })
+        const projectID = (idOf(deal.project) as number | null | undefined) ?? null
+        const projectTitle = typeof deal.project === 'object' ? deal.project?.title : ''
+        const expenses = await req.payload.find({
+          collection: 'finance-expenses',
+          where: { deal: { equals: id } },
+          pagination: false,
+          depth: 0,
+          req,
+          overrideAccess: false,
+        })
+        const previousContext = req.context
+        try {
+          for (const expense of expenses.docs)
+            await req.payload.update({
+              collection: 'finance-expenses',
+              id: expense.id,
+              data: {
+                deal: null,
+                project: projectID,
+                notes: [
+                  expense.notes,
+                  `Linked deal deleted: ${deal.clientName} · ${projectTitle || deal.otherProperty || 'Other property'}.`,
+                ]
+                  .filter(Boolean)
+                  .join('\n'),
+              },
+              req,
+              overrideAccess: false,
+              context: { unlinkDeletedDeal: true },
+            })
+        } finally {
+          req.context = previousContext
+        }
+        // Receipts and the expected-payment schedule belong to the deal and go with it.
+        for (const collection of ['finance-receipts', 'finance-receivables'] as const) {
+          const result = await req.payload.delete({
             collection,
             where: { deal: { equals: id } },
             req,
             overrideAccess: collection === 'finance-receivables',
           })
+          // Bulk deletes report failures instead of throwing; throw so the whole delete rolls back.
+          if (result.errors.length)
+            throw new APIError("Could not delete this deal's payments. Nothing was deleted.", 400)
         }
       },
     ],

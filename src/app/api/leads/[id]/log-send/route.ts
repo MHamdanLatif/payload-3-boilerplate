@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { sendCrmPush } from '@/lib/crm-push'
 import { advanceLeadStatus } from '@/lib/lead-auto-status'
-import type { Lead } from '@/payload-types'
 
 /**
  * Records a manual "Send File" action on a lead (fired by SendFileButton when
  * the owner opens WhatsApp with the brochure message pre-filled). Stamps the
- * lead's delivery log and pushes an optional CRM push confirmation. Admin-only.
+ * lead's delivery log. No push confirmation: the person who sent it already
+ * knows. Admin-only.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -26,10 +25,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const lead = (await payload
-      .findByID({ collection: 'leads', id, depth: 0 })
-      .catch(() => null)) as Lead | null
-
     await payload.update({
       collection: 'leads',
       id,
@@ -44,15 +39,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // The send is a fact, so the pipeline records it rather than waiting for
     // someone to remember. Only ever forward, and never over a terminal status.
     await advanceLeadStatus(payload, id, 'details-sent')
-
-    // Optional owner confirmation.
-    await sendCrmPush(payload, {
-      title: 'Brochure Sent',
-      clickUrl: `/leads-dashboard/${id}`,
-      message: `Brochure link sent to ${lead?.name ?? 'a lead'} via WhatsApp.`,
-      priority: 'low',
-      tags: 'outbox_tray',
-    })
   } catch (e) {
     console.warn('[leads/log-send] failed:', (e as Error).message)
     return NextResponse.json({ ok: false }, { status: 500 })

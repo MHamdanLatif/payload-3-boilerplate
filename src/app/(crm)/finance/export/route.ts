@@ -4,7 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { hasFinanceAccess } from '@/access/finance'
 import { sql } from '@payloadcms/db-postgres'
-import { financeCTE } from '@/lib/finance-query'
+import { exportValue, financeCTE } from '@/lib/finance-query'
 
 export const dynamic = 'force-dynamic'
 const queries = {
@@ -13,8 +13,9 @@ const queries = {
   receivables: sql`SELECT id,deal_id,client_name,project_name,date,unpaid,status FROM schedules`,
   expenses: sql`SELECT e.*,COALESCE(d.project_name,p.title) AS project_name FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id LEFT JOIN featured_projects p ON p.id=e.project_id`,
 }
-const cell = (value: unknown) => {
-  let s = value instanceof Date ? value.toISOString() : String(value ?? '')
+// Dates and timestamps are written in Pakistan time (see exportValue), not UTC.
+const cell = (value: unknown, column = '') => {
+  let s = String(exportValue(column, value) ?? '')
   if (/^[\s]*[=+@-]/.test(s)) s = `'${s}`
   return `"${s.replaceAll('"', '""')}"`
 }
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
       let last = 0,
         columns: string[] = []
       try {
+        // UTF-8 BOM so Excel reads Urdu names correctly instead of using the local codepage.
+        controller.enqueue(encoder.encode('﻿'))
         while (true) {
           const result = await payload.db.drizzle.execute(
             sql`${financeCTE} SELECT * FROM (${query}) exported WHERE id>${last} ORDER BY id LIMIT 500`,
@@ -46,10 +49,10 @@ export async function GET(request: NextRequest) {
           if (!rows.length) break
           if (!columns.length) {
             columns = Object.keys(rows[0])
-            controller.enqueue(encoder.encode(columns.map(cell).join(',') + '\r\n'))
+            controller.enqueue(encoder.encode(columns.map((c) => cell(c)).join(',') + '\r\n'))
           }
           for (const row of rows)
-            controller.enqueue(encoder.encode(columns.map((c) => cell(row[c])).join(',') + '\r\n'))
+            controller.enqueue(encoder.encode(columns.map((c) => cell(row[c], c)).join(',') + '\r\n'))
           last = Number(rows[rows.length - 1].id)
         }
         if (!columns.length) controller.enqueue(encoder.encode('No records\r\n'))

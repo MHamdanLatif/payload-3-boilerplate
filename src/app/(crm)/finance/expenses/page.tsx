@@ -17,7 +17,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
   const p = await searchParams,
     page = pageNumber(p),
     project = positiveID(param(p, 'project'))
-  const where = sql`${dateWhere('e.date', period(p))} AND (${param(p, 'category')}='' OR e.category=${param(p, 'category')}) AND (${project}=0 OR COALESCE(d.project_id,e.project_id)=${project})`
+  const where = sql`${dateWhere('e.date', period(p))} AND (${param(p, 'category')}='' OR e.category=${param(p, 'category')}) AND (${project}=0 OR (CASE WHEN e.deal_id IS NOT NULL THEN d.project_id ELSE e.project_id END)=${project})`
   const rows = await financeQuery(
     sql`SELECT e.*,COALESCE(d.project_name,p.title) AS project_name,d.client_name,count(*) OVER() AS total_count FROM finance_expenses e LEFT JOIN deals d ON d.id=e.deal_id LEFT JOIN featured_projects p ON p.id=e.project_id WHERE ${where} ORDER BY e.date DESC,e.id DESC LIMIT 25 OFFSET ${(page - 1) * 25}`,
   )

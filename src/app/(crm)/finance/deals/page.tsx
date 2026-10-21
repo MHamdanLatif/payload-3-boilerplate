@@ -28,7 +28,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
   return (
     <>
       <h2>Deals</h2>
-      <PeriodFilter params={p} />
+      <PeriodFilter params={p} fallback="all" />
       <form className="finance-filters">
         {['period', 'month', 'from', 'to'].map((k) => (
           <input key={k} type="hidden" name={k} value={param(p, k)} />

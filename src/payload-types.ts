@@ -85,6 +85,7 @@ export interface Config {
     'link-opens': LinkOpen;
     'push-subscriptions': PushSubscription;
     'lead-notifications': LeadNotification;
+    'crm-devices': CrmDevice;
     'finance-deals': FinanceDeal;
     'finance-receipts': FinanceReceipt;
     'finance-receivables': FinanceReceivable;
@@ -118,6 +119,7 @@ export interface Config {
     'link-opens': LinkOpensSelect<false> | LinkOpensSelect<true>;
     'push-subscriptions': PushSubscriptionsSelect<false> | PushSubscriptionsSelect<true>;
     'lead-notifications': LeadNotificationsSelect<false> | LeadNotificationsSelect<true>;
+    'crm-devices': CrmDevicesSelect<false> | CrmDevicesSelect<true>;
     'finance-deals': FinanceDealsSelect<false> | FinanceDealsSelect<true>;
     'finance-receipts': FinanceReceiptsSelect<false> | FinanceReceiptsSelect<true>;
     'finance-receivables': FinanceReceivablesSelect<false> | FinanceReceivablesSelect<true>;
@@ -1331,14 +1333,6 @@ export interface PropertyListing {
     };
     [k: string]: unknown;
   } | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    /**
-     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
-     */
-    image?: (number | null) | Media;
-  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1643,10 +1637,11 @@ export interface Lead {
    */
   conversationNotes?: string | null;
   /**
-   * No reminder by default. Choose a future date and time to receive a CRM app notification. Clear to cancel. The admin picker uses your browser timezone.
+   * No reminder by default. Choose a future date and time to receive a CRM app notification. The lead stays in Follow-ups until marked contacted or the reminder is cleared. The admin picker uses your browser timezone.
    */
   followUpAt?: string | null;
   followUpSentAt?: string | null;
+  followUpRepeatSentAt?: string | null;
   followUpStatus?: string | null;
   followUpRetryAt?: string | null;
   followUpClaim?: string | null;
@@ -1819,7 +1814,7 @@ export interface ScheduleRevision {
   buyerName: string;
   buyerPhone: string;
   note?: string | null;
-  createdBy: number | User;
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -1865,6 +1860,7 @@ export interface PushSubscription {
   p256dh: string;
   auth: string;
   owner: number | User;
+  sessionId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1892,7 +1888,28 @@ export interface LeadNotification {
     | number
     | boolean
     | null;
+  deviceAttempts?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   deliveryStatus?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-devices".
+ */
+export interface CrmDevice {
+  id: number;
+  sessionId: string;
+  owner: number | User;
+  description?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2188,6 +2205,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'lead-notifications';
         value: number | LeadNotification;
+      } | null)
+    | ({
+        relationTo: 'crm-devices';
+        value: number | CrmDevice;
       } | null)
     | ({
         relationTo: 'finance-deals';
@@ -2820,13 +2841,6 @@ export interface PropertyListingsSelect<T extends boolean = true> {
         id?: T;
       };
   description?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2952,6 +2966,7 @@ export interface LeadsSelect<T extends boolean = true> {
   conversationNotes?: T;
   followUpAt?: T;
   followUpSentAt?: T;
+  followUpRepeatSentAt?: T;
   followUpStatus?: T;
   followUpRetryAt?: T;
   followUpClaim?: T;
@@ -3065,6 +3080,7 @@ export interface PushSubscriptionsSelect<T extends boolean = true> {
   p256dh?: T;
   auth?: T;
   owner?: T;
+  sessionId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3083,7 +3099,19 @@ export interface LeadNotificationsSelect<T extends boolean = true> {
   finishedAt?: T;
   attempts?: T;
   receipts?: T;
+  deviceAttempts?: T;
   deliveryStatus?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "crm-devices_select".
+ */
+export interface CrmDevicesSelect<T extends boolean = true> {
+  sessionId?: T;
+  owner?: T;
+  description?: T;
   updatedAt?: T;
   createdAt?: T;
 }

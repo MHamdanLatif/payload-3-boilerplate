@@ -41,4 +41,24 @@ export async function verifyFollowUp(page: Page, id: number) {
   await page.reload()
   await expect(page.getByLabel('Follow-up reminder', { exact: true })).toHaveValue('none')
   expect((await (await page.request.get(`/api/leads/${id}`)).json()).followUpAt).toBeNull()
+
+  // A reminder stays in Follow-ups, sent or not, until someone presses Mark contacted.
+  await page.getByLabel('Follow-up reminder', { exact: true }).selectOption('scheduled')
+  await page.getByLabel('Reminder date and time (PKT, UTC+5)', { exact: true }).fill(future)
+  await page.getByRole('button', { name: 'Save notes & reminder' }).click()
+  await expect(page.getByRole('status')).toHaveText('Saved.')
+  const { name } = await (await page.request.get(`/api/leads/${id}`)).json()
+  await page.goto('/leads-dashboard?view=followups&q=' + encodeURIComponent(name))
+  const card = page
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name, exact: true }) })
+  await expect(card.getByRole('button', { name: 'Mark contacted' })).toBeVisible()
+  await page.goto(`/leads-dashboard/${id}`)
+  await page.getByRole('button', { name: 'Mark contacted' }).click()
+  await expect(page.getByRole('status')).toHaveText('Marked contacted. Reminder cleared.')
+  const handled = await (await page.request.get(`/api/leads/${id}`)).json()
+  expect(handled.followUpAt).toBeNull()
+  expect(handled.status).toBe('contacted')
+  await page.goto('/leads-dashboard?view=followups&q=' + encodeURIComponent(name))
+  await expect(card).toHaveCount(0)
 }

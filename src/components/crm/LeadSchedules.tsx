@@ -3,6 +3,18 @@ import type { User as CmsUser } from '@/payload-types'
 import { computeAdminPlan, type AdminPlanInput } from '@/lib/admin-payment-plan'
 import { formatPlanMoney } from '@/lib/payment-plan'
 
+/** One unreadable saved revision must not take down the page that lists it. */
+export function scheduleTotal(settings: unknown): string {
+  try {
+    const result = computeAdminPlan(settings as AdminPlanInput)
+    return result.loanAmount > 0
+      ? `${formatPlanMoney(result.finalPrice)} (incl. loan ${formatPlanMoney(result.loanAmount)})`
+      : formatPlanMoney(result.finalPrice)
+  } catch {
+    return 'Needs review'
+  }
+}
+
 export async function LeadSchedules({
   leadId,
   payload,
@@ -62,11 +74,7 @@ export async function LeadSchedules({
           {latest && (
             <>
               <p className="crm-muted mt-1">
-                Revision {latest.revision} ·{' '}
-                {formatPlanMoney(
-                  computeAdminPlan(latest.settings as unknown as AdminPlanInput).finalPrice,
-                )}{' '}
-                ·{' '}
+                Revision {latest.revision} · {scheduleTotal(latest.settings)} ·{' '}
                 {new Date(latest.createdAt).toLocaleDateString('en-GB', {
                   timeZone: 'Asia/Karachi',
                 })}

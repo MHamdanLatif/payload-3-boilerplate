@@ -15,6 +15,8 @@ export const LeadNotifications: CollectionConfig = {
     { name: 'finishedAt', type: 'date' },
     { name: 'attempts', type: 'number', defaultValue: 0 },
     { name: 'receipts', type: 'json', defaultValue: [] },
+    // Send attempts per device hash; a device stops being retried after 3.
+    { name: 'deviceAttempts', type: 'json', defaultValue: {} },
     { name: 'deliveryStatus', type: 'text' },
   ],
 }

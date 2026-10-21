@@ -117,7 +117,22 @@ test('delivery keeps brochure action and prunes expired subscriptions', async ()
   assert.equal(transient.sends.length, 3)
   assert.equal(transient.deletes.length, 0)
 })
-function api({ user = { id: 1 }, owner, disabled = false } = {}) {
+test('permanent push rejections delete the subscription; 400 and 5xx do not', async () => {
+  const docs = [{ id: 1, owner: 7, endpoint, ...subscription.keys }]
+  for (const failure of [401, 403, 404, 410]) {
+    const f = sender({ docs, failure })
+    await f.push.sendCrmPush(f.payload, { title: 'New Lead', message: 'Ali' })
+    assert.equal(f.deletes.length, 1, String(failure))
+    assert.equal(f.sends.length, 1)
+  }
+  for (const failure of [400, 500]) {
+    const f = sender({ docs, failure })
+    const result = await f.push.sendCrmPush(f.payload, { title: 'New Lead', message: 'Ali' })
+    assert.equal(f.deletes.length, 0, String(failure))
+    assert.deepEqual([...result.attempted], [createHash('sha256').update(endpoint).digest('hex')])
+  }
+})
+function api({ user = { id: 1, _sid: 'session-1' }, owner, disabled = false } = {}) {
   const f = sender({ disabled }),
     writes = [],
     sends = []
@@ -125,7 +140,7 @@ function api({ user = { id: 1 }, owner, disabled = false } = {}) {
     auth: async () => ({ user }),
     findGlobal: async () => ({ automaticUncontactedReminders: true }),
     updateGlobal: async (v) => writes.push(v),
-    find: async () => ({ docs: owner ? [{ id: 2, owner }] : [] }),
+    find: async () => ({ docs: owner !== undefined ? [{ id: 2, owner }] : [] }),
     create: async (v) => writes.push(v),
     update: async (v) => writes.push(v),
     delete: async (v) => writes.push(v),
@@ -152,25 +167,56 @@ function api({ user = { id: 1 }, owner, disabled = false } = {}) {
     })
   return { route, request, writes, sends }
 }
-test('notification API requires login, same origin, and subscription ownership', async () => {
+test('notification API requires login and same origin; enabling ties the device to the session', async () => {
   const anon = api({ user: null })
   assert.equal((await anon.route.GET(anon.request('GET'))).status, 401)
+  assert.equal((await anon.route.POST(anon.request('POST'))).status, 401)
   const own = api()
   assert.equal(
     (await own.route.POST(own.request('POST', subscription, 'https://evil.test'))).status,
     403,
   )
+  assert.equal(
+    (await own.route.DELETE(own.request('DELETE', subscription, 'https://evil.test'))).status,
+    403,
+  )
   assert.equal(own.writes.length, 0)
-  const other = api({ owner: 9 })
-  for (const method of ['POST', 'DELETE'])
-    assert.equal((await other.route[method](other.request(method))).status, 409)
-  assert.equal(other.writes.length, 0)
   assert.deepEqual(await (await own.route.GET(own.request('GET'))).json(), {
     publicKey: 'public',
     automaticReminders: true,
   })
   assert.equal((await own.route.POST(own.request('POST'))).status, 200)
   assert.equal(own.writes[0].data.owner, 1)
+  assert.equal(own.writes[0].data.sessionId, 'session-1')
+})
+test('a new sign-in takes over the device from the previous account or from nobody', async () => {
+  for (const owner of [9, null]) {
+    const f = api({ owner })
+    assert.equal((await f.route.POST(f.request('POST'))).status, 200)
+    assert.equal(f.writes[0].id, 2)
+    assert.equal(f.writes[0].data.owner, 1)
+    assert.equal(f.writes[0].data.sessionId, 'session-1')
+  }
+  // A test push still only goes to the caller's own device.
+  const other = api({ owner: 9 })
+  assert.equal((await other.route.POST(other.request('POST', { endpoint, test: true }))).status, 400)
+  assert.equal(other.sends.length, 0)
+})
+test('whoever holds the endpoint may delete it, even after the session ended', async () => {
+  for (const [user, owner] of [
+    [null, 1],
+    [{ id: 5 }, 9],
+  ]) {
+    const f = api({ user, owner })
+    assert.equal((await f.route.DELETE(f.request('DELETE'))).status, 200)
+    assert.equal(
+      f.writes[0].where.endpointHash.equals,
+      createHash('sha256').update(endpoint).digest('hex'),
+    )
+  }
+  const bad = api({ user: null })
+  assert.equal((await bad.route.DELETE(bad.request('DELETE', { endpoint: 'https://evil.test/x' }))).status, 400)
+  assert.equal(bad.writes.length, 0)
 })
 test('test notification targets only the current device; deletion remains available when disabled', async () => {
   const f = api({ owner: 1 })
@@ -179,7 +225,7 @@ test('test notification targets only the current device; deletion remains availa
   assert.equal(f.sends[0][2].endpointHash, createHash('sha256').update(endpoint).digest('hex'))
   const disabled = api({ owner: 1, disabled: true })
   assert.equal((await disabled.route.DELETE(disabled.request('DELETE'))).status, 200)
-  assert.equal(disabled.writes[0].id, 2)
+  assert.ok(disabled.writes[0].where.endpointHash)
 })
 test('worker shows branded actions and opens the signed brochure URL, blocking external targets', async () => {
   const handlers = {},
@@ -348,4 +394,93 @@ test('display receipts require an action-scoped device signature', async () => {
   assert.equal(writes.length, 0)
   assert.equal((await route.POST(new Request(url + '&sig=valid'))).status, 204)
   assert.equal(writes.length, 1)
+})
+
+function queue({ lead, job = {}, sendResult = { ok: true, status: 'ok', pendingDevices: 0, attempted: [] } }) {
+  const executes = [],
+    sends = [],
+    updates = []
+  const q = load('src/lib/lead-notification-queue.ts', {
+    'node:crypto': { randomUUID: () => 'claim-1' },
+    '@payloadcms/db-postgres': { sql: (parts, ...values) => ({ text: parts.join('?'), values }) },
+    './crm-push': {
+      crmPushConfigured: () => true,
+      sendCrmPush: async (...args) => {
+        sends.push(args)
+        return sendResult
+      },
+    },
+    './lead-notification-message': {
+      leadNotificationMessage: () => ({ title: 'New Lead', message: 'Ali' }),
+    },
+    './lead-action-link': { signLeadAction: () => 'sig' },
+  })
+  let claimed = false
+  const payload = {
+    db: {
+      drizzle: {
+        execute: async (query) => {
+          executes.push(query)
+          if (query.text.includes('RETURNING id') && !claimed) {
+            claimed = true
+            return { rows: [{ id: 5 }] }
+          }
+          return { rows: [] }
+        },
+      },
+    },
+    findByID: async ({ collection }) =>
+      collection === 'lead-notifications'
+        ? { id: 5, claim: 'claim-1', lead: 12, kind: 'new', receipts: [], ...job }
+        : lead,
+    findGlobal: async () => ({ automaticUncontactedReminders: true }),
+    update: async (v) => updates.push(v),
+  }
+  const result = () => executes.find((query) => query.text.includes('device_attempts ='))
+  return { run: () => q.deliverLeadNotifications(payload), executes, sends, updates, result }
+}
+const website = { id: 12, name: 'Ali', status: 'unqualified', conversionSurface: 'project-hero-form' }
+
+test('leads added by hand in the CRM never queue or send lead alerts', async () => {
+  const f = queue({ lead: { ...website, conversionSurface: 'crm-manual' } })
+  await f.run()
+  const insert = f.executes.find((query) => query.text.includes('INSERT INTO lead_notifications'))
+  assert.match(insert.text, /conversion_surface IS DISTINCT FROM \?/)
+  assert.ok(insert.values.includes('crm-manual'))
+  assert.equal(f.sends.length, 0)
+  assert.ok(f.executes.some((query) => query.text.includes('Cancelled')))
+})
+
+test('a device is retried at most 3 times, then the alert stops retrying', async () => {
+  const dead = 'd'.repeat(64)
+  const f = queue({
+    lead: website,
+    job: { deviceAttempts: { [dead]: 2, done: 3 } },
+    sendResult: { ok: false, status: 'Push service rejected delivery', pendingDevices: 1, attempted: [dead] },
+  })
+  await f.run()
+  assert.ok(f.sends[0][3].exclude.includes('done'))
+  const [finishedAt, status, attempts] = f.result().values
+  assert.ok(finishedAt)
+  assert.match(status, /Stopped after 3 attempts/)
+  assert.deepEqual(JSON.parse(attempts), { [dead]: 3, done: 3 })
+  assert.match(f.updates[0].data.ownerNotifyStatus, /after 3 attempts/)
+})
+
+test('an unconfirmed device under its attempt limit keeps the alert pending', async () => {
+  const f = queue({
+    lead: website,
+    sendResult: { ok: true, status: 'Accepted by push service for 1/1 devices', pendingDevices: 1, attempted: ['a'] },
+  })
+  await f.run()
+  const [finishedAt, status, attempts] = f.result().values
+  assert.equal(finishedAt, null)
+  assert.match(status, /Accepted/)
+  assert.deepEqual(JSON.parse(attempts), { a: 1 })
+})
+
+test('Send File logging advances status without a Brochure Sent push', () => {
+  const source = readFileSync('src/app/api/leads/[id]/log-send/route.ts', 'utf8')
+  assert.ok(!source.includes('sendCrmPush'))
+  assert.ok(source.includes("advanceLeadStatus(payload, id, 'details-sent')"))
 })
