@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { SectionRule } from '@/components/landing/SectionRule'
+import { hasFaqs } from '@/lib/section-numbers'
 
 export type FaqItem = { question: string; answer: string }
 
@@ -24,7 +25,7 @@ export function FaqSection({
   heading = 'Frequently asked',
 }: Props) {
   const list = (faqs ?? []).filter((f) => f?.question && f?.answer)
-  if (!list.length) return null
+  if (!hasFaqs(list)) return null
 
   return (
     <section className="bg-ivory py-20 md:py-28">

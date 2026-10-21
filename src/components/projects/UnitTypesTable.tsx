@@ -57,6 +57,7 @@ export function UnitTypesTable({
 }) {
   const units = sortedUnits(project)
   const summary = unitSummary(project)
+  // Same condition as hasUnitsTable() in lib/section-numbers; inlined so TS narrows `summary`.
   if (!units.length || !summary) return null
 
   const area = areaRangeLabel(summary)

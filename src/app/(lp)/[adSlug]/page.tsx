@@ -16,6 +16,13 @@ import { PhotoGallerySection } from '@/components/shared/PhotoGallerySection'
 import { AmenitiesSection } from '@/components/shared/AmenitiesSection'
 import { MapSection } from '@/components/shared/MapSection'
 import { getServerSideURL } from '@/utilities/getURL'
+import {
+  hasAmenities,
+  hasGallery,
+  hasMap,
+  hasTrackRecord,
+  numberSections,
+} from '@/lib/section-numbers'
 
 type Params = { adSlug: string }
 
@@ -102,6 +109,15 @@ export default async function MarketedLandingPage({ params }: { params: Promise<
   // three URLs would each collect their own pixel and analytics data for one page.
   if (project.slug !== adSlug) permanentRedirect(`/${project.slug}`)
 
+  // Numbered by what this project actually shows, so an empty section never leaves a gap.
+  const n = numberSections([
+    { key: 'gallery', label: 'GALLERY', show: hasGallery(project.photoGallery) },
+    { key: 'amenities', label: 'AMENITIES', show: hasAmenities(project.amenities) },
+    { key: 'location', label: 'LOCATION', show: hasMap(project.googleMapsEmbedUrl) },
+    { key: 'builder', label: 'THE BUILDER', show: hasTrackRecord(project) },
+    { key: 'register', label: 'REGISTER INTEREST', show: true },
+  ])
+
   return (
     <>
       <main>
@@ -115,17 +131,17 @@ export default async function MarketedLandingPage({ params }: { params: Promise<
         <PhotoGallerySection
           photos={project.photoGallery}
           itemTitle={project.title}
-          sectionNumber="01 / GALLERY"
+          sectionNumber={n.gallery}
         />
-        <AmenitiesSection amenities={project.amenities} sectionNumber="02 / AMENITIES" />
+        <AmenitiesSection amenities={project.amenities} sectionNumber={n.amenities} />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="03 / LOCATION"
+          sectionNumber={n.location}
         />
-        <BuilderTrackRecord project={project} sectionNumber="04 / THE BUILDER" />
-        <MarketedCta project={project} sectionNumber="05 / REGISTER INTEREST" />
+        <BuilderTrackRecord project={project} sectionNumber={n.builder} />
+        <MarketedCta project={project} sectionNumber={n.register} />
       </main>
       <MarketedFooter />
       <StickyActionBar

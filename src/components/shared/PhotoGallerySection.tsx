@@ -29,6 +29,7 @@ export function PhotoGallerySection({
   const rows = (photos ?? []).filter((r) => !!r?.image)
   const [open, setOpen] = useState<number | null>(null)
 
+  // Same condition as hasGallery() in lib/section-numbers, which numbers the page.
   if (!rows.length) return null
 
   const current = open != null ? rows[open] : null

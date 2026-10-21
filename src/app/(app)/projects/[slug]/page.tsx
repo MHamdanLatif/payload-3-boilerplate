@@ -33,6 +33,16 @@ import { FaqSection } from '@/components/shared/FaqSection'
 import { InsightsSection } from '@/components/blog/InsightsSection'
 import { FinalCTASection } from '@/components/shared/FinalCTASection'
 import { WhatsAppFloatingCta } from '@/components/projects/WhatsAppFloatingCta'
+import { hasPublicPaymentPlan } from '@/lib/project-visibility'
+import {
+  hasAmenities,
+  hasFaqs,
+  hasGallery,
+  hasMap,
+  hasTrackRecord,
+  hasUnitsTable,
+  numberSections,
+} from '@/lib/section-numbers'
 import { JsonLd } from '@/components/shared/JsonLd'
 import { getServerSideURL } from '@/utilities/getURL'
 
@@ -135,6 +145,21 @@ export default async function ProjectLandingPage({
   const base = getServerSideURL().replace(/\/$/, '')
   const canonical = `${base}/projects/${project.slug}`
 
+  // The overview is always "01"; the rest are numbered by what this project shows.
+  const n = numberSections(
+    [
+      { key: 'units', label: 'AVAILABLE UNITS', show: hasUnitsTable(project) },
+      { key: 'builder', label: 'THE BUILDER', show: hasTrackRecord(project) },
+      { key: 'plan', label: 'PAYMENT PLAN', show: hasPublicPaymentPlan(project) },
+      { key: 'amenities', label: 'AMENITIES', show: hasAmenities(project.amenities) },
+      { key: 'gallery', label: 'GALLERY', show: hasGallery(project.photoGallery) },
+      { key: 'location', label: 'LOCATION', show: hasMap(project.googleMapsEmbedUrl) },
+      { key: 'faq', label: 'FAQ', show: hasFaqs(project.faqs) },
+      { key: 'enquire', label: 'ENQUIRE', show: true },
+    ],
+    2,
+  )
+
   const schemas = [
     realEstateListingSchema(project),
     // Null when the project has no unitTypes rows; JsonLd filters nulls.
@@ -158,27 +183,27 @@ export default async function ProjectLandingPage({
             page actually ask for, and this is server-rendered text whereas the
             calculator below is a client component. Renders nothing when the
             project has no unitTypes rows. */}
-        <UnitTypesTable project={project} sectionNumber="02 / AVAILABLE UNITS" />
+        <UnitTypesTable project={project} sectionNumber={n.units} />
         {/* Placed immediately after the prices: seeing a pre-launch figure is
             exactly what prompts "but will they actually build it?" - answering
             it here, rather than at the foot of the page, meets the doubt where
             it arises. Renders nothing when a project has no track record. */}
-        <BuilderTrackRecord project={project} sectionNumber="03 / THE BUILDER" />
-        <PaymentPlanCalculator project={project} sectionNumber="04 / PAYMENT PLAN" />
+        <BuilderTrackRecord project={project} sectionNumber={n.builder} />
+        <PaymentPlanCalculator project={project} sectionNumber={n.plan} />
         <NightElevationCard project={project} />
-        <AmenitiesSection amenities={project.amenities} sectionNumber="05 / AMENITIES" />
+        <AmenitiesSection amenities={project.amenities} sectionNumber={n.amenities} />
         <PhotoGallerySection
           photos={project.photoGallery}
           itemTitle={project.title}
-          sectionNumber="06 / GALLERY"
+          sectionNumber={n.gallery}
         />
         <MapSection
           embedUrl={project.googleMapsEmbedUrl}
           itemTitle={project.title}
           location={project.location}
-          sectionNumber="07 / LOCATION"
+          sectionNumber={n.location}
         />
-        <FaqSection faqs={project.faqs} sectionNumber="08 / FAQ" />
+        <FaqSection faqs={project.faqs} sectionNumber={n.faq} />
         <InsightsSection
           blogs={relatedBlogs}
           eyebrow="FURTHER READING"
@@ -190,7 +215,7 @@ export default async function ProjectLandingPage({
           sourceName={project.title}
           sourceSlug={project.slug ?? ''}
           sourceKind="project"
-          sectionNumber="09 / ENQUIRE"
+          sectionNumber={n.enquire}
         />
       </main>
       <WhatsAppFloatingCta projectTitle={project.title} projectSlug={project.slug ?? undefined} />

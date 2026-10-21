@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react'
 import { SectionRule } from '@/components/landing/SectionRule'
+import { hasAmenities } from '@/lib/section-numbers'
 
 export type AmenityRow = { name: string }
 
@@ -17,7 +18,7 @@ export function AmenitiesSection({
   subheading,
 }: Props) {
   const list = amenities ?? []
-  if (!list.length) return null
+  if (!hasAmenities(list)) return null
 
   return (
     <section className="bg-cream py-20 md:py-28">

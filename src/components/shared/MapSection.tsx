@@ -16,6 +16,7 @@ export function MapSection({
   sectionNumber = '04 / LOCATION',
   heading = "Where you'll be",
 }: Props) {
+  // Same condition as hasMap() in lib/section-numbers; inlined so TS narrows `embedUrl`.
   if (!embedUrl) return null
 
   return (

@@ -5,6 +5,7 @@ import type { Blog, Media } from '@/payload-types'
 import { imageAlt, imageUrl } from '@/lib/featured-projects'
 import type { TrackRecordSource } from '@/lib/project-shape'
 import { SectionRule } from '@/components/landing/SectionRule'
+import { hasTrackRecord } from '@/lib/section-numbers'
 
 /**
  * The developer's track record, rendered as a progression ending in this project.
@@ -33,7 +34,7 @@ export function BuilderTrackRecord({
   sectionNumber?: string
 }) {
   const entries = project.builderTrackRecord ?? []
-  if (entries.length < 2) return null // a single entry is not a progression
+  if (!hasTrackRecord(project)) return null // a single entry is not a progression
 
   const story =
     project.builderStory && typeof project.builderStory === 'object'
