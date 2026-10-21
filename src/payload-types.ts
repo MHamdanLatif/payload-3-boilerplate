@@ -1585,28 +1585,23 @@ export interface PaymentPlanLead {
 export interface Lead {
   id: number;
   /**
-   * Set by hand after speaking to the lead — never automatically. Funnel order: Unqualified → Contacted → Qualified → Site Visit → Closed Won, with Junk as a dead end. Each stage sends its own Meta CAPI event — Qualified, Site Visit (Schedule), Closed Won (Purchase) and Junk — so the ad account learns what a real buyer looks like, not just what a lead looks like. See leadAfterChange to rename or disable any of them.
+   * New → Contacted → Brochure Not Opened / Engaged → Qualified → Site Visited → Closed Won, with Not a Fit and Invalid / Junk as outcomes. Brochure Not Opened and Engaged are set automatically when the brochure is sent and opened; the rest are set by hand. Meta is told QualifiedLead once when a lead reaches Qualified, Site Visited or Closed Won, and DisqualifiedLead for Invalid / Junk. Not a Fit sends nothing.
    */
   status?:
     | (
         | 'unqualified'
+        | 'contacted'
         | 'details-sent'
         | 'engaged'
-        | 'contacted'
         | 'qualified'
         | 'site-visit'
-        | 'negotiation'
-        | 'booking-pending'
         | 'closed-won'
-        | 'unresponsive'
-        | 'nurture'
         | 'not-a-fit'
-        | 'lost'
         | 'junk'
       )
     | null;
   /**
-   * Why this lead is not moving forward - covers Not a Fit, Lost, Unresponsive and Invalid/Junk. Optional, and never required: a blocked save is worse than a missing note.
+   * Why this lead is not moving forward - covers Not a Fit and Invalid / Junk. Optional, and never required: a blocked save is worse than a missing note.
    */
   unqualifiedReason?: string | null;
   /**

@@ -22,14 +22,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!phone?.isValid()) return NextResponse.redirect(adminUrl, 302)
 
     // Opening chat is the owner's Contacted action, not proof of a reply.
-    // Only advance early stages; preserve later stages and terminal decisions.
-    // Normal status hooks run, including Contacted CAPI if explicitly configured.
+    // Only a New lead advances; later stages and terminal decisions are kept.
+    // Normal status hooks run; Contacted sends nothing to Meta.
     const result = await payload.update({
       collection: 'leads',
       where: {
         and: [
           { id: { equals: lead.id } },
-          { status: { in: ['unqualified', 'details-sent', 'engaged'] } },
+          { status: { equals: 'unqualified' } },
         ],
       },
       overrideAccess: true,

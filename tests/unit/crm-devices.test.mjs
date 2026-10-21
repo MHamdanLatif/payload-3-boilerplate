@@ -168,7 +168,7 @@ test('users can sign out only their own devices; doing so ends that session and 
   assert.deepEqual(f.state.deleted.at(-1), { collection: 'push-subscriptions', sessions: ['s1'] })
 })
 
-function markContacted({ user = { id: 1 }, status = 'details-sent' } = {}) {
+function markContacted({ user = { id: 1 }, status = 'unqualified' } = {}) {
   const updates = []
   const route = load('src/app/api/leads/[id]/mark-contacted/route.ts', {
     'next/server': { NextResponse: { json: (body, opts = {}) => Response.json(body, opts) } },
@@ -197,13 +197,13 @@ function markContacted({ user = { id: 1 }, status = 'details-sent' } = {}) {
 }
 
 test('Mark contacted clears the reminder and only ever moves status forward', async () => {
-  for (const status of ['unqualified', 'details-sent', 'engaged']) {
+  for (const status of ['unqualified']) {
     const f = markContacted({ status })
     assert.equal((await f.call()).status, 200)
     assert.deepEqual({ ...f.updates[0].data }, { followUpAt: null, status: 'contacted' })
     assert.equal(f.updates[0].overrideAccess, false)
   }
-  for (const status of ['contacted', 'qualified', 'closed-won', 'junk']) {
+  for (const status of ['contacted', 'details-sent', 'engaged', 'qualified', 'closed-won', 'not-a-fit', 'junk']) {
     const f = markContacted({ status })
     await f.call()
     assert.deepEqual({ ...f.updates[0].data }, { followUpAt: null })

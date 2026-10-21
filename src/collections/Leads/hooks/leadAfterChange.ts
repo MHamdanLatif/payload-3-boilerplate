@@ -1,13 +1,14 @@
 import type { CollectionAfterChangeHook, Payload } from 'payload'
 import type { Lead } from '@/payload-types'
 import { sendCapiEvent } from '@/lib/meta-capi'
+import { isQualifiedLead } from '@/lib/lead-status'
 
 /**
  * The heart of the native CRM.
  * New-lead notifications and automatic reminders run in the durable background queue.
  *                  The brochure link is sent to the lead manually via the
  *                  "Send File" button (wa.me), so no auto-send / Meta charges.
- *   • On UPDATE  → when status flips to qualified/junk, push a Meta CAPI event so
+ *   • On UPDATE  → when a lead becomes qualified or junk, push a Meta CAPI event so
  *                  ad optimisation learns from real outcomes.
  * Every outbound call is best-effort; results are logged onto the lead. The
  * `skipLeadHooks` context flag prevents the log write-back from re-triggering us.
@@ -47,57 +48,36 @@ function nowIso(): string {
 /**
  * Which Meta CAPI event, if any, a status change should send.
  *
- * All four funnel outcomes now report. "Closed Won" maps to Purchase — the
- * strongest signal available, because it teaches Meta what an actual BUYER
- * looks like rather than merely what a lead looks like. "Site Visit" maps to
- * Schedule, the standard event for a booked appointment.
+ * Two signals only, both about lead quality:
+ *   • Qualified, Site Visited and Closed Won are all qualified leads. Meta hears
+ *     QualifiedLead once, when the lead first enters that group; moving on from
+ *     Qualified to Site Visited is the same lead, not a second good one.
+ *   • Invalid / Junk is a disqualified lead.
+ * Not a Fit is deliberately silent: a buyer who can afford the project but did
+ * not like what was offered is still the kind of lead the ads should find.
  *
- * Every mapping is overridable, and setting a var to an empty string disables
- * that status outright — so any of these can be renamed or switched off from
- * Railway without a deploy:
- *   META_CAPI_QUALIFIED_EVENT, META_CAPI_JUNK_EVENT,
- *   META_CAPI_SITE_VISIT_EVENT, META_CAPI_CLOSED_WON_EVENT
- *
- * KNOWN GAP: Purchase is sent without value/currency, because nothing in the
- * Leads collection records what a deal actually closed for. `budget` is what
- * the buyer said they'd spend, not what they paid, so using it would put a
- * fabricated revenue figure into Meta's reporting. Meta accepts a valueless
- * Purchase and will still optimise toward it; adding a real "sale value" field
- * later would make it considerably more powerful.
+ * Event names can be changed from Railway without a deploy, and an empty string
+ * switches one off: META_CAPI_QUALIFIED_EVENT, META_CAPI_JUNK_EVENT.
  */
-function capiEventForStatus(status: Lead['status']): string | null {
-  const configured: Record<string, { env: string; fallback: string | null }> = {
-    qualified: { env: 'META_CAPI_QUALIFIED_EVENT', fallback: 'QualifiedLead' },
-    junk: { env: 'META_CAPI_JUNK_EVENT', fallback: 'DisqualifiedLead' },
-    // NOTE: 'unqualified' is absent on purpose. It is now labelled "Uncontacted"
-    // and is the default every lead is created with - reporting it would fire a
-    // disqualification for every new enquiry. Its old "does not fit" meaning
-    // moved to 'not-a-fit' below.
-    'site-visit': { env: 'META_CAPI_SITE_VISIT_EVENT', fallback: 'Schedule' },
-    'closed-won': { env: 'META_CAPI_CLOSED_WON_EVENT', fallback: 'Purchase' },
-    // Deeper funnel stages. Silent by default: adding a status to the CRM must
-    // not change what the ad account optimises for as a side effect. Set the
-    // env var to switch one on, e.g. META_CAPI_BOOKING_PENDING_EVENT=InitiateCheckout.
-    negotiation: { env: 'META_CAPI_NEGOTIATION_EVENT', fallback: null },
-    'booking-pending': { env: 'META_CAPI_BOOKING_PENDING_EVENT', fallback: null },
-    // Negative outcomes. 'not-a-fit' mirrors the old 'unqualified' meaning, so
-    // it reports as a disqualification; 'lost', 'unresponsive' and 'nurture'
-    // stay silent because a stalled deal is not a signal Meta can act on.
-    'not-a-fit': { env: 'META_CAPI_NOT_A_FIT_EVENT', fallback: 'DisqualifiedLead' },
-    lost: { env: 'META_CAPI_LOST_EVENT', fallback: null },
-    unresponsive: { env: 'META_CAPI_UNRESPONSIVE_EVENT', fallback: null },
-    nurture: { env: 'META_CAPI_NURTURE_EVENT', fallback: null },
-    // Early stages are internal pipeline movement, not conversions. Behaviour
-    // is intent data; qualification stays a human decision.
-    'details-sent': { env: 'META_CAPI_DETAILS_SENT_EVENT', fallback: null },
-    engaged: { env: 'META_CAPI_ENGAGED_EVENT', fallback: null },
-    contacted: { env: 'META_CAPI_CONTACTED_EVENT', fallback: null },
+function capiEventForStatus(
+  status: Lead['status'],
+  previous: Lead['status'] | undefined,
+): string | null {
+  let env: string
+  let fallback: string
+  if (isQualifiedLead(status)) {
+    if (isQualifiedLead(previous)) return null
+    env = 'META_CAPI_QUALIFIED_EVENT'
+    fallback = 'QualifiedLead'
+  } else if (status === 'junk') {
+    env = 'META_CAPI_JUNK_EVENT'
+    fallback = 'DisqualifiedLead'
+  } else {
+    return null
   }
-  const entry = status ? configured[status] : undefined
-  if (!entry) return null
-  const override = process.env[entry.env]
+  const override = process.env[env]
   if (override === '') return null
-  return override || entry.fallback
+  return override || fallback
 }
 
 async function onStatusChange(
@@ -108,7 +88,7 @@ async function onStatusChange(
   const now = doc.status
   const prev = previousDoc?.status
   if (now === prev) return
-  const eventName = capiEventForStatus(now)
+  const eventName = capiEventForStatus(now, prev)
   if (!eventName) return
 
   const res = await sendCapiEvent({

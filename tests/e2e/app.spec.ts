@@ -31,13 +31,13 @@ async function verifyCrmActions(page: Page) {
   }
   expect((await page.request.get(actionUrl('send-brochure'), { maxRedirects: 0 })).status()).toBe(403)
   expect((await page.request.get(`/api/leads/${lead.id}/whatsapp`, { maxRedirects: 0 })).status()).toBe(403)
-  for (const status of ['unqualified', 'details-sent', 'engaged', 'contacted', 'qualified', 'closed-won', 'junk', 'lost', 'nurture', 'unresponsive', 'not-a-fit']) {
+  for (const status of ['unqualified', 'contacted', 'details-sent', 'engaged', 'qualified', 'site-visit', 'closed-won', 'junk', 'not-a-fit']) {
     expect((await page.request.patch(`/api/leads/${lead.id}`, { data: { status } })).ok()).toBeTruthy()
     const response = await page.request.get(actionUrl('whatsapp'), { maxRedirects: 0, headers: { Cookie: '' } })
     expect(response.status()).toBe(302)
     expect(response.headers().location).toBe('https://wa.me/923001234567')
     const saved = await (await page.request.get(`/api/leads/${lead.id}?depth=0`)).json()
-    expect(saved.status).toBe(['unqualified', 'details-sent', 'engaged'].includes(status) ? 'contacted' : status)
+    expect(saved.status).toBe(status === 'unqualified' ? 'contacted' : status)
     expect(saved.brochureSentAt).toBe('2026-09-13T20:30:00.000Z')
     expect(saved.brochureSendStatus).toBeFalsy()
   }

@@ -153,7 +153,7 @@ export function CrmNotifications() {
               }
             }}
           />
-          Automatic reminders at 30 minutes and 2 hours while a new lead is Uncontacted. Leads you
+          Automatic reminders at 30 minutes and 2 hours while a lead is still New. Leads you
           add in the CRM yourself get no alerts.
         </label>
       )}

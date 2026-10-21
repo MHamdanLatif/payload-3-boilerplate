@@ -125,12 +125,7 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
   const badge: Record<string, string> = {
     'details-sent': 'bg-sky-100 text-sky-700',
     engaged: 'bg-indigo-100 text-indigo-700',
-    negotiation: 'bg-purple-100 text-purple-700',
-    'booking-pending': 'bg-orange-100 text-orange-700',
-    unresponsive: 'bg-stone-200 text-stone-600',
-    nurture: 'bg-teal-100 text-teal-700',
     'not-a-fit': 'bg-rose-100 text-rose-600',
-    lost: 'bg-red-200 text-red-800',
     unqualified: 'bg-brand-deep/10 text-brand-deep/70',
     contacted: 'bg-blue-100 text-blue-700',
     qualified: 'bg-green-100 text-green-700',

@@ -27,10 +27,10 @@ export const CrmSettings: GlobalConfig = {
       name: 'automaticUncontactedReminders',
       type: 'checkbox',
       defaultValue: true,
-      label: 'Automatic Uncontacted lead reminders',
+      label: 'Automatic reminders for New leads',
       admin: {
         description:
-          'Notify at 30 minutes and 2 hours after creation if still Uncontacted. Separate from manually scheduled follow-ups.',
+          'Notify at 30 minutes and 2 hours after creation if the lead is still New. Separate from manually scheduled follow-ups.',
       },
     },
     {

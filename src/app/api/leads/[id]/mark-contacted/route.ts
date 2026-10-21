@@ -3,9 +3,9 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getServerSideURL } from '@/utilities/getURL'
 
-// Statuses a person pressing Mark contacted moves forward to `contacted`. Anything
-// further along, or terminal, is left alone: this never moves a lead backwards.
-const BEFORE_CONTACTED = ['unqualified', 'details-sent', 'engaged']
+// Only a New lead moves forward to `contacted`. Contacted is the first stage, so
+// anything else is further along or terminal and is left alone.
+const BEFORE_CONTACTED = ['unqualified']
 
 /**
  * Handles a follow-up: clears the reminder (prepareFollowUp resets its delivery

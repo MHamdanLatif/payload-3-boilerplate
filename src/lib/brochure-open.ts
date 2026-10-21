@@ -88,7 +88,7 @@ export async function logBrochureOpen(opts: {
       // Opening the pack is engagement, and it is the last step the system can
       // observe on its own — everything past this depends on a conversation.
       // Runs on every open, not just the first: a lead whose brochure was sent
-      // before this shipped is still sitting at Uncontacted, and the next time
+      // before this shipped is still sitting at New, and the next time
       // they look at it they should move. Advancing is a no-op once they have.
       await advanceLeadStatus(payload, lead.id, 'engaged')
       if (process.env.CRM_PUSH_DISABLED !== 'true') {

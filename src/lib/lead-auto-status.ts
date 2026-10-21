@@ -19,9 +19,9 @@ import { atLeast, TERMINAL_STATUSES, type LeadStatus } from '@/lib/lead-status'
  * THREE RULES, all of which exist to stop automation destroying information:
  *
  *   1. Never move backward. Re-sending the brochure to a lead who is already
- *      Qualified must not drag them back to Details Sent.
- *   2. Never touch a terminal status. A lead marked Junk or Lost who opens an
- *      old link is still junk or lost; resurrecting them into the active
+ *      Qualified must not drag them back to Brochure Not Opened.
+ *   2. Never touch a terminal status. A lead marked Junk or Not a Fit who opens
+ *      an old link keeps that outcome; resurrecting them into the active
  *      pipeline would put dead leads back in the follow-up queue.
  *   3. Never fail loudly. A status update is a convenience; it must not break
  *      the send, the page view, or the tracking that surrounds it.

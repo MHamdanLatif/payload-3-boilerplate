@@ -23,10 +23,10 @@ export function leadNotificationMessage(lead: Lead, kind: string): CrmPushMessag
   return {
     title: reminder
       ? kind === '30m'
-        ? 'Uncontacted lead: 30-minute reminder'
-        : 'Uncontacted lead: 2-hour reminder'
+        ? 'Not yet contacted: 30-minute reminder'
+        : 'Not yet contacted: 2-hour reminder'
       : 'New Lead',
-    message: `${lead.name} - ${leadProjectLabel(lead)}\n${lead.phone}\n${leadSourceLabel(lead)}${lead.metaAdName ? `\nAd: ${lead.metaAdName}` : ''}${reminder ? '\nStill Uncontacted. Please follow up.' : ''}`,
+    message: `${lead.name} - ${leadProjectLabel(lead)}\n${lead.phone}\n${leadSourceLabel(lead)}${lead.metaAdName ? `\nAd: ${lead.metaAdName}` : ''}${reminder ? '\nStill New. Please follow up.' : ''}`,
     priority: 'high',
     clickUrl: `${base}/leads-dashboard/${lead.id}`,
     actions,

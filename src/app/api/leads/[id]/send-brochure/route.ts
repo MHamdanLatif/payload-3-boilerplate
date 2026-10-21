@@ -17,7 +17,7 @@ import { brochureLink, buildBrochureMessage, whatsappSendUrl } from '@/lib/broch
  *
  * WHY A REDIRECT RATHER THAN A LINK STRAIGHT TO wa.me: sending has to be
  * RECORDED. The link alone would open WhatsApp and leave brochureSentAt empty
- * and the lead stuck at Uncontacted, so the status pipeline would silently stop
+ * and the lead stuck at New, so the status pipeline would silently stop
  * reflecting reality for every lead sent this way — which, once the button
  * exists, is most of them. Passing through here keeps the one-tap experience and
  * the record in step.

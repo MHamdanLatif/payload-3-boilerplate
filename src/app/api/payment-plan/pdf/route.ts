@@ -345,7 +345,7 @@ export async function POST(req: Request) {
 
   // Meta match signals, captured the same way lead-capture does. Used twice:
   // by the CAPI event below, and stored on the lead so the LATER Qualified /
-  // Site Visit / Closed Won events have something to match a person against.
+  // QualifiedLead events have something to match a person against.
   const fbc = cookies['_fbc'] || null
   const fbp = cookies['_fbp'] || null
   const fbclid = fbc ? fbc.split('.').slice(3).join('.') || null : null

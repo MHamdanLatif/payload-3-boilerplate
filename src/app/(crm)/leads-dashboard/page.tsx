@@ -125,7 +125,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
         </Link>
         <Link className="crm-stat" href="/leads-dashboard?status=unqualified">
           <strong>{fresh.totalDocs}</strong>
-          <span>Uncontacted</span>
+          <span>New</span>
         </Link>
         <Link className="crm-stat" href="/leads-dashboard?view=followups">
           <strong>{due.totalDocs}</strong>
@@ -206,7 +206,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
           className={filters.status === 'unqualified' ? 'active' : ''}
           href="/leads-dashboard?status=unqualified"
         >
-          Uncontacted
+          New
         </Link>
         <Link
           className={filters.view === 'followups' ? 'active' : ''}
