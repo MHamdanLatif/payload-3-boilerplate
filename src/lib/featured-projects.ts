@@ -19,9 +19,21 @@ export function imageAlt(media: number | Media | null | undefined, fallback = ''
   return media.alt ?? fallback
 }
 
-/** Lowest-room unit, with price as tiebreaker. Returns null if the project has none. */
-export function smallestUnit(project: UnitsSource): SmallestUnit | null {
+/**
+ * Units a buyer can still book. Sold-out rows stay in the units table (with a
+ * label) but must not set the "from" price, the hero line or the calculator
+ * default. If every row is sold out, the full list is returned so derived facts
+ * degrade to the old behaviour rather than vanishing.
+ */
+export function availableUnits(project: UnitsSource): ProjectUnit[] {
   const units = project.unitTypes ?? []
+  const open = units.filter((u) => !u.soldOut)
+  return open.length ? open : units
+}
+
+/** Lowest-room available unit, with price as tiebreaker. Returns null if the project has none. */
+export function smallestUnit(project: UnitsSource): SmallestUnit | null {
+  const units = availableUnits(project)
   if (!units.length) return null
   const sorted = [...units].sort((a, b) => {
     if (a.rooms !== b.rooms) return a.rooms - b.rooms
@@ -74,7 +86,8 @@ export function unitLabel(u: Pick<ProjectUnit, 'type' | 'isDuplex'>): string {
 }
 
 /**
- * Derived commercial facts about a project's unit mix, for the crawlable
+ * Derived commercial facts about a project's available unit mix (sold-out rows
+ * excluded, see `availableUnits`), for the crawlable
  * summary sentence, the hero availability line and the meta-description
  * fallback. Returns null when the project has no unit rows.
  *
@@ -82,7 +95,7 @@ export function unitLabel(u: Pick<ProjectUnit, 'type' | 'isDuplex'>): string {
  * carries `areaSqFt` — callers must not print "0 sq ft".
  */
 export function unitSummary(project: UnitsSource): UnitSummary | null {
-  const units = sortedUnits(project)
+  const units = sortedUnits({ unitTypes: availableUnits(project) })
   if (!units.length) return null
 
   const prices = units.map((u) => u.price).filter((p): p is number => typeof p === 'number')

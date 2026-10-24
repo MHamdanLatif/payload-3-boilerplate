@@ -945,7 +945,7 @@ export interface FeaturedProject {
       }[]
     | null;
   /**
-   * NOT displayed on the landing page. Powers the /properties Unit Type filter. Add one row per available unit configuration.
+   * Listed in the Available Units table on the landing page and powers the /properties Unit Type filter. Add one row per unit configuration; tick "Sold out" rather than deleting a row once it sells out.
    */
   unitTypes?:
     | {
@@ -970,6 +970,10 @@ export interface FeaturedProject {
          * Tick if this unit is a two-level duplex. Kept separate from Unit Type on purpose: "duplex" is the layout, "3 Bed Drawing" is the configuration, and buyers search for both together ("4 bed duplex Karachi"). Collapsing them into one field would lose the bed count. A project can mix duplex and flat units.
          */
         isDuplex?: boolean | null;
+        /**
+         * Tick when the builder has no stock left of this unit. It stays in the project page table with a "Sold out" label, but drops out of the starting price, the payment-plan selector and the /properties filters.
+         */
+        soldOut?: boolean | null;
         /**
          * Total number of rooms (bedrooms + drawing/dining counted as rooms in Karachi convention).
          */
@@ -2671,6 +2675,7 @@ export interface FeaturedProjectsSelect<T extends boolean = true> {
         type?: T;
         flatLayout?: T;
         isDuplex?: T;
+        soldOut?: T;
         rooms?: T;
         price?: T;
         areaSqFt?: T;
@@ -3498,7 +3503,7 @@ export interface Footer {
 export interface CrmSetting {
   id: number;
   /**
-   * Notify at 30 minutes and 2 hours after creation if still Uncontacted. Separate from manually scheduled follow-ups.
+   * Notify at 30 minutes and 2 hours after creation if the lead is still New. Separate from manually scheduled follow-ups.
    */
   automaticUncontactedReminders?: boolean | null;
   notificationStartAt?: string | null;

@@ -356,6 +356,7 @@ test('public PDF uses Auto DP, rejects guardrail bypasses, renders before record
     'libphonenumber-js': { isValidPhoneNumber: () => true },
     '@/lib/featured-projects': {
       formatPkr: String,
+      availableUnits: (p) => (p.unitTypes ?? []).filter((u) => !u.soldOut),
       smallestUnit: () => project.unitTypes[0],
       unitKey: (u) => u.id,
     },

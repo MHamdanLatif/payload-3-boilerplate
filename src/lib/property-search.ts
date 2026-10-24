@@ -130,7 +130,8 @@ export function projectFilterOptions(projects: FeaturedProject[]): ProjectFilter
 /** Match price and configuration on the SAME unit, not separate rows. */
 export function projectMatchesFilters(project: FeaturedProject, sp: ParsedSearchParams): boolean {
   const hasPrice = Boolean(sp.budget) || sp.minPrice != null || sp.maxPrice != null
-  const units = project.unitTypes ?? []
+  // Sold-out units must not make a project match a budget or configuration search.
+  const units = (project.unitTypes ?? []).filter((u) => !u.soldOut)
   const matchesPrice = (price: number | null | undefined) => {
     if (!hasPrice) return true
     if (price == null || !Number.isFinite(price)) return false

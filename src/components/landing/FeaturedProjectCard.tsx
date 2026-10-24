@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, BedDouble, MapPin } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
-import { heroImage, imageAlt, formatPkr, unitLabel } from '@/lib/featured-projects'
+import { availableUnits, heroImage, imageAlt, formatPkr, unitLabel } from '@/lib/featured-projects'
 import { InquiryModal } from '@/components/shared/InquiryModal'
 import { HighlightBadge, type HighlightTag } from './HighlightBadge'
 import { fadeUp } from './_motion'
@@ -18,7 +18,7 @@ export function FeaturedProjectCard({ project }: { project: FeaturedProject }) {
   const [open, setOpen] = useState(false)
   const src = heroImage(project) ?? PLACEHOLDER
   const alt = imageAlt(project.elevationImages?.[0]?.image, project.title)
-  const unitTypes = [...new Set((project.unitTypes ?? []).map(unitLabel))]
+  const unitTypes = [...new Set(availableUnits(project).map(unitLabel))]
   const description = project.summary?.split(/(?<=[.!?])\s+(?=[A-Z])/)[0]
   const href = `/projects/${project.slug}`
 

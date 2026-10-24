@@ -213,7 +213,7 @@ export function apartmentComplexSchema(project: FeaturedProject) {
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     address: postalAddress(project.addressLine, project.location),
     ...(geo && { geo }),
-    numberOfAvailableAccommodationUnits: units.length,
+    numberOfAvailableAccommodationUnits: units.filter((u) => !u.soldOut).length,
     ...(project.amenities?.length && {
       amenityFeature: project.amenities
         .map((a) => a.name)
@@ -236,7 +236,7 @@ export function apartmentComplexSchema(project: FeaturedProject) {
           '@type': 'Offer',
           priceCurrency: 'PKR',
           price: u.price,
-          availability: 'https://schema.org/InStock',
+          availability: u.soldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
           url,
         },
       }),

@@ -90,6 +90,13 @@ export function UnitTypesTable({
       }.`
     : null
 
+  // The summary above counts available units only; name the sold-out rows so the
+  // prose and the table (which still lists them) agree.
+  const soldOut = units.filter((u) => u.soldOut).map((u) => u.name || u.type)
+  const soldOutProse = soldOut.length
+    ? `${soldOut.join(' and ')} ${soldOut.length === 1 ? 'is' : 'are'} sold out.`
+    : null
+
   const th =
     'px-4 py-3 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55 font-medium'
   const td = 'px-4 py-3.5 text-sm text-brand-deep'
@@ -112,6 +119,7 @@ export function UnitTypesTable({
           <p className="mt-6 max-w-3xl text-base leading-relaxed text-brand-deep/75">
             {prose}
             {duplexProse ? ` ${duplexProse}` : ''}
+            {soldOutProse ? ` ${soldOutProse}` : ''}
           </p>
         )}
 
@@ -152,6 +160,11 @@ export function UnitTypesTable({
                     className={`${td} block font-medium before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
                     data-label="Unit"
                   >
+                    {u.soldOut && (
+                      <span className="mr-2 inline-block rounded-full bg-red-600 px-2 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wide text-white">
+                        Sold out
+                      </span>
+                    )}
                     {u.name || u.type}
                   </td>
                   <td
@@ -198,7 +211,7 @@ export function UnitTypesTable({
                       >
                         Flat Layout
                       </a>
-                    ) : (
+                    ) : u.soldOut ? null : (
                       <a
                         className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
                         href={!hasPublicPaymentPlan(project) ? '/#contact' : `?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}

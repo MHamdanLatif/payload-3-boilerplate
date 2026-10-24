@@ -6,7 +6,7 @@ import { FileDown } from 'lucide-react'
 import type { FeaturedProject } from '@/payload-types'
 import type { PaymentPlanSource } from '@/lib/project-shape'
 import type { PaymentPlanCollection } from '@/lib/payment-plan-collections'
-import { smallestUnit, unitKey } from '@/lib/featured-projects'
+import { availableUnits, smallestUnit, unitKey } from '@/lib/featured-projects'
 import {
   computePlan,
   formatPlanMoney,
@@ -97,7 +97,8 @@ export function PaymentPlanCalculator({
   )
 
   // ── Unit selection ──────────────────────────────────────────────────────
-  const unitTypes = project.unitTypes ?? []
+  // Sold-out rows are listed in the units table but cannot be booked.
+  const unitTypes = useMemo(() => availableUnits(project), [project])
   const [selectedUnitKey, setSelectedUnitKey] = useState<string>(() => {
     const sm = smallestUnit(project)
     if (sm) return unitKey(sm)

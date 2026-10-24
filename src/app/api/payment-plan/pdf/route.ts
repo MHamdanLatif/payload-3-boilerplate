@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isValidPhoneNumber } from 'libphonenumber-js'
 import type { FeaturedProject, Media } from '@/payload-types'
-import { formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
+import { availableUnits, formatPkr, smallestUnit, unitKey } from '@/lib/featured-projects'
 import { parseCookies, touchColumns } from '@/lib/lead-capture'
 import { ATTRIBUTION_COOKIE, acquisitionSourceFromTouch, parseAttribution } from '@/lib/attribution'
 import { isPaymentPlanCollection } from '@/lib/payment-plan-collections'
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
   }
 
   // ── Unit resolution ─────────────────────────────────────────
-  const unitTypes = project.unitTypes ?? []
+  const unitTypes = availableUnits(project)
   const candidates = unitTypes.filter(
     (u) => u.type === selectedUnitType && (!selectedUnitName || u.name === selectedUnitName),
   )

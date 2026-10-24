@@ -372,7 +372,7 @@ export const FeaturedProjects: CollectionConfig = {
       labels: { singular: 'Unit Type', plural: 'Unit Types' },
       admin: {
         description:
-          'NOT displayed on the landing page. Powers the /properties Unit Type filter. Add one row per available unit configuration.',
+          'Listed in the Available Units table on the landing page and powers the /properties Unit Type filter. Add one row per unit configuration; tick "Sold out" rather than deleting a row once it sells out.',
       },
       fields: [
         {
@@ -408,6 +408,16 @@ export const FeaturedProjects: CollectionConfig = {
           admin: {
             description:
               'Tick if this unit is a two-level duplex. Kept separate from Unit Type on purpose: "duplex" is the layout, "3 Bed Drawing" is the configuration, and buyers search for both together ("4 bed duplex Karachi"). Collapsing them into one field would lose the bed count. A project can mix duplex and flat units.',
+          },
+        },
+        {
+          name: 'soldOut',
+          type: 'checkbox',
+          label: 'Sold out',
+          defaultValue: false,
+          admin: {
+            description:
+              'Tick when the builder has no stock left of this unit. It stays in the project page table with a "Sold out" label, but drops out of the starting price, the payment-plan selector and the /properties filters.',
           },
         },
         {
