@@ -43,3 +43,9 @@ pnpm-workspace.yaml
 
 # Local scratch work: logs, prod backups, throwaway scripts. Never commit.
 /tmp/
+
+# Finance proofs when R2 is disabled (local/e2e). Never commit them.
+private/finance-files/
+
+# Local JSON backups taken before hand-applied production migrations. Never commit.
+backups/

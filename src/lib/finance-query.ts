@@ -96,3 +96,19 @@ export function exportValue(column: string, value: unknown) {
   if (/(^|_)date($|_)/.test(column)) return pktDate(value)
   return value instanceof Date ? pktDateTime(value) : value
 }
+/** Display an integer paisa amount. */
+export const paisaRupees = (p: unknown) => rupees(Number(p || 0) / 100)
+/** PKT date-time for display, e.g. "27 Oct 2026, 18:40". */
+export const displayDateTime = (d: unknown) =>
+  d
+    ? new Date(String(d)).toLocaleString('en-GB', {
+        timeZone: 'Asia/Karachi',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—'
+/** Current Pakistan time for a datetime-local input, e.g. "2026-10-27T18:40". */
+export const nowPKTInput = () => new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 16)

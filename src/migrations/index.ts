@@ -28,6 +28,7 @@ import * as crmFollowupsDevices from './20261021_000000_crm_followups_devices'
 import * as leadDeleteRules from './20261021_000001_lead_delete_rules'
 import * as simplifyLeadStatuses from './20261021_000002_simplify_lead_statuses'
 import * as unitSoldOut from './20261024_000000_unit_sold_out'
+import * as financeFunding from './20261027_000000_finance_funding'
 
 export const migrations = [
   {
@@ -115,4 +116,5 @@ export const migrations = [
   { up: leadDeleteRules.up, down: leadDeleteRules.down, name: '20261021_000001_lead_delete_rules' },
   { up: simplifyLeadStatuses.up, down: simplifyLeadStatuses.down, name: '20261021_000002_simplify_lead_statuses' },
   { up: unitSoldOut.up, down: unitSoldOut.down, name: '20261024_000000_unit_sold_out' },
+  { up: financeFunding.up, down: financeFunding.down, name: '20261027_000000_finance_funding' },
 ];

@@ -3,12 +3,16 @@ import {
   type CollectionConfig,
   type Field,
   type NumberField,
+  type TextField,
   type RelationshipField,
   type CollectionBeforeChangeHook,
 } from 'payload'
+import { sql } from '@payloadcms/db-postgres'
 import { financeAccess } from '@/access/finance'
+import { checkSplit } from '@/lib/finance-math'
+import { financeAudit, ledgerSum, lockFinance } from '@/lib/finance-tx'
 
-const money = (name: string, required = true): NumberField => ({
+export const money = (name: string, required = true): NumberField => ({
   name,
   type: 'number',
   min: 0,
@@ -23,8 +27,8 @@ const money = (name: string, required = true): NumberField => ({
         Math.abs(v * 100 - Math.round(v * 100)) < 0.001) ||
     'Use a non-negative amount with at most two decimal places.',
 })
-const text = (name: string, required = false): Field => ({ name, type: 'text', required })
-const date = (name: string): Field => ({
+export const text = (name: string, required = false): TextField => ({ name, type: 'text', required })
+export const date = (name: string): Field => ({
   name,
   type: 'date',
   required: true,
@@ -43,7 +47,151 @@ const relationship = (
   relationTo: 'users' | 'leads' | 'featured-projects' | 'finance-deals' | 'finance-receivables',
   required = false,
 ): RelationshipField => ({ name, type: 'relationship', relationTo, required, index: true })
-const idOf = (v: unknown) => (typeof v === 'object' && v ? (v as { id: number }).id : v)
+export const idOf = (v: unknown) => (typeof v === 'object' && v ? (v as { id: number }).id : v)
+
+/** One recipient line of a percentage table (deal splits, project defaults, presets). */
+export const splitFields: Field[] = [
+  { name: 'key', type: 'text', admin: { readOnly: true, description: 'Stable recipient id used by payouts.' } },
+  { name: 'participant', type: 'relationship', relationTo: 'finance-participants', index: true },
+  {
+    name: 'recipientName',
+    type: 'text',
+    admin: { description: 'Filled from the participant, or typed for someone outside the register.' },
+  },
+  { name: 'percent', type: 'number', required: true, min: 0, max: 100 },
+  { name: 'role', type: 'text', admin: { description: 'Optional, e.g. Referrer.' } },
+]
+/** Private proof files. They live in finance-files, never in the public media library. */
+export const attachments = (name = 'attachments'): Field => ({
+  name,
+  type: 'upload',
+  relationTo: 'finance-files',
+  hasMany: true,
+})
+
+type SplitRow = {
+  key?: string | null
+  participant?: unknown
+  recipientName?: string | null
+  percent?: number | null
+  role?: string | null
+}
+const splitSignature = (rows: SplitRow[] | null | undefined) =>
+  JSON.stringify(
+    (rows || []).map((r) => [r.key || '', idOf(r.participant) ?? null, r.recipientName || '', Number(r.percent)]),
+  )
+/** Fill keys and names from the register, then require a 100% table. */
+export async function normaliseSplit(
+  rows: SplitRow[],
+  req: Parameters<CollectionBeforeChangeHook>[0]['req'],
+  what: string,
+) {
+  for (const row of rows) {
+    row.key ||= crypto.randomUUID()
+    const participant = idOf(row.participant)
+    if (participant) {
+      const p = await req.payload.findByID({
+        collection: 'finance-participants',
+        id: participant as number,
+        depth: 0,
+        req,
+        overrideAccess: false,
+      })
+      row.recipientName ||= p.name
+    }
+  }
+  checkSplit(
+    rows.map((r) => ({ key: String(r.key), label: String(r.recipientName || ''), pct: r.percent as number })),
+    what,
+  )
+  return rows
+}
+
+async function checkDealDistribution(
+  data: Record<string, any>,
+  originalDoc: Record<string, any> | undefined,
+  req: Parameters<CollectionBeforeChangeHook>[0]['req'],
+  operation: string,
+) {
+  const merged = { ...originalDoc, ...data }
+  if (data.commissionSplit !== undefined && data.commissionSplit?.length)
+    await normaliseSplit(data.commissionSplit, req, 'Commission split')
+  if (merged.commissionMode === 'referral' && !String(merged.referrerName || '').trim())
+    throw new APIError('Name the referring person for a referral split.', 400)
+  if (merged.campaign) {
+    const campaign = await req.payload.findByID({
+      collection: 'finance-campaigns',
+      id: idOf(merged.campaign) as number,
+      depth: 0,
+      req,
+      overrideAccess: false,
+    })
+    if (String(idOf(campaign.project)) !== String(idOf(merged.project)))
+      throw new APIError("The originating campaign must belong to the deal's project.", 400)
+  }
+  if (operation !== 'update' || !originalDoc) return
+  const splitChanged =
+    data.commissionSplit !== undefined &&
+    splitSignature(data.commissionSplit) !== splitSignature(originalDoc.commissionSplit)
+  const commissionChanged =
+    data.fixedCommission !== undefined && Number(data.fixedCommission) !== Number(originalDoc.fixedCommission)
+  if (
+    (splitChanged || commissionChanged) &&
+    (originalDoc.commissionSplit?.length || commissionChanged) &&
+    (!String(data.changeReason || '').trim() || data.changeReason === originalDoc.changeReason)
+  )
+    throw new APIError('Give a reason for changing the commission amount or split.', 400)
+  if (splitChanged) {
+    await lockFinance(req, `deal:${originalDoc.id}`)
+    const kept = new Set((data.commissionSplit || []).map((r: SplitRow) => r.key))
+    const paid = await ledgerSum(
+      req,
+      sql`SELECT DISTINCT recipient_key FROM finance_payouts WHERE deal_id=${originalDoc.id} AND NOT COALESCE(voided,false)`,
+    )
+    const orphaned = paid.filter((r) => !kept.has(r.recipient_key))
+    if (orphaned.length)
+      throw new APIError(
+        'A recipient who has already been paid cannot be removed from the split. Set their percentage to 0 instead.',
+        400,
+      )
+  }
+}
+
+const ADVERTISING = /meta|advert|\bads?\b|campaign|boost|marketing/i
+function checkExpenseDesignation(
+  data: Record<string, any>,
+  originalDoc: Record<string, any> | undefined,
+  operation: string,
+  unlinkingDeletedDeal = false,
+) {
+  const merged = { ...originalDoc, ...data }
+  // A deleted deal's expenses are kept, unlinked; their recorded designation stays as history.
+  if (merged.preDistribution && !idOf(merged.deal) && !unlinkingDeletedDeal)
+    throw new APIError('Only an expense linked to a deal can be deducted before distribution.', 400)
+  if (merged.preDistribution && ADVERTISING.test(String(merged.category || '')))
+    throw new APIError(
+      'Advertising is never deducted from commission. Record it as an advertising charge instead.',
+      400,
+    )
+  if (operation === 'update' && originalDoc?.paymentStatus === 'paid' && data.paymentStatus === 'unpaid')
+    throw new APIError('A paid expense cannot be marked unpaid. Void it and record a replacement.', 400)
+  if (merged.paymentStatus === 'unpaid') {
+    if (operation === 'create') data.account = null
+    data.paidDate = null
+  } else if (operation === 'create' && merged.paymentStatus === 'paid') data.paidDate ||= merged.date
+}
+
+/** Receipts and expenses posted to an account are reconciled cash; correct them by voiding. */
+async function guardPostedDelete(slug: string, id: number | string, req: Parameters<CollectionBeforeChangeHook>[0]['req']) {
+  if (!['finance-receipts', 'finance-expenses'].includes(slug)) return
+  const table = slug === 'finance-receipts' ? 'finance_receipts' : 'finance_expenses'
+  const [row] = await ledgerSum(req, sql`SELECT account_id FROM ${sql.raw(table)} WHERE id=${id}`)
+  if (row?.account_id)
+    throw new APIError(
+      'This entry is posted to a bank/cash account. Void it with a reason instead of deleting it, so the account still reconciles.',
+      400,
+    )
+}
 const audit: CollectionBeforeChangeHook = async ({
   data,
   originalDoc,
@@ -73,6 +221,9 @@ const audit: CollectionBeforeChangeHook = async ({
       data.contact ||= lead.phone
     }
   }
+  if (collection.slug === 'finance-deals') await checkDealDistribution(data, originalDoc, req, operation)
+  if (collection.slug === 'finance-expenses')
+    checkExpenseDesignation(data, originalDoc, operation, Boolean(context?.unlinkDeletedDeal))
   if (collection.slug === 'finance-deals') {
     data.calculationType = 'fixed'
     data.trigger = 'booking'
@@ -134,8 +285,13 @@ const audit: CollectionBeforeChangeHook = async ({
       )
         throw new APIError('Choose when the remaining commission is expected.', 400)
     }
-    if (deal.cancelled && !merged.voided)
+    // Money already received or paid stays on a cancelled deal. Documented corrections
+    // (a refund to the builder, a late broker fee) are still recorded as deal expenses.
+    if (deal.cancelled && !merged.voided && collection.slug === 'finance-receipts')
       throw new APIError('This deal is cancelled. Reopen it before adding transactions.', 400)
+    if (deal.cancelled && collection.slug === 'finance-expenses' && operation === 'create' && !merged.notes?.trim())
+      throw new APIError('Explain this correction in the notes: the deal is cancelled.', 400)
+    if (collection.slug === 'finance-expenses' && merged.preDistribution) await lockFinance(req, `deal:${deal.id}`)
   }
   if (collection.slug === 'finance-receipts' && merged.receivable) {
     const schedule = await req.payload.findByID({
@@ -156,14 +312,20 @@ const audit: CollectionBeforeChangeHook = async ({
   ) {
     const immutable =
       collection.slug === 'finance-expenses'
-        ? ['amount', 'date', 'project', 'deal', 'category']
-        : ['amount', 'date', 'deal', 'receivable', 'nextExpectedDate']
+        ? ['amount', 'date', 'project', 'deal', 'category', 'preDistribution', 'account']
+        : ['amount', 'date', 'deal', 'receivable', 'nextExpectedDate', 'account']
     // Only the deal-delete hook may detach an expense from its deal (and re-home its project).
     const unlinking =
       collection.slug === 'finance-expenses' && context?.unlinkDeletedDeal && data.deal === null
+    const paying =
+      collection.slug === 'finance-expenses' &&
+      originalDoc.paymentStatus === 'unpaid' &&
+      data.paymentStatus === 'paid' &&
+      !originalDoc.account
     for (const field of immutable)
       if (
         !(unlinking && (field === 'deal' || field === 'project')) &&
+        !(paying && field === 'account') &&
         data[field] !== undefined &&
         String(idOf(data[field]) ?? '') !== String(idOf(originalDoc[field]) ?? '')
       )
@@ -193,7 +355,16 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
   hooks: {
     beforeDelete: [
       async ({ id, req }) => {
-        if (slug !== 'finance-deals') return
+        if (slug !== 'finance-deals') return guardPostedDelete(slug, id, req)
+        const [payouts] = await ledgerSum(
+          req,
+          sql`SELECT COUNT(*)::int AS n FROM finance_payouts WHERE deal_id=${id}`,
+        )
+        if (Number(payouts?.n))
+          throw new APIError(
+            'This deal has commission payouts. Cancel the deal instead of deleting it, so the payouts stay reconciled.',
+            400,
+          )
         // Everything runs on the shared req, so the delete stays atomic. Expenses are money
         // actually spent: keep them, unlinked, with the deal's project copied on so property
         // reports still attribute them. A brokerage ("other property") deal has no project,
@@ -254,6 +425,7 @@ const base = (slug: string, fields: Field[], title: string): CollectionConfig =>
     ],
     beforeChange: [audit],
     afterChange: [
+      financeAudit,
       async ({ doc, operation, req }) => {
         if (
           slug === 'finance-receipts' &&
@@ -357,6 +529,36 @@ export const FinanceDeals = base(
     { name: 'milestoneReached', type: 'checkbox', defaultValue: false },
     { name: 'claimed', type: 'checkbox', defaultValue: false },
     { name: 'cancelled', type: 'checkbox', defaultValue: false },
+    {
+      name: 'campaign',
+      type: 'relationship',
+      relationTo: 'finance-campaigns',
+      index: true,
+      admin: { description: 'Optional originating campaign. Leave empty when attribution is unknown.' },
+    },
+    {
+      name: 'commissionMode',
+      type: 'select',
+      options: [
+        { label: 'Project default', value: 'project-default' },
+        { label: 'Referral', value: 'referral' },
+        { label: 'Custom', value: 'custom' },
+      ],
+    },
+    text('referrerName'),
+    {
+      name: 'commissionSplit',
+      type: 'array',
+      admin: {
+        description:
+          "Agreed distribution of this deal's commission, saved as a snapshot. Must total 100%. Changing project defaults later does not change it.",
+      },
+      fields: splitFields,
+    },
+    {
+      ...text('changeReason'),
+      admin: { description: 'Required when the commission amount or split of a saved deal changes.' },
+    },
   ],
   'clientName',
 )
@@ -376,6 +578,14 @@ export const FinanceReceipts = base(
     text('paymentMethod'),
     text('reference'),
     text('receivedFrom'),
+    {
+      name: 'account',
+      type: 'relationship',
+      relationTo: 'finance-accounts',
+      index: true,
+      admin: { description: 'Bank/cash account that received it. Older receipts without one are flagged for classification.' },
+    },
+    attachments(),
   ],
   'date',
 )
@@ -398,8 +608,36 @@ export const FinanceExpenses = base(
     { ...relationship('project', 'featured-projects'), admin: { hidden: true } },
     text('description', true),
     text('paymentMethod'),
-    text('vendor'),
+    { ...text('vendor'), label: 'Payee' },
     { name: 'recurring', type: 'checkbox', defaultValue: false },
+    {
+      name: 'preDistribution',
+      type: 'checkbox',
+      label: 'Deduct before commission distribution',
+      admin: {
+        description:
+          'Only for an expense that belongs to this specific deal, such as an external broker fee. Advertising is never deducted from commission.',
+      },
+    },
+    {
+      name: 'paymentStatus',
+      type: 'select',
+      options: [
+        { label: 'Paid', value: 'paid' },
+        { label: 'Unpaid (reserved)', value: 'unpaid' },
+      ],
+      admin: { description: 'An unpaid deduction reserves commission but moves no cash until it is paid.' },
+    },
+    { name: 'paidDate', type: 'date', admin: { date: { pickerAppearance: 'dayOnly', displayFormat: 'dd MMM yyyy' } } },
+    text('reference'),
+    {
+      name: 'account',
+      type: 'relationship',
+      relationTo: 'finance-accounts',
+      index: true,
+      admin: { description: 'Account the expense was paid from.' },
+    },
+    attachments(),
   ],
   'description',
 )

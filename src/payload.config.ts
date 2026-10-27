@@ -26,6 +26,7 @@ import { LinkOpens } from './collections/LinkOpens'
 import { PropertyListings } from './collections/PropertyListings'
 import { Users } from './collections/Users'
 import { FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses } from './collections/Finance'
+import { financeFundingCollections } from './collections/FinanceFunding'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { CrmSettings } from './globals/CrmSettings'
@@ -103,6 +104,7 @@ export default buildConfig({
     LeadNotifications,
     CrmDevices,
     FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses,
+    ...financeFundingCollections,
   ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer, CrmSettings, CrmPushSettings],
@@ -121,6 +123,12 @@ export default buildConfig({
       collections: {
         media: {
           disableLocalStorage: true,
+        },
+        // Finance proofs: separate prefix, random names, and every read goes through
+        // Payload's access check (finance permission) rather than a public URL.
+        'finance-files': {
+          disableLocalStorage: true,
+          prefix: 'finance-private',
         },
       },
       bucket: process.env.S3_BUCKET || 'lateef-properties-media',

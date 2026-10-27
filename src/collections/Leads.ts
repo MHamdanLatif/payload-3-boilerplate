@@ -6,6 +6,7 @@ import { leadAfterChange } from './Leads/hooks/leadAfterChange'
 import { seedLeadDefaults } from './Leads/hooks/seedLeadDefaults'
 import { prepareFollowUp } from './Leads/hooks/prepareFollowUp'
 import { guardLeadDelete } from './Leads/hooks/guardLeadDelete'
+import { phoneKey } from '@/lib/phone-key'
 
 /**
  * Every website / Meta lead lives here — the native CRM that replaces Privyr.
@@ -35,7 +36,16 @@ export const Leads: CollectionConfig = {
   },
   hooks: {
     // beforeChange: fill brochureId + brochure assets from the linked project.
-    beforeChange: [seedLeadDefaults, prepareFollowUp],
+    beforeChange: [
+      seedLeadDefaults,
+      prepareFollowUp,
+      // Normalised number for repeat-enquiry detection. Never merges or blocks anything.
+      ({ data, originalDoc }) => {
+        if (data.phone !== undefined || !originalDoc?.phoneKey)
+          data.phoneKey = phoneKey(data.phone ?? originalDoc?.phone)
+        return data
+      },
+    ],
     // afterChange: WhatsApp owner alert + brochure auto-send (create); Meta CAPI
     // on qualify/junk. Never throws.
     afterChange: [leadAfterChange],
@@ -152,6 +162,15 @@ export const Leads: CollectionConfig = {
     // ── Core lead ───────────────────────────────────────────────────────────
     { name: 'name', type: 'text', required: true },
     { name: 'phone', type: 'text', required: true },
+    {
+      name: 'phoneKey',
+      type: 'text',
+      index: true,
+      admin: {
+        readOnly: true,
+        description: 'Normalised phone used to flag repeat enquiries. Empty when the number is not valid.',
+      },
+    },
     { name: 'email', type: 'text' },
     {
       name: 'conversationNotes',

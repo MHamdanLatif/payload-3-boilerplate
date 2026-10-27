@@ -49,10 +49,20 @@ test('date ranges handle leap years and reject impossible dates without SQL erro
   assert.equal(pageNumber({ page: '1.2' }), 1)
   assert.equal(positiveID('1 OR 1=1'), 0)
 })
-const { FinanceReceipts, FinanceExpenses } = load('src/collections/Finance.ts', {
+// Collections now also load the shared arithmetic and the transaction helpers; the
+// helpers are stubbed because these tests never touch a database.
+const financeDeps = {
   '@/access/finance': access,
+  '@/lib/finance-math': load('src/lib/finance-math.ts'),
+  '@/lib/finance-tx': {
+    financeAudit: async ({ doc }) => doc,
+    ledgerSum: async () => [],
+    lockFinance: async () => {},
+  },
+  '@payloadcms/db-postgres': { sql: Object.assign(() => '', { raw: () => '' }) },
   payload: { APIError: class extends Error {} },
-})
+}
+const { FinanceReceipts, FinanceExpenses } = load('src/collections/Finance.ts', financeDeps)
 test('money validation rejects negative, nonfinite, missing and fractional-paisa amounts', () => {
   for (const collection of [FinanceReceipts, FinanceExpenses]) {
     const amount = collection.fields.find((f) => f.name === 'amount')
@@ -116,10 +126,7 @@ test('exports write dates and timestamps in Pakistan time', () => {
   assert.equal(exportValue('client_name', 'Ali'), 'Ali')
 })
 test('deleting a deal keeps its expenses, unlinked with the project kept, and deletes receipts', async () => {
-  const { FinanceDeals } = load('src/collections/Finance.ts', {
-    '@/access/finance': access,
-    payload: { APIError: class extends Error {} },
-  })
+  const { FinanceDeals } = load('src/collections/Finance.ts', financeDeps)
   const calls = []
   const req = {
     context: { original: true },

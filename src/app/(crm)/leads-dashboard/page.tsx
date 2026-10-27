@@ -6,6 +6,7 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { crmSession, crmProjects } from '@/lib/crm-server'
 import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
 import { MarkContactedButton } from '@/components/crm/MarkContactedButton'
+import { phoneKeyCounts } from '@/lib/lead-duplicates'
 
 type Filters = {
   q?: string
@@ -68,6 +69,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
       select: {
         name: true,
         phone: true,
+        phoneKey: true,
         status: true,
         sourceName: true,
         source: true,
@@ -98,6 +100,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
       user,
     }),
   ])
+  const repeats = await phoneKeyCounts({ payload, user }, result.docs.map((d) => d.phoneKey))
   const href = (p: number) =>
     '/leads-dashboard?' +
     new URLSearchParams({
@@ -220,6 +223,7 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
         >
           Closed won
         </Link>
+        <Link href="/leads-dashboard/duplicates">Repeat enquiries</Link>
       </div>
       <p className="crm-muted mb-3">
         {result.totalDocs} {result.totalDocs === 1 ? 'lead' : 'leads'}
@@ -247,7 +251,12 @@ export default async function CrmHome({ searchParams }: { searchParams: Promise<
                     ? ` | Currently interested in: ${project}`
                     : ''}
                 </p>
-                <p className="text-sm mt-3">{lead.phone}</p>
+                <p className="text-sm mt-3">
+                  {lead.phone}
+                  {lead.phoneKey && (repeats.get(lead.phoneKey) || 0) > 1 && (
+                    <span className="crm-badge new ml-2">Repeat enquiry · {repeats.get(lead.phoneKey)}</span>
+                  )}
+                </p>
                 <div className="crm-row mt-4">
                   <span className="crm-muted">{leadSourceLabel(lead)}</span>
                   <span className="crm-badge">

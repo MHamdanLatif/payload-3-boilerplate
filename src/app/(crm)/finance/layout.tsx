@@ -32,6 +32,10 @@ export default async function FinanceLayout({ children }: { children: React.Reac
           ['Receivables', '/finance/receivables'],
           ['Commission Payments', '/finance/receipts'],
           ['Expenses', '/finance/expenses'],
+          ['Projects & funding', '/finance/projects'],
+          ['Ad charges', '/finance/ad-charges'],
+          ['Participants', '/finance/participants'],
+          ['Accounts', '/finance/accounts'],
           ['Reports', '/finance/reports'],
         ].map(([label, href]) => (
           <Link key={href} href={href}>

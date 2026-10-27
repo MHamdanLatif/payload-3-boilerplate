@@ -54,9 +54,11 @@ export function MoneyCards({ values }: { values: [string, unknown, string?][] })
     </div>
   )
 }
-export function Badge({ children }: { children: React.ReactNode }) {
+export function Badge({ children, tone }: { children: React.ReactNode; tone?: 'alert' }) {
   return (
-    <span className={`finance-badge ${children === 'Overdue' ? 'overdue' : ''}`}>{children}</span>
+    <span className={`finance-badge ${children === 'Overdue' || tone === 'alert' ? 'overdue' : ''}`}>
+      {children}
+    </span>
   )
 }
 export function ScheduleTable({ rows }: { rows: Record<string, any>[] }) {

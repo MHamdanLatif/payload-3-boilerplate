@@ -76,3 +76,19 @@ export async function overview(p: FinanceParams) {
     GROUP BY month_start ORDER BY month_start`)
   return { kpis, upcoming, attention, forecast, range }
 }
+/** Session-checked executor for the funding/distribution ledger queries (no deal CTE). */
+export async function financeExec(): Promise<import('./finance-ledger').Exec> {
+  const { payload } = await financeSession()
+  return async (query) => (await payload.db.drizzle.execute(query)).rows as Record<string, any>[]
+}
+/** Active people and accounts for form selects. */
+export async function ledgerOptions() {
+  const exec = await financeExec()
+  const [participants, accounts, projects, campaigns] = await Promise.all([
+    exec(sql`SELECT id, name, archived, is_owner FROM finance_participants ORDER BY archived, name`),
+    exec(sql`SELECT id, name, kind, card_label, archived FROM finance_accounts ORDER BY archived, name`),
+    exec(sql`SELECT id, title FROM featured_projects ORDER BY title`),
+    exec(sql`SELECT c.id, c.name, c.project_id, c.status, p.title AS project_title FROM finance_campaigns c JOIN featured_projects p ON p.id=c.project_id ORDER BY p.title, c.start_at DESC`),
+  ])
+  return { participants, accounts, projects, campaigns }
+}

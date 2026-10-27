@@ -70,6 +70,9 @@ function fixture(authenticated = true) {
     '@/access/finance': { hasFinanceAccess: (user) => user?.financeAccess === true },
     '@/lib/finance-query': { rupees: (n) => `Rs. ${n}` },
     '@/collections/Leads/hooks/guardLeadDelete': { CRM_LEAD_DELETE: 'crmLeadDelete' },
+    // Repeat-enquiry warnings are covered in finance-funding.test.mjs and the e2e suite.
+    '@/lib/phone-key': { phoneKey: () => null },
+    '@/lib/lead-duplicates': { leadsWithPhoneKey: async () => [] },
   }
   return {
     writes,

@@ -316,9 +316,12 @@ export async function verifyFinance(page: Page, browser: Browser) {
   const brokerageURL = page.url()
   await expect(page.getByText('DHA brokerage sale', { exact: true }).first()).toBeVisible()
   await page.getByRole('link', { name: 'Add deal expense', exact: true }).click()
-  await expect(page.getByLabel('Expense for')).not.toHaveValue('')
+  // Deal expenses now state whether they reduce distributable commission.
+  await page.getByLabel('Payee', { exact: true }).fill('Site visit driver')
   await page.getByLabel('Amount (PKR)', { exact: true }).fill('1500')
   await page.getByLabel('Description', { exact: true }).fill('Brokerage site visit')
+  await page.getByLabel('Deducted before commission distribution?').selectOption('false')
+  await page.getByLabel('Status').selectOption('unpaid')
   await page.getByRole('button', { name: 'Save entry' }).click()
   await expect(page).toHaveURL(brokerageURL)
   await expect(page.getByText(/Brokerage site visit/)).toBeVisible()

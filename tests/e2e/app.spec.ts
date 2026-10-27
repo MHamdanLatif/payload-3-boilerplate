@@ -2,6 +2,7 @@ import { verifyDeviceLimit, verifyMobileCrm } from './crm-mobile'
 import { verifyPaymentPlans } from './payment-plans'
 import { verifyFollowUp } from './follow-up'
 import { verifyFinance } from './finance'
+import { verifyFinanceFunding } from './finance-funding'
 import { verifyProjectMarketing } from './project-marketing'
 import { verifyLeadDelete } from './lead-delete'
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -48,7 +49,8 @@ async function verifyCrmActions(page: Page) {
   await expect(page.getByText('Dates and filters use Pakistan time (PKT, UTC+5).')).toBeVisible()
   const csv = await (await page.request.get('/leads-dashboard/export')).text()
   expect(csv).toContain('Brochure Sent (PKT)')
-  expect(csv).toContain('14/09/2026, 01:30:00')
+  // Exports write Pakistan time as YYYY-MM-DD HH:mm (see README, CSV exports).
+  expect(csv).toContain('2026-09-14 01:30')
   expect((await page.request.delete(`/api/leads/${lead.id}`)).ok()).toBeTruthy()
 }
 
@@ -274,4 +276,10 @@ test('finance authorization, ledger calculations and responsive dashboard', asyn
   test.setTimeout(180000)
   expect((await page.request.post('/api/users/login', { data: { email: adminEmail, password: adminPassword } })).ok()).toBeTruthy()
   await verifyFinance(page, browser)
+})
+
+test('project funding, advertising allocation, commission payouts and repeat enquiries', async ({ page, browser }) => {
+  test.setTimeout(180000)
+  expect((await page.request.post('/api/users/login', { data: { email: adminEmail, password: adminPassword } })).ok()).toBeTruthy()
+  await verifyFinanceFunding(page, browser)
 })

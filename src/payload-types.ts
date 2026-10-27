@@ -90,6 +90,17 @@ export interface Config {
     'finance-receipts': FinanceReceipt;
     'finance-receivables': FinanceReceivable;
     'finance-expenses': FinanceExpense;
+    'finance-participants': FinanceParticipant;
+    'finance-accounts': FinanceAccount;
+    'finance-project-rules': FinanceProjectRule;
+    'finance-campaigns': FinanceCampaign;
+    'finance-funding': FinanceFunding;
+    'finance-ad-charges': FinanceAdCharge;
+    'finance-payouts': FinancePayout;
+    'finance-transfers': FinanceTransfer;
+    'finance-statements': FinanceStatement;
+    'finance-files': FinanceFile;
+    'finance-audit-log': FinanceAuditLog;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -124,6 +135,17 @@ export interface Config {
     'finance-receipts': FinanceReceiptsSelect<false> | FinanceReceiptsSelect<true>;
     'finance-receivables': FinanceReceivablesSelect<false> | FinanceReceivablesSelect<true>;
     'finance-expenses': FinanceExpensesSelect<false> | FinanceExpensesSelect<true>;
+    'finance-participants': FinanceParticipantsSelect<false> | FinanceParticipantsSelect<true>;
+    'finance-accounts': FinanceAccountsSelect<false> | FinanceAccountsSelect<true>;
+    'finance-project-rules': FinanceProjectRulesSelect<false> | FinanceProjectRulesSelect<true>;
+    'finance-campaigns': FinanceCampaignsSelect<false> | FinanceCampaignsSelect<true>;
+    'finance-funding': FinanceFundingSelect<false> | FinanceFundingSelect<true>;
+    'finance-ad-charges': FinanceAdChargesSelect<false> | FinanceAdChargesSelect<true>;
+    'finance-payouts': FinancePayoutsSelect<false> | FinancePayoutsSelect<true>;
+    'finance-transfers': FinanceTransfersSelect<false> | FinanceTransfersSelect<true>;
+    'finance-statements': FinanceStatementsSelect<false> | FinanceStatementsSelect<true>;
+    'finance-files': FinanceFilesSelect<false> | FinanceFilesSelect<true>;
+    'finance-audit-log': FinanceAuditLogSelect<false> | FinanceAuditLogSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -1630,6 +1652,10 @@ export interface Lead {
   brochureId?: string | null;
   name: string;
   phone: string;
+  /**
+   * Normalised phone used to flag repeat enquiries. Empty when the number is not valid.
+   */
+  phoneKey?: string | null;
   email?: string | null;
   /**
    * Keep dated pointers from client discussions, preferences and next steps here. Existing enquiry notes remain below.
@@ -1946,6 +1972,92 @@ export interface FinanceDeal {
   milestoneReached?: boolean | null;
   claimed?: boolean | null;
   cancelled?: boolean | null;
+  /**
+   * Optional originating campaign. Leave empty when attribution is unknown.
+   */
+  campaign?: (number | null) | FinanceCampaign;
+  commissionMode?: ('project-default' | 'referral' | 'custom') | null;
+  referrerName?: string | null;
+  /**
+   * Agreed distribution of this deal's commission, saved as a snapshot. Must total 100%. Changing project defaults later does not change it.
+   */
+  commissionSplit?:
+    | {
+        /**
+         * Stable recipient id used by payouts.
+         */
+        key?: string | null;
+        participant?: (number | null) | FinanceParticipant;
+        /**
+         * Filled from the participant, or typed for someone outside the register.
+         */
+        recipientName?: string | null;
+        percent: number;
+        /**
+         * Optional, e.g. Referrer.
+         */
+        role?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Required when the commission amount or split of a saved deal changes.
+   */
+  changeReason?: string | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Advertising campaigns under a project. Budgets here are plans; actual spend comes from charges.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-campaigns".
+ */
+export interface FinanceCampaign {
+  id: number;
+  project: number | FeaturedProject;
+  name: string;
+  /**
+   * Optional Meta campaign ID.
+   */
+  metaCampaignId?: string | null;
+  startAt: string;
+  endAt?: string | null;
+  /**
+   * Planned daily budget for the whole campaign. Planning only, not spending.
+   */
+  dailyBudget: number;
+  /**
+   * Optional planned funding target.
+   */
+  fundingTarget?: number | null;
+  status: 'active' | 'completed';
+  notes?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * People who fund projects or receive commission. Archive instead of deleting.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-participants".
+ */
+export interface FinanceParticipant {
+  id: number;
+  name: string;
+  phone?: string | null;
+  isOwner?: boolean | null;
+  /**
+   * Hide from new entries. History and balances are kept.
+   */
+  archived?: boolean | null;
   notes?: string | null;
   entryKey?: string | null;
   createdBy?: (number | null) | User;
@@ -1969,6 +2081,11 @@ export interface FinanceReceipt {
   paymentMethod?: string | null;
   reference?: string | null;
   receivedFrom?: string | null;
+  /**
+   * Bank/cash account that received it. Older receipts without one are flagged for classification.
+   */
+  account?: (number | null) | FinanceAccount;
+  attachments?: (number | FinanceFile)[] | null;
   notes?: string | null;
   entryKey?: string | null;
   /**
@@ -2005,6 +2122,69 @@ export interface FinanceReceivable {
   createdAt: string;
 }
 /**
+ * Bank, cash and card accounts. Balances here are recorded balances, not live bank balances.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-accounts".
+ */
+export interface FinanceAccount {
+  id: number;
+  name: string;
+  kind: 'bank' | 'cash' | 'card';
+  /**
+   * A label such as "Visa ending 1234". Never store full card details.
+   */
+  cardLabel?: string | null;
+  /**
+   * Recorded balance when you started using this account here. A card that is owed is negative.
+   */
+  openingBalance?: number | null;
+  openingDate: string;
+  /**
+   * Part of the opening balance that is known to be yours, retained commission or something else. Project funding is classified with Opening funding entries. Anything left is shown as unclassified.
+   */
+  openingClassification?:
+    | {
+        purpose: 'owner' | 'commission' | 'other';
+        amount: number;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  archived?: boolean | null;
+  notes?: string | null;
+  /**
+   * Why the last change was made.
+   */
+  changeReason?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Private finance proofs. Readable only with finance access.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-files".
+ */
+export interface FinanceFile {
+  id: number;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
  * Private finance ledger. Posted amounts are immutable; void mistakes with a reason and enter a replacement. Dashboard: /finance
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2024,6 +2204,21 @@ export interface FinanceExpense {
   paymentMethod?: string | null;
   vendor?: string | null;
   recurring?: boolean | null;
+  /**
+   * Only for an expense that belongs to this specific deal, such as an external broker fee. Advertising is never deducted from commission.
+   */
+  preDistribution?: boolean | null;
+  /**
+   * An unpaid deduction reserves commission but moves no cash until it is paid.
+   */
+  paymentStatus?: ('paid' | 'unpaid') | null;
+  paidDate?: string | null;
+  reference?: string | null;
+  /**
+   * Account the expense was paid from.
+   */
+  account?: (number | null) | FinanceAccount;
+  attachments?: (number | FinanceFile)[] | null;
   notes?: string | null;
   entryKey?: string | null;
   /**
@@ -2033,6 +2228,293 @@ export interface FinanceExpense {
   voidReason?: string | null;
   createdBy?: (number | null) | User;
   updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Funding and commission rules per project. Changes apply to new entries only; posted charges and saved deal splits keep their own snapshot.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-project-rules".
+ */
+export interface FinanceProjectRule {
+  id: number;
+  project: number | FeaturedProject;
+  /**
+   * Planning figure per day for the whole project across all its ads (not per creative).
+   */
+  plannedDailyBudget?: number | null;
+  /**
+   * Who funds this project's advertising, and their share. Must total 100%.
+   */
+  funding?:
+    | {
+        participant: number | FinanceParticipant;
+        percent: number;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Default commission distribution for this project's deals. Independent of funding.
+   */
+  commission?:
+    | {
+        /**
+         * Stable recipient id used by payouts.
+         */
+        key?: string | null;
+        participant?: (number | null) | FinanceParticipant;
+        /**
+         * Filled from the participant, or typed for someone outside the register.
+         */
+        recipientName?: string | null;
+        percent: number;
+        /**
+         * Optional, e.g. Referrer.
+         */
+        role?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Optional named commission arrangements, e.g. a referral split.
+   */
+  presets?:
+    | {
+        name: string;
+        kind: 'referral' | 'custom';
+        lines?:
+          | {
+              /**
+               * Stable recipient id used by payouts.
+               */
+              key?: string | null;
+              participant?: (number | null) | FinanceParticipant;
+              /**
+               * Filled from the participant, or typed for someone outside the register.
+               */
+              recipientName?: string | null;
+              percent: number;
+              /**
+               * Optional, e.g. Referrer.
+               */
+              role?: string | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  notes?: string | null;
+  /**
+   * Why the last change was made.
+   */
+  changeReason?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Project funding by participant. Only received contributions add cash. Promises, adjustments and openings are tracked separately. Funding is never commission income.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-funding".
+ */
+export interface FinanceFunding {
+  id: number;
+  kind: 'contribution' | 'pledge' | 'refund' | 'adjustment' | 'opening';
+  direction: 'increase' | 'decrease';
+  participant: number | FinanceParticipant;
+  project: number | FeaturedProject;
+  campaign?: (number | null) | FinanceCampaign;
+  /**
+   * The promise this contribution fulfils, if any.
+   */
+  pledge?: (number | null) | FinanceFunding;
+  amount: number;
+  date: string;
+  /**
+   * Receiving or paying account. Not used for promises or adjustments.
+   */
+  account?: (number | null) | FinanceAccount;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  attachments?: (number | FinanceFile)[] | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude from balances. A reason is required. Cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Meta charges and the actual bank debit. The debit reduces cash once; campaign and participant shares are breakdowns of it.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-ad-charges".
+ */
+export interface FinanceAdCharge {
+  id: number;
+  date: string;
+  account: number | FinanceAccount;
+  /**
+   * Card label only, e.g. "Visa 1234".
+   */
+  cardLabel?: string | null;
+  bankDebit: number;
+  /**
+   * Meta receipt or transaction reference.
+   */
+  metaReference?: string | null;
+  chargeBreakdown?: string | null;
+  attachments?: (number | FinanceFile)[] | null;
+  lines: {
+    campaign: number | FinanceCampaign;
+    project?: (number | null) | FeaturedProject;
+    /**
+     * Meta receipt for this line, if different.
+     */
+    metaReceipt?: string | null;
+    metaAmount: number;
+    additionalCharges?: number | null;
+    totalCost?: number | null;
+    id?: string | null;
+  }[];
+  metaTotal?: number | null;
+  additionalTotal?: number | null;
+  /**
+   * Analytical split of each campaign's cost by the project's funding percentages at posting time.
+   */
+  shares?:
+    | {
+        /**
+         * Charge line (0-based) this share belongs to.
+         */
+        line?: number | null;
+        project?: (number | null) | FeaturedProject;
+        campaign?: (number | null) | FinanceCampaign;
+        participant?: (number | null) | FinanceParticipant;
+        percent?: number | null;
+        amount?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  reviewFlags?: string | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude from balances. A reason is required. Cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Actual commission payouts. An entitlement is not a payout until it is recorded here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-payouts".
+ */
+export interface FinancePayout {
+  id: number;
+  deal: number | FinanceDeal;
+  recipientKey: string;
+  recipientName?: string | null;
+  participant?: (number | null) | FinanceParticipant;
+  amount: number;
+  date: string;
+  account: number | FinanceAccount;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  proof?: (number | FinanceFile)[] | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude from balances. A reason is required. Cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Money moved between your own accounts. Settling a card is a transfer, never a second expense.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-transfers".
+ */
+export interface FinanceTransfer {
+  id: number;
+  date: string;
+  fromAccount: number | FinanceAccount;
+  toAccount: number | FinanceAccount;
+  amount: number;
+  kind: 'transfer' | 'card-settlement';
+  reference?: string | null;
+  attachments?: (number | FinanceFile)[] | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  /**
+   * Exclude from balances. A reason is required. Cannot be undone.
+   */
+  voided?: boolean | null;
+  voidReason?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Balances read from a bank statement, compared against the recorded balance on that date.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-statements".
+ */
+export interface FinanceStatement {
+  id: number;
+  account: number | FinanceAccount;
+  date: string;
+  statementBalance: number;
+  attachments?: (number | FinanceFile)[] | null;
+  notes?: string | null;
+  entryKey?: string | null;
+  createdBy?: (number | null) | User;
+  updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-audit-log".
+ */
+export interface FinanceAuditLog {
+  id: number;
+  targetCollection: string;
+  targetId: string;
+  operation: string;
+  changes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  reason?: string | null;
+  user?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -2224,6 +2706,50 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'finance-expenses';
         value: number | FinanceExpense;
+      } | null)
+    | ({
+        relationTo: 'finance-participants';
+        value: number | FinanceParticipant;
+      } | null)
+    | ({
+        relationTo: 'finance-accounts';
+        value: number | FinanceAccount;
+      } | null)
+    | ({
+        relationTo: 'finance-project-rules';
+        value: number | FinanceProjectRule;
+      } | null)
+    | ({
+        relationTo: 'finance-campaigns';
+        value: number | FinanceCampaign;
+      } | null)
+    | ({
+        relationTo: 'finance-funding';
+        value: number | FinanceFunding;
+      } | null)
+    | ({
+        relationTo: 'finance-ad-charges';
+        value: number | FinanceAdCharge;
+      } | null)
+    | ({
+        relationTo: 'finance-payouts';
+        value: number | FinancePayout;
+      } | null)
+    | ({
+        relationTo: 'finance-transfers';
+        value: number | FinanceTransfer;
+      } | null)
+    | ({
+        relationTo: 'finance-statements';
+        value: number | FinanceStatement;
+      } | null)
+    | ({
+        relationTo: 'finance-files';
+        value: number | FinanceFile;
+      } | null)
+    | ({
+        relationTo: 'finance-audit-log';
+        value: number | FinanceAuditLog;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2962,6 +3488,7 @@ export interface LeadsSelect<T extends boolean = true> {
   brochureId?: T;
   name?: T;
   phone?: T;
+  phoneKey?: T;
   email?: T;
   conversationNotes?: T;
   followUpAt?: T;
@@ -3146,6 +3673,20 @@ export interface FinanceDealsSelect<T extends boolean = true> {
   milestoneReached?: T;
   claimed?: T;
   cancelled?: T;
+  campaign?: T;
+  commissionMode?: T;
+  referrerName?: T;
+  commissionSplit?:
+    | T
+    | {
+        key?: T;
+        participant?: T;
+        recipientName?: T;
+        percent?: T;
+        role?: T;
+        id?: T;
+      };
+  changeReason?: T;
   notes?: T;
   entryKey?: T;
   createdBy?: T;
@@ -3166,6 +3707,8 @@ export interface FinanceReceiptsSelect<T extends boolean = true> {
   paymentMethod?: T;
   reference?: T;
   receivedFrom?: T;
+  account?: T;
+  attachments?: T;
   notes?: T;
   entryKey?: T;
   voided?: T;
@@ -3206,12 +3749,295 @@ export interface FinanceExpensesSelect<T extends boolean = true> {
   paymentMethod?: T;
   vendor?: T;
   recurring?: T;
+  preDistribution?: T;
+  paymentStatus?: T;
+  paidDate?: T;
+  reference?: T;
+  account?: T;
+  attachments?: T;
   notes?: T;
   entryKey?: T;
   voided?: T;
   voidReason?: T;
   createdBy?: T;
   updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-participants_select".
+ */
+export interface FinanceParticipantsSelect<T extends boolean = true> {
+  name?: T;
+  phone?: T;
+  isOwner?: T;
+  archived?: T;
+  notes?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-accounts_select".
+ */
+export interface FinanceAccountsSelect<T extends boolean = true> {
+  name?: T;
+  kind?: T;
+  cardLabel?: T;
+  openingBalance?: T;
+  openingDate?: T;
+  openingClassification?:
+    | T
+    | {
+        purpose?: T;
+        amount?: T;
+        note?: T;
+        id?: T;
+      };
+  archived?: T;
+  notes?: T;
+  changeReason?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-project-rules_select".
+ */
+export interface FinanceProjectRulesSelect<T extends boolean = true> {
+  project?: T;
+  plannedDailyBudget?: T;
+  funding?:
+    | T
+    | {
+        participant?: T;
+        percent?: T;
+        id?: T;
+      };
+  commission?:
+    | T
+    | {
+        key?: T;
+        participant?: T;
+        recipientName?: T;
+        percent?: T;
+        role?: T;
+        id?: T;
+      };
+  presets?:
+    | T
+    | {
+        name?: T;
+        kind?: T;
+        lines?:
+          | T
+          | {
+              key?: T;
+              participant?: T;
+              recipientName?: T;
+              percent?: T;
+              role?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  notes?: T;
+  changeReason?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-campaigns_select".
+ */
+export interface FinanceCampaignsSelect<T extends boolean = true> {
+  project?: T;
+  name?: T;
+  metaCampaignId?: T;
+  startAt?: T;
+  endAt?: T;
+  dailyBudget?: T;
+  fundingTarget?: T;
+  status?: T;
+  notes?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-funding_select".
+ */
+export interface FinanceFundingSelect<T extends boolean = true> {
+  kind?: T;
+  direction?: T;
+  participant?: T;
+  project?: T;
+  campaign?: T;
+  pledge?: T;
+  amount?: T;
+  date?: T;
+  account?: T;
+  paymentMethod?: T;
+  reference?: T;
+  attachments?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-ad-charges_select".
+ */
+export interface FinanceAdChargesSelect<T extends boolean = true> {
+  date?: T;
+  account?: T;
+  cardLabel?: T;
+  bankDebit?: T;
+  metaReference?: T;
+  chargeBreakdown?: T;
+  attachments?: T;
+  lines?:
+    | T
+    | {
+        campaign?: T;
+        project?: T;
+        metaReceipt?: T;
+        metaAmount?: T;
+        additionalCharges?: T;
+        totalCost?: T;
+        id?: T;
+      };
+  metaTotal?: T;
+  additionalTotal?: T;
+  shares?:
+    | T
+    | {
+        line?: T;
+        project?: T;
+        campaign?: T;
+        participant?: T;
+        percent?: T;
+        amount?: T;
+        id?: T;
+      };
+  reviewFlags?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-payouts_select".
+ */
+export interface FinancePayoutsSelect<T extends boolean = true> {
+  deal?: T;
+  recipientKey?: T;
+  recipientName?: T;
+  participant?: T;
+  amount?: T;
+  date?: T;
+  account?: T;
+  paymentMethod?: T;
+  reference?: T;
+  proof?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-transfers_select".
+ */
+export interface FinanceTransfersSelect<T extends boolean = true> {
+  date?: T;
+  fromAccount?: T;
+  toAccount?: T;
+  amount?: T;
+  kind?: T;
+  reference?: T;
+  attachments?: T;
+  notes?: T;
+  entryKey?: T;
+  voided?: T;
+  voidReason?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-statements_select".
+ */
+export interface FinanceStatementsSelect<T extends boolean = true> {
+  account?: T;
+  date?: T;
+  statementBalance?: T;
+  attachments?: T;
+  notes?: T;
+  entryKey?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-files_select".
+ */
+export interface FinanceFilesSelect<T extends boolean = true> {
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-audit-log_select".
+ */
+export interface FinanceAuditLogSelect<T extends boolean = true> {
+  targetCollection?: T;
+  targetId?: T;
+  operation?: T;
+  changes?: T;
+  reason?: T;
+  user?: T;
   updatedAt?: T;
   createdAt?: T;
 }

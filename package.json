@@ -23,6 +23,8 @@
     "test:follow-up": "node --test tests/unit/follow-up.test.mjs",
     "test:finance": "node --test tests/unit/finance.test.mjs",
     "test:finance:db": "payload run tests/integration/finance.ts",
+    "test:finance-funding": "node --test tests/unit/finance-funding.test.mjs",
+    "test:finance-funding:db": "payload run tests/integration/finance-funding.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:manual": "cross-env PLAYWRIGHT_SLOW_MO=750 E2E_MANUAL_REVIEW=true playwright test --headed --workers=1"

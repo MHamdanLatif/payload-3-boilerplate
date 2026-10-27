@@ -3,6 +3,8 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { contactInput, manualAttribution, projectId } from '@/lib/crm-input'
 import { getServerSideURL } from '@/utilities/getURL'
+import { phoneKey } from '@/lib/phone-key'
+import { leadsWithPhoneKey } from '@/lib/lead-duplicates'
 
 export async function POST(req: Request) {
   const origin = req.headers.get('origin')
@@ -26,6 +28,12 @@ export async function POST(req: Request) {
       overrideAccess: false,
       user,
     })
+    // Warn about earlier enquiries from the same number. Saving anyway is allowed: a new
+    // enquiry (another project, a new source) is kept as its own record and never merged.
+    if (body.confirmDuplicate !== true) {
+      const duplicates = await leadsWithPhoneKey({ payload, user }, phoneKey(contact.phone))
+      if (duplicates.length) return NextResponse.json({ duplicates }, { status: 409 })
+    }
     const data = {
       ...contact,
       ...manualAttribution(body.source, project),

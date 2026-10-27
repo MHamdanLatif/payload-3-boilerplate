@@ -18,6 +18,7 @@ import { crmPushConfigured } from '@/lib/crm-push'
 import { hasFinanceAccess } from '@/access/finance'
 import { LeadSchedules } from '@/components/crm/LeadSchedules'
 import { DeleteLead } from '@/components/crm/DeleteLead'
+import { leadsWithPhoneKey } from '@/lib/lead-duplicates'
 
 export const metadata: Metadata = {
   title: 'Client record',
@@ -118,6 +119,7 @@ export default async function LeadActivity({ params, searchParams }: { params: P
   rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
   const projects = await crmProjects()
+  const otherEnquiries = await leadsWithPhoneKey({ payload, user }, lead.phoneKey, lead.id)
   const settings = lead.brochureId
     ? await payload.findGlobal({ slug: 'crm-settings', depth: 0 }).catch(() => null)
     : null
@@ -145,6 +147,25 @@ export default async function LeadActivity({ params, searchParams }: { params: P
         <p className="crm-muted mt-2 mb-5">
           {leadProjectLabel(lead)} · {leadSourceLabel(lead)}
         </p>
+        {otherEnquiries.length > 0 && (
+          <div className="crm-panel mb-5">
+            <p>
+              <span className="crm-badge new mr-2">Repeat enquiry</span>
+              {otherEnquiries.length} other {otherEnquiries.length === 1 ? 'record has' : 'records have'} this phone number (matched by
+              number only). Each enquiry keeps its own project, source, notes and schedules.
+            </p>
+            <ul className="mt-2 text-sm">
+              {otherEnquiries.map((d) => (
+                <li key={d.id}>
+                  <a className="underline" href={'/leads-dashboard/' + d.id}>
+                    {d.name}
+                  </a>{' '}
+                  · {d.project || 'No project'} · {new Date(d.createdAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi' })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <LeadEditor
           key={lead.id}
           lead={{

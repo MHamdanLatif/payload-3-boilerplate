@@ -2,6 +2,8 @@
 import { overview } from '@/lib/finance-server'
 import { rupees, type FinanceParams } from '@/lib/finance-query'
 import { MoneyCards, PeriodFilter, ScheduleTable } from '@/components/finance/FinanceUI'
+import { financeExec } from '@/lib/finance-server'
+import { financeExceptions } from '@/lib/finance-exceptions'
 
 export default async function FinanceOverview({
   searchParams,
@@ -10,6 +12,7 @@ export default async function FinanceOverview({
 }) {
   const params = await searchParams
   const { kpis: k, upcoming, attention, forecast, range } = await overview(params)
+  const exceptions = await financeExceptions(await financeExec())
   return (
     <>
       <p>Record a closed deal, then add commission payments and expenses as they happen.</p>
@@ -27,7 +30,7 @@ export default async function FinanceOverview({
           [
             'Net cash flow',
             Number(k.received) - Number(k.expenses),
-            'Payments received minus expenses',
+            'Commission receipts minus expenses. Not money available to you: see Accounts for cash by purpose.',
           ],
         ]}
       />
@@ -54,6 +57,19 @@ export default async function FinanceOverview({
           </tbody>
         </table>
       </div>
+      {exceptions.length > 0 && (
+        <>
+          <h2>Funding and distribution exceptions</h2>
+          <div className="finance-alerts">
+            {exceptions.map((x, i) => (
+              <article key={i}>
+                <Link href={x.href}>{x.title}</Link>
+                <p>{x.detail}</p>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
       {attention.length > 0 && (
         <>
           <h2>Needs attention</h2>

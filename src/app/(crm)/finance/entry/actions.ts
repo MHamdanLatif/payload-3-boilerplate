@@ -110,7 +110,31 @@ export async function saveFinanceEntry(
       })
       id = data.deal
     } else {
-      if (kind === 'deals') data.salesperson = user.id
+      if (kind === 'deals') {
+        data.salesperson = user.id
+        // Snapshot the project's default commission split, if it has one. The deal keeps
+        // this copy even if the project's defaults change later; it can be changed on the deal.
+        if (data.project) {
+          const rules = await payload.find({
+            collection: 'finance-project-rules',
+            where: { project: { equals: data.project } },
+            limit: 1,
+            depth: 0,
+            overrideAccess: false,
+            user,
+          })
+          const commission = rules.docs[0]?.commission || []
+          if (commission.length) {
+            data.commissionMode = 'project-default'
+            data.commissionSplit = commission.map(({ participant, recipientName, percent, role }) => ({
+              participant: typeof participant === 'object' ? participant?.id : participant,
+              recipientName,
+              percent,
+              role,
+            }))
+          }
+        }
+      }
       const existing = await payload.find({
         collection: collections[kind],
         where: { entryKey: { equals: entryKey } },
