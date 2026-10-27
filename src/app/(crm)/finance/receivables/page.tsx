@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { DEAL_TABS } from '@/lib/finance-nav'
 import { pageNumber } from '@/lib/finance-query'
 import { sql } from '@payloadcms/db-postgres'
 import { financeQuery } from '@/lib/finance-server'
@@ -18,6 +20,7 @@ export default async function Receivables({
   )
   return (
     <>
+      <FinanceTabs tabs={DEAL_TABS} />
       <h2>Expected commission</h2>
       <PeriodFilter params={p} fallback="all" />
       <form className="finance-filters">

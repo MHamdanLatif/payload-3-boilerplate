@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { MONEY_TABS } from '@/lib/finance-nav'
 import { RemoveEntry } from '@/components/finance/RemoveEntry'
 import { positiveID } from '@/lib/finance-query'
 import { pageNumber } from '@/lib/finance-query'
@@ -38,6 +40,7 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
     })
   return (
     <>
+      <FinanceTabs tabs={MONEY_TABS} />
       <h2>Expenses</h2>
       <PeriodFilter params={p} />
       <form className="finance-filters">

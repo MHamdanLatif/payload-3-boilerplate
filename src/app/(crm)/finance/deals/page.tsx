@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { DEAL_TABS } from '@/lib/finance-nav'
 import Link from 'next/link'
 import { dealRows, financeSession } from '@/lib/finance-server'
 import { displayDate, rupees, param, type FinanceParams } from '@/lib/finance-query'
@@ -27,8 +29,16 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
   ])
   return (
     <>
-      <h2>Deals</h2>
-      <PeriodFilter params={p} fallback="all" />
+      <div className="finance-heading">
+        <h1>Deals</h1>
+        <Link className="finance-button" href="/finance/entry/deals">
+          + Add Deal
+        </Link>
+      </div>
+      <FinanceTabs tabs={DEAL_TABS} />
+      <details className="finance-more" open={Boolean(param(p, 'q') || param(p, 'project') || param(p, 'status') || param(p, 'period'))}>
+        <summary>Search and filter</summary>
+        <PeriodFilter params={p} fallback="all" />
       <form className="finance-filters">
         {['period', 'month', 'from', 'to'].map((k) => (
           <input key={k} type="hidden" name={k} value={param(p, k)} />
@@ -100,56 +110,39 @@ export default async function Deals({ searchParams }: { searchParams: Promise<Fi
         </label>
         <button className="finance-button">Filter deals</button>
       </form>
-      <p>Outstanding is your commission minus payments received.</p>
-      <div className="finance-table">
-        <table>
-          <thead>
-            <tr>
-              {[
-                'Client',
-                'Contact',
-                'Project',
-                'Unit',
-                'Unit type',
-                'Date closed',
-                'Sale value',
-                'Commission',
-                'Received',
-                'Outstanding',
-                'Next payment',
-                'Status',
-                'Notes',
-              ].map((c) => (
-                <th key={c}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((d) => (
-              <tr key={d.id}>
-                <td>
-                  <Link href={`/finance/deals/${d.id}`}>{d.client_name}</Link>
-                </td>
-                <td>{d.contact}</td>
-                <td>{d.project_name}</td>
-                <td>{d.unit_number}</td>
-                <td>{d.unit_type}</td>
-                <td>{displayDate(d.date_closed)}</td>
-                <td>{rupees(d.sale_value)}</td>
-                <td>{rupees(d.commission)}</td>
-                <td>{rupees(d.received)}</td>
-                <td>{rupees(d.outstanding)}</td>
-                <td>{displayDate(d.next_payment)}</td>
-                <td>
-                  <Badge>{d.status}</Badge>
-                </td>
-                <td>{d.notes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && <p>No deals match these filters.</p>}
+      </details>
+      <div className="finance-list">
+        {rows.map((d) => {
+          const pct = Number(d.commission) > 0 ? Math.min(100, (Number(d.received) / Number(d.commission)) * 100) : 0
+          return (
+            <Link key={d.id} className="finance-item" href={`/finance/deals/${d.id}`}>
+              <div className="finance-row">
+                <h3>{d.client_name}</h3>
+                <Badge>{d.status}</Badge>
+              </div>
+              <p>
+                {d.project_name}
+                {d.unit_type ? ` · ${d.unit_type}` : ''}
+                {d.unit_number ? ` · ${d.unit_number}` : ''} · closed {displayDate(d.date_closed)}
+              </p>
+              <div className="finance-progress" aria-hidden="true">
+                <span style={{ width: `${pct}%` }} />
+              </div>
+              <div className="finance-row">
+                <span>
+                  {rupees(d.received)} of {rupees(d.commission)} received
+                </span>
+                {Number(d.outstanding) > 0 && (
+                  <span className="finance-amount">
+                    {rupees(d.outstanding)} to come{d.next_payment ? ` · ${displayDate(d.next_payment)}` : ''}
+                  </span>
+                )}
+              </div>
+            </Link>
+          )
+        })}
       </div>
+      {!rows.length && <p>No deals match these filters.</p>}
       <Pager params={p} page={page} total={total} />
       <a download href="/finance/export?kind=deals">
         Export all deals (CSV)

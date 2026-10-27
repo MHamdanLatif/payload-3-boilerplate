@@ -260,7 +260,7 @@ try {
     await assert.rejects(
       () =>
         create('finance-payouts', { deal: deal.id, recipientKey: mine.key, amount: 0.01, date: day('2026-12-02'), account: bank.id, paymentMethod: 'x', reference: 'y' }),
-      /unpaid commission/,
+      /unpaid commission|Nothing is owed/,
     )
     const pos2 = (await dealPosition(exec, deal.id))!
     assert.equal(pos2.recipients[0].unpaidPaisa, 0)
@@ -338,6 +338,13 @@ try {
       }),
       /Void it with a reason/,
     )
+  })
+
+  await check('a receipt saved without an account can be given one, once', async () => {
+    const legacy = await create('finance-receipts', { deal: deal.id, date: day('2026-12-05'), amount: 1 })
+    await update('finance-receipts', legacy.id, { account: bank.id })
+    await assert.rejects(() => update('finance-receipts', legacy.id, { account: card.id }), /Posted account/)
+    await update('finance-receipts', legacy.id, { voided: true, voidReason: 'Test entry' })
   })
 
   await check('double submission: the same entry key cannot post twice', async () => {

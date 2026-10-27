@@ -105,15 +105,15 @@ export default async function Entry({
   if (kind !== 'receivables') field('notes', 'Notes (optional)', { type: 'textarea' })
   return (
     <>
-      <h2>
+      <h1>
         {kind === 'deals'
           ? 'Add deal'
           : kind === 'receipts'
-            ? 'Record commission payment'
+            ? 'Commission received'
             : kind === 'receivables'
               ? 'Change expected payment date'
               : 'Add expense'}
-      </h2>
+      </h1>
       {context && (
         <p>
           <strong>{context}</strong>

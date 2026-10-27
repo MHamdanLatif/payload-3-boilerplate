@@ -43,7 +43,7 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
   return (
     <>
       <div className="finance-heading">
-        <h2>{rules.title}</h2>
+        <h1>{rules.title}</h1>
         <a download href={`/finance/export?kind=project-report&project=${id}`}>
           Download project report (CSV)
         </a>
@@ -56,6 +56,14 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
           ['Participant shortfalls', pos.shortfallPaisa / 100, 'Top-ups owed to this project'],
         ]}
       />
+      <div className="finance-actions">
+        <Link className="finance-button" href="/finance/new/ad-charge">
+          Record ad spend
+        </Link>
+      </div>
+      <p>
+        <Link href="/finance/projects">← Projects</Link>
+      </p>
       {pos.deficitPaisa > 0 && (
         <p role="alert">
           Project deficit of {paisaRupees(pos.deficitPaisa)}: spending exceeded this project&apos;s funding. It is not covered by other
@@ -195,6 +203,8 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
         {!campaigns.length && <p>No campaigns yet.</p>}
       </div>
 
+      <details className="finance-more">
+        <summary>History: funding entries, ad costs and deals</summary>
       <h2>Funding ledger</h2>
       <div className="finance-table">
         <table>
@@ -283,6 +293,7 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
         </table>
         {!deals.length && <p>No deals yet.</p>}
       </div>
+      </details>
     </>
   )
 }

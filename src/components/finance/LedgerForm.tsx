@@ -27,8 +27,42 @@ export function LedgerForm({
   children?: React.ReactNode
 }) {
   const [state, action, pending] = useActionState(saveLedgerEntry, { error: '' })
+  const renderField = (f: EntryField) =>
+    f.type === 'checkbox' ? (
+      <label key={f.name} className="finance-check">
+        <input type="checkbox" name={f.name} value="true" defaultChecked={f.value === 'true'} />
+        {f.label}
+      </label>
+    ) : (
+      <label key={f.name}>
+        {f.label}
+        {f.options ? (
+          <select aria-label={f.label} name={f.name} defaultValue={f.value} required={f.required}>
+            {f.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        ) : f.type === 'textarea' ? (
+          <textarea name={f.name} defaultValue={f.value} required={f.required} />
+        ) : (
+          <input
+            name={f.name}
+            type={f.type || 'text'}
+            defaultValue={f.value}
+            required={f.required}
+            min={f.min}
+            max={f.max}
+            step={f.step}
+          />
+        )}
+        {f.hint && <small>{f.hint}</small>}
+      </label>
+    )
   return (
     <form
+      className={fields.length ? 'finance-form' : undefined}
       action={action}
       onSubmit={(e) => {
         if (confirm && !window.confirm(confirm)) e.preventDefault()
@@ -39,48 +73,22 @@ export function LedgerForm({
       {Object.entries(hidden).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
-      <div className="finance-entry">
-        {fields.map((f) =>
-          f.type === 'checkbox' ? (
-            <label key={f.name} className="finance-check">
-              <input type="checkbox" name={f.name} value="true" defaultChecked={f.value === 'true'} />
-              {f.label}
-            </label>
-          ) : (
-            <label key={f.name}>
-              {f.label}
-              {f.options ? (
-                <select aria-label={f.label} name={f.name} defaultValue={f.value} required={f.required}>
-                  {f.options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              ) : f.type === 'textarea' ? (
-                <textarea name={f.name} defaultValue={f.value} required={f.required} />
-              ) : (
-                <input
-                  name={f.name}
-                  type={f.type || 'text'}
-                  defaultValue={f.value}
-                  required={f.required}
-                  min={f.min}
-                  max={f.max}
-                  step={f.step}
-                />
-              )}
-            </label>
-          ),
-        )}
-        {files && (
-          <label>
-            Proof attachments (optional, PDF or image, up to 10 MB each)
-            <input type="file" name="files" multiple accept="application/pdf,image/*" />
-          </label>
-        )}
-      </div>
+      <div className="finance-entry">{fields.filter((f) => !f.advanced).map(renderField)}</div>
       {children}
+      {(files || fields.some((f) => f.advanced)) && (
+        <details className="finance-more">
+          <summary>More options{files ? ' (reference, notes, proof)' : ''}</summary>
+          <div className="finance-entry">
+            {fields.filter((f) => f.advanced).map(renderField)}
+            {files && (
+              <label>
+                Proof attachments (optional, PDF or image, up to 10 MB each)
+                <input type="file" name="files" multiple accept="application/pdf,image/*" />
+              </label>
+            )}
+          </div>
+        </details>
+      )}
       {state.error && <p role="alert">{state.error}</p>}
       <button className="finance-button" disabled={pending}>
         {pending ? 'Saving…' : submit}

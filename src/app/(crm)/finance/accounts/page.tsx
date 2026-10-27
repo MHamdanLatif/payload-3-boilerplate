@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { MONEY_TABS } from '@/lib/finance-nav'
 import Link from 'next/link'
 import { sql } from '@payloadcms/db-postgres'
 import { financeExec } from '@/lib/finance-server'
@@ -27,6 +29,7 @@ export default async function Accounts({ searchParams }: { searchParams: Promise
   )
   return (
     <>
+      <FinanceTabs tabs={MONEY_TABS} />
       <div className="finance-heading">
         <h2>Accounts and reconciliation</h2>
         <div className="finance-actions">

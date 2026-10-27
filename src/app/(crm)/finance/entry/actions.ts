@@ -134,6 +134,22 @@ export async function saveFinanceEntry(
             }))
           }
         }
+        // No project default (including other-property deals): start as all mine, which is
+        // the usual case. It can be changed on the deal at any time.
+        if (!data.commissionSplit) {
+          const owner = await payload.find({
+            collection: 'finance-participants',
+            where: { isOwner: { equals: true } },
+            limit: 1,
+            depth: 0,
+            overrideAccess: false,
+            user,
+          })
+          if (owner.docs[0]) {
+            data.commissionMode = 'custom'
+            data.commissionSplit = [{ participant: owner.docs[0].id, percent: 100 }]
+          }
+        }
       }
       const existing = await payload.find({
         collection: collections[kind],

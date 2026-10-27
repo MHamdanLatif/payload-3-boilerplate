@@ -12,6 +12,9 @@ export type EntryField = {
   max?: number
   step?: string
   options?: { value: string; label: string }[]
+  /** Optional detail, folded under "More options". */
+  advanced?: boolean
+  hint?: string
 }
 export function EntryForm({
   kind,
@@ -31,7 +34,7 @@ export function EntryForm({
   const [state, action, pending] = useActionState(saveFinanceEntry, { error: '' })
   const [amount, setAmount] = useState(String(outstanding ?? ''))
   return (
-    <form action={action}>
+    <form action={action} className="finance-form">
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="entryKey" value={entryKey} />
       <div className="finance-entry">

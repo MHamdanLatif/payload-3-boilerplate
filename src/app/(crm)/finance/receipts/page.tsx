@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { DEAL_TABS } from '@/lib/finance-nav'
 import { RemoveEntry } from '@/components/finance/RemoveEntry'
 import { pageNumber } from '@/lib/finance-query'
 import Link from 'next/link'
@@ -20,6 +22,7 @@ export default async function Receipts({ searchParams }: { searchParams: Promise
   )
   return (
     <>
+      <FinanceTabs tabs={DEAL_TABS} />
       <h2>Commission payments</h2>
       <PeriodFilter params={p} />
       <p>

@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { commitTransaction, createLocalReq, initTransaction, killTransaction, type PayloadRequest } from 'payload'
 import { financeSession } from '@/lib/finance-server'
+import { dealPosition } from '@/lib/finance-ledger'
+import { ledgerSum } from '@/lib/finance-tx'
 
 // Posting for project funding, advertising charges and commission distribution. Every
 // submission runs in one Payload transaction (attachments included), carries a single-use
@@ -315,6 +317,108 @@ export async function saveLedgerEntry(_previous: { error: string }, form: FormDa
         await payload.update({ collection, id: id(form, 'id') || 0, data: { voided: true, voidReason: reason } as never, ...opts })
         const next = str(form, 'next')
         destination = /^\/finance(\/[\w/?=&-]*)?$/.test(next) ? next : '/finance'
+        break
+      }
+      case 'split-mine': {
+        // One tap for the common case: the whole commission is mine.
+        const deal = id(form, 'deal') || 0
+        const owner = await payload.find({ collection: 'finance-participants', where: { isOwner: { equals: true } }, limit: 1, depth: 0, ...opts })
+        if (!owner.docs[0]) throw new Error('Add yourself as a person first (Money → People, tick "This is me").')
+        await payload.update({
+          collection: 'finance-deals',
+          id: deal,
+          data: {
+            commissionMode: 'custom',
+            commissionSplit: [{ participant: owner.docs[0].id, percent: 100 }],
+            changeReason: str(form, 'changeReason') || 'All commission is mine',
+          },
+          ...opts,
+        })
+        destination = `/finance/deals/${deal}`
+        break
+      }
+      case 'commission': {
+        // Commission received, optionally paid out at the same time (e.g. withdrawn to me).
+        const deal = id(form, 'deal') || 0
+        const account = id(form, 'account')
+        const payOut = str(form, 'afterwards') === 'paid'
+        if (payOut && !account) throw new Error('Choose the account it went into before it was paid out.')
+        const who = str(form, 'split')
+        if (who === 'mine' || who === 'default') {
+          const dealDoc = await payload.findByID({ collection: 'finance-deals', id: deal, depth: 0, ...opts })
+          if (!dealDoc.commissionSplit?.length) {
+            let split: { participant: number | null; recipientName?: string | null; percent: number; role?: string | null }[] = []
+            if (who === 'default' && dealDoc.project) {
+              const rules = await payload.find({ collection: 'finance-project-rules', where: { project: { equals: typeof dealDoc.project === 'object' ? dealDoc.project.id : dealDoc.project } }, limit: 1, depth: 0, ...opts })
+              split = (rules.docs[0]?.commission || []).map((r) => ({
+                participant: typeof r.participant === 'object' ? r.participant?.id ?? null : r.participant ?? null,
+                recipientName: r.recipientName,
+                percent: r.percent,
+                role: r.role,
+              }))
+            }
+            if (!split.length) {
+              const owner = await payload.find({ collection: 'finance-participants', where: { isOwner: { equals: true } }, limit: 1, depth: 0, ...opts })
+              if (!owner.docs[0]) throw new Error('Add yourself as a person first (Money → People, tick "This is me").')
+              split = [{ participant: owner.docs[0].id, percent: 100 }]
+            }
+            await payload.update({
+              collection: 'finance-deals',
+              id: deal,
+              data: { commissionMode: who === 'default' && split.length > 1 ? 'project-default' : 'custom', commissionSplit: split },
+              ...opts,
+            })
+          }
+        }
+        const attachments = await uploadFiles(form, req)
+        const existing = await payload.find({ collection: 'finance-receipts', where: { entryKey: { equals: entryKey } }, limit: 1, depth: 0, ...opts })
+        if (!existing.docs[0]) {
+          await payload.create({
+            collection: 'finance-receipts',
+            data: {
+              deal,
+              date: pktDate(str(form, 'date')) as string,
+              amount: num(form, 'amount') as number,
+              nextExpectedDate: pktDate(str(form, 'nextExpectedDate')) || null,
+              account,
+              paymentMethod: str(form, 'paymentMethod') || null,
+              reference: str(form, 'reference') || null,
+              notes: str(form, 'notes') || null,
+              attachments,
+              entryKey,
+            },
+            ...opts,
+          })
+          if (payOut) {
+            // Read through the open transaction so the new receipt is included.
+            const position = await dealPosition((q) => ledgerSum(req, q), deal)
+            if (!position?.recipients.length)
+              throw new Error('Say who shares this commission (for example "All mine") before paying it out.')
+            for (const r of position.recipients.filter((x) => x.unpaidPaisa > 0))
+              await payload.create({
+                collection: 'finance-payouts',
+                data: {
+                  deal,
+                  recipientKey: r.key,
+                  amount: r.unpaidPaisa / 100,
+                  date: pktDate(str(form, 'payoutDate') || str(form, 'date')) as string,
+                  account: account as number,
+                  paymentMethod: str(form, 'payoutMethod') || 'Withdrawal',
+                  reference: str(form, 'payoutReference') || null,
+                  notes: 'Paid out when the commission was recorded.',
+                },
+                ...opts,
+              })
+          }
+        }
+        destination = `/finance/deals/${deal}`
+        break
+      }
+      case 'receipt-account': {
+        // Put an older receipt into the account it was paid into (one time only).
+        const receipt = id(form, 'id') || 0
+        const doc = await payload.update({ collection: 'finance-receipts', id: receipt, data: { account: id(form, 'account') }, ...opts })
+        destination = `/finance/deals/${typeof doc.deal === 'object' ? doc.deal.id : doc.deal}`
         break
       }
       default:

@@ -1,3 +1,5 @@
+import { FinanceTabs } from '@/components/finance/FinanceNav'
+import { MONEY_TABS } from '@/lib/finance-nav'
 import { pageNumber } from '@/lib/finance-query'
 import { sql } from '@payloadcms/db-postgres'
 import { financeQuery } from '@/lib/finance-server'
@@ -31,6 +33,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   )
   return (
     <>
+      <FinanceTabs tabs={MONEY_TABS} />
       <h2>Property profitability</h2>
       <PeriodFilter params={p} />
       <p>

@@ -5,6 +5,7 @@ import { financeExec, ledgerOptions } from '@/lib/finance-server'
 import { dealPosition, projectRules } from '@/lib/finance-ledger'
 import { nowPKTInput, paisaRupees, param, positiveID, todayPKT, type FinanceParams } from '@/lib/finance-query'
 import { ChargeLines, LedgerForm, SplitEditor, type Option, type SplitRow } from '@/components/finance/LedgerForm'
+import { CommissionForm } from '@/components/finance/CommissionForm'
 import type { EntryField } from '@/components/finance/EntryForm'
 
 const TITLES: Record<string, [string, string]> = {
@@ -15,7 +16,8 @@ const TITLES: Record<string, [string, string]> = {
   campaign: ['Campaign', 'Planned budget only. Actual spending is recorded as advertising charges.'],
   funding: ['Record project funding', 'Only money actually received adds cash. Promises are tracked separately.'],
   'ad-charge': ['Record advertising charge', 'Enter the Meta amounts and the actual bank debit. The difference is shared by Meta amount.'],
-  payout: ['Record commission payout', 'An actual payment of someone\'s commission share.'],
+  payout: ['Pay out / withdraw', 'Money paid from the business account to you or a partner, from this deal\'s commission.'],
+  commission: ['Commission received', 'Money the builder paid you for this deal.'],
   transfer: ['Transfer between accounts', 'Moving your own money, or settling a card. Not an expense.'],
   statement: ['Enter bank statement balance', 'Compared with the recorded balance on that date.'],
   'deal-split': ['Commission distribution', 'Choose how this deal\'s commission is shared. Must total 100%.'],
@@ -39,7 +41,7 @@ export default async function NewLedgerEntry({
   const accounts: Option[] = o.accounts
     .filter((x) => !x.archived)
     .map((x) => ({ value: String(x.id), label: `${x.name}${x.kind === 'card' ? ' (card)' : ''}${x.card_label ? ' · ' + x.card_label : ''}` }))
-  const projectOptions: Option[] = o.projects.map((x) => ({ value: String(x.id), label: x.title }))
+  const onlyAccount = accounts.length === 1 ? accounts[0].value : ''
   const project = positiveID(param(p, 'project'))
   const deal = positiveID(param(p, 'deal'))
   const fields: EntryField[] = []
@@ -50,20 +52,45 @@ export default async function NewLedgerEntry({
   const select = (name: string, label: string, options: Option[], extra: Partial<EntryField> = {}) =>
     f(name, label, { options, ...extra })
   const pick = (label: string) => [{ value: '', label }]
+  const accountSelect = (name: string, label: string, required = true) =>
+    select(name, label, [...pick(accounts.length ? 'Choose account' : 'No account yet: add one under Money'), ...accounts], { required, value: onlyAccount })
   let extra: React.ReactNode = null
   let files = false
   let back = '/finance'
   let context = ''
 
+  let nothingOwed = ''
+  let custom: React.ReactNode = null
   switch (kind) {
+    case 'commission': {
+      const pos = deal ? await dealPosition(exec, deal) : null
+      if (!pos || pos.deal.cancelled) notFound()
+      const rules = pos.deal.project_id ? await projectRules(exec, pos.deal.project_id) : null
+      context = `${pos.deal.client_name} · ${pos.deal.project_name} · ${paisaRupees(pos.outstandingPaisa)} still to come`
+      custom = (
+        <CommissionForm
+          deal={deal}
+          entryKey={crypto.randomUUID()}
+          outstanding={pos.outstandingPaisa / 100}
+          today={todayPKT()}
+          accounts={accounts}
+          needsSplit={!pos.split.length}
+          hasProjectDefault={Boolean(rules?.commission.length)}
+          hasOwner={o.participants.some((x) => x.is_owner && !x.archived)}
+          recipients={pos.recipients.map((r) => r.label)}
+        />
+      )
+      back = `/finance/deals/${deal}`
+      break
+    }
     case 'participant': {
       const edit = positiveID(param(p, 'id'))
       const [row] = edit ? await exec(sql`SELECT * FROM finance_participants WHERE id=${edit}`) : []
       if (row) hidden.id = String(row.id)
       f('name', 'Name', { required: true, value: row?.name })
-      f('phone', 'Phone (optional)', { type: 'tel', value: row?.phone || '' })
+      f('phone', 'Phone (optional)', { type: 'tel', value: row?.phone || '', advanced: true })
       f('isOwner', 'This is me (Lateef Properties owner)', { type: 'checkbox', value: String(Boolean(row?.is_owner)) })
-      f('notes', 'Notes (optional)', { type: 'textarea', value: row?.notes || '' })
+      f('notes', 'Notes (optional)', { type: 'textarea', value: row?.notes || '', advanced: true })
       back = '/finance/participants'
       break
     }
@@ -170,18 +197,19 @@ export default async function NewLedgerEntry({
         { value: 'opening', label: 'Opening balance for migration (already in the account)' },
       ], { value: param(p, 'type') || 'contribution' })
       select('participant', 'Participant', [...pick('Choose participant'), ...activePeople], { required: true, value: param(p, 'participant') })
-      select('campaign', 'Campaign (optional)', [...pick('No specific campaign'), ...o.campaigns.filter((c) => c.project_id === project).map((c) => ({ value: String(c.id), label: c.name }))])
+      select('campaign', 'Campaign (optional)', [...pick('No specific campaign'), ...o.campaigns.filter((c) => c.project_id === project).map((c) => ({ value: String(c.id), label: c.name }))], { advanced: true })
       money('amount', 'Amount (PKR)')
       select('direction', 'Direction (adjustments and openings only)', [
         { value: 'increase', label: 'Increases their balance' },
         { value: 'decrease', label: 'Decreases their balance' },
-      ])
+      ], { advanced: true })
       f('date', 'Date (PKT)', { type: 'date', required: true, value: todayPKT() })
-      select('account', 'Receiving / paying account (not for promises or adjustments)', [...pick('No account'), ...accounts])
-      select('pledge', 'Fulfils promise (optional)', [...pick('Not linked to a promise'), ...pledges.map((x) => ({ value: String(x.id), label: `${x.name} · Rs. ${Number(x.amount).toLocaleString('en-PK')}` }))])
-      f('paymentMethod', 'Payment method (optional)')
-      f('reference', 'Reference (optional)')
-      f('notes', 'Notes (required for adjustments)', { type: 'textarea' })
+      select('account', 'Receiving / paying account (not for promises or adjustments)', [...pick('No account'), ...accounts], { value: onlyAccount })
+      if (pledges.length)
+        select('pledge', 'Fulfils promise (optional)', [...pick('Not linked to a promise'), ...pledges.map((x) => ({ value: String(x.id), label: `${x.name} · Rs. ${Number(x.amount).toLocaleString('en-PK')}` }))], { advanced: true })
+      f('paymentMethod', 'Payment method (optional)', { advanced: true })
+      f('reference', 'Reference (optional)', { advanced: true })
+      f('notes', 'Notes (required for adjustments)', { type: 'textarea', advanced: true })
       files = true
       context += ' · Funding is never commission income. Refunds are limited to the person\'s cash-backed balance in this project.'
       back = `/finance/projects/${project}`
@@ -190,11 +218,11 @@ export default async function NewLedgerEntry({
     case 'ad-charge': {
       const now = nowPKTInput()
       f('date', 'Transaction date and time (PKT)', { type: 'datetime-local', required: true, value: now })
-      select('account', 'Bank or card account debited', [...pick('Choose account'), ...accounts], { required: true })
-      f('cardLabel', 'Card label (optional, e.g. Visa 1234)')
+      accountSelect('account', 'Bank or card account debited')
       f('metaReference', 'Meta receipt / transaction reference')
-      f('chargeBreakdown', 'Known breakdown of additional bank charges/taxes (optional)', { type: 'textarea' })
-      f('notes', 'Notes (optional)', { type: 'textarea' })
+      f('cardLabel', 'Card label (optional, e.g. Visa 1234)', { advanced: true })
+      f('chargeBreakdown', 'Known breakdown of additional bank charges/taxes (optional)', { type: 'textarea', advanced: true })
+      f('notes', 'Notes (optional)', { type: 'textarea', advanced: true })
       files = true
       const campaigns = o.campaigns.map((c) => ({ value: String(c.id), label: `${c.project_title} · ${c.name}${c.status === 'completed' ? ' (completed)' : ''}` }))
       extra = <ChargeLines campaigns={campaigns} />
@@ -207,16 +235,24 @@ export default async function NewLedgerEntry({
       if (!pos) notFound()
       hidden.deal = String(deal)
       context = `${pos.deal.client_name} · ${pos.deal.project_name}`
+      const owed = pos.recipients.filter((r) => r.unpaidPaisa > 0)
+      if (!owed.length) {
+        nothingOwed = pos.recipients.length
+          ? 'Nothing is owed on this deal yet. Record the commission received first; you can mark it as already paid out there.'
+          : 'Say who shares this commission first. On the deal page, tap "All mine (100%)" or set a split.'
+        break
+      }
+      const chosen = owed.find((r) => r.key === param(p, 'recipient')) || (owed.length === 1 ? owed[0] : undefined)
       select('recipientKey', 'Recipient', [
-        ...pick('Choose recipient'),
-        ...pos.recipients.map((r) => ({ value: r.key, label: `${r.label} · unpaid ${paisaRupees(r.unpaidPaisa)}` })),
-      ], { required: true, value: param(p, 'recipient') })
-      money('amount', 'Amount paid (PKR)')
+        ...(chosen ? [] : pick('Choose recipient')),
+        ...owed.map((r) => ({ value: r.key, label: `${r.label} · owed ${paisaRupees(r.unpaidPaisa)}` })),
+      ], { required: true, value: chosen?.key })
+      money('amount', 'Amount paid (PKR)', true, chosen ? String(chosen.unpaidPaisa / 100) : undefined)
       f('date', 'Payment date (PKT)', { type: 'date', required: true, value: todayPKT() })
-      select('account', 'Paid from account', [...pick('Choose account'), ...accounts], { required: true })
-      f('paymentMethod', 'Payment method', { required: true })
-      f('reference', 'Reference', { required: true })
-      f('notes', 'Notes (optional)', { type: 'textarea' })
+      accountSelect('account', 'Paid from account')
+      select('paymentMethod', 'Payment method', ['Bank transfer', 'Withdrawal to my account', 'Cash', 'Cheque'].map((m) => ({ value: m, label: m })))
+      f('reference', 'Reference (optional)', { advanced: true })
+      f('notes', 'Notes (optional)', { type: 'textarea', advanced: true })
       files = true
       back = `/finance/deals/${deal}`
       break
@@ -230,14 +266,14 @@ export default async function NewLedgerEntry({
         { value: 'transfer', label: 'Transfer between my accounts' },
         { value: 'card-settlement', label: 'Card settlement (paying off a card)' },
       ])
-      f('reference', 'Reference (optional)')
-      f('notes', 'Notes (optional)', { type: 'textarea' })
+      f('reference', 'Reference (optional)', { advanced: true })
+      f('notes', 'Notes (optional)', { type: 'textarea', advanced: true })
       files = true
       back = '/finance/accounts'
       break
     }
     case 'statement': {
-      select('account', 'Account', [...pick('Choose account'), ...accounts], { required: true, value: param(p, 'account') })
+      select('account', 'Account', [...pick('Choose account'), ...accounts], { required: true, value: param(p, 'account') || onlyAccount })
       f('date', 'Statement date (PKT)', { type: 'date', required: true, value: todayPKT() })
       f('statementBalance', 'Balance shown on the statement (PKR)', { type: 'number', step: '0.01', required: true })
       f('notes', 'Notes (optional)', { type: 'textarea' })
@@ -306,7 +342,7 @@ export default async function NewLedgerEntry({
       f('vendor', 'Payee', { required: true })
       money('amount', 'Amount (PKR)')
       f('description', 'Description', { required: true })
-      f('category', 'Category', { value: 'Broker fee' })
+      f('category', 'Category', { value: 'Broker fee', advanced: true })
       f('date', 'Date (PKT)', { type: 'date', required: true, value: todayPKT() })
       select('preDistribution', 'Deducted before commission distribution?', [
         { value: '', label: 'Choose' },
@@ -317,10 +353,10 @@ export default async function NewLedgerEntry({
         { value: 'paid', label: 'Paid' },
         { value: 'unpaid', label: 'Unpaid (reserve it; no cash moves yet)' },
       ])
-      select('account', 'Paid from account (if paid)', [...pick('No account'), ...accounts])
-      f('paymentMethod', 'Payment method (if paid)')
-      f('reference', 'Reference (if paid)')
-      f('notes', 'Notes', { type: 'textarea' })
+      select('account', 'Paid from account (if paid)', [...pick('No account'), ...accounts], { value: onlyAccount })
+      f('paymentMethod', 'Payment method (if paid)', { advanced: true })
+      f('reference', 'Reference (if paid)', { advanced: true })
+      f('notes', 'Notes', { type: 'textarea', advanced: true })
       files = true
       back = `/finance/deals/${deal}`
       break
@@ -332,9 +368,9 @@ export default async function NewLedgerEntry({
       hidden.id = String(eid)
       context = `${e.vendor || ''} · ${e.description} · Rs. ${Number(e.amount).toLocaleString('en-PK')}`
       f('paidDate', 'Date paid (PKT)', { type: 'date', required: true, value: todayPKT() })
-      select('account', 'Paid from account', [...pick('Choose account'), ...accounts], { required: true })
-      f('paymentMethod', 'Payment method', { required: true })
-      f('reference', 'Reference', { required: true })
+      accountSelect('account', 'Paid from account')
+      f('paymentMethod', 'Payment method')
+      f('reference', 'Reference (optional)', { advanced: true })
       back = e.deal_id ? `/finance/deals/${e.deal_id}` : '/finance/expenses'
       break
     }
@@ -342,16 +378,24 @@ export default async function NewLedgerEntry({
   const [title, help] = TITLES[kind]
   return (
     <>
-      <h2>{title}</h2>
+      <h1>{title}</h1>
       {context && (
         <p>
           <strong>{context}</strong>
         </p>
       )}
       <p>{help}</p>
-      <LedgerForm kind={kind === 'preset' ? 'preset-add' : kind} entryKey={crypto.randomUUID()} fields={fields} hidden={hidden} files={files}>
-        {extra}
-      </LedgerForm>
+      {nothingOwed ? (
+        <p role="alert">
+          {nothingOwed} <Link href={back}>Open the deal</Link>
+        </p>
+      ) : (
+        custom || (
+          <LedgerForm kind={kind === 'preset' ? 'preset-add' : kind} entryKey={crypto.randomUUID()} fields={fields} hidden={hidden} files={files}>
+            {extra}
+          </LedgerForm>
+        )
+      )}
       <p>
         <Link href={back}>Back</Link> · All amounts are in PKR; dates are Pakistan time.
       </p>

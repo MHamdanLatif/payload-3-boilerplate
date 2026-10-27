@@ -18,50 +18,37 @@ export default async function Projects() {
   const byId = new Map(positions.map((x) => [x.project, x]))
   return (
     <>
-      <h2>Projects</h2>
-      <p>
-        Each project&apos;s advertising money is kept separate, even when projects share one bank account. Remaining cash is
-        what the project&apos;s own funding still has; participant balances can be higher than the cash backing them.
-      </p>
-      <div className="finance-table">
-        <table>
-          <thead>
-            <tr>
-              {['Project', 'Funding split', 'Active campaigns', 'Advertising cash remaining', 'Participant shortfalls', 'Unbacked entitlements', 'Status'].map((c) => (
-                <th key={c}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((p) => {
-              const pos = byId.get(p.id)
-              return (
-                <tr key={p.id}>
-                  <td>
-                    <Link href={`/finance/projects/${p.id}`}>{p.title}</Link>
-                  </td>
-                  <td>{Number(p.funders) ? `${p.funders} participant${Number(p.funders) === 1 ? '' : 's'}` : 'Not set'}</td>
-                  <td>{p.active_campaigns}</td>
-                  <td>{pos ? paisaRupees(pos.poolPaisa) : '—'}</td>
-                  <td>{pos?.shortfallPaisa ? paisaRupees(pos.shortfallPaisa) : '—'}</td>
-                  <td>{pos?.unbackedPaisa ? paisaRupees(pos.unbackedPaisa) : '—'}</td>
-                  <td>
-                    {pos?.deficitPaisa ? (
-                      <Badge tone="alert">Project deficit</Badge>
-                    ) : pos?.shortfallPaisa ? (
-                      <Badge tone="alert">Shortfall</Badge>
-                    ) : Number(p.funders) ? (
-                      <Badge>OK</Badge>
-                    ) : (
-                      <Badge>Set up</Badge>
-                    )}
-                    {pos?.deficitPaisa ? <small> Project deficit {paisaRupees(pos.deficitPaisa)}: needs funding</small> : null}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <h1>Projects</h1>
+      <p>Advertising money per project. Each project&apos;s money is kept separate, even in a shared bank account.</p>
+      <div className="finance-list">
+        {projects.map((p) => {
+          const pos = byId.get(p.id)
+          return (
+            <Link key={p.id} className="finance-item" href={`/finance/projects/${p.id}`}>
+              <div className="finance-row">
+                <h3>{p.title}</h3>
+                {pos?.deficitPaisa ? (
+                  <Badge tone="alert">Project deficit</Badge>
+                ) : pos?.shortfallPaisa ? (
+                  <Badge tone="alert">Shortfall</Badge>
+                ) : Number(p.funders) ? (
+                  <Badge>OK</Badge>
+                ) : (
+                  <Badge>Set up</Badge>
+                )}
+              </div>
+              <div className="finance-row">
+                <span>
+                  {Number(p.funders) ? `${p.funders} funder${Number(p.funders) === 1 ? '' : 's'}` : 'No funding split yet'} ·{' '}
+                  {p.active_campaigns} active campaign{Number(p.active_campaigns) === 1 ? '' : 's'}
+                </span>
+                {pos && <span className="finance-amount">{paisaRupees(pos.poolPaisa)} left for ads</span>}
+              </div>
+              {pos?.deficitPaisa ? <small>Project deficit {paisaRupees(pos.deficitPaisa)}: needs funding</small> : null}
+              {pos?.shortfallPaisa ? <small>Top-ups owed: {paisaRupees(pos.shortfallPaisa)}</small> : null}
+            </Link>
+          )
+        })}
       </div>
     </>
   )

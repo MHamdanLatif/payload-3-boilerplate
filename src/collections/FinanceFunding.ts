@@ -656,14 +656,17 @@ const checkPayout: CollectionBeforeChangeHook = async ({ data, operation, req })
   if (operation !== 'create') return data
   if (!(Number(data.amount) > 0)) fail('Enter a payout greater than zero.')
   if (!data.account) fail('Choose the account the payout was made from.')
-  if (!String(data.paymentMethod || '').trim() || !String(data.reference || '').trim())
-    fail('Enter the payment method and reference for the payout.')
+  if (!String(data.paymentMethod || '').trim()) fail('Choose how it was paid.')
   const deal = idOf(data.deal) as number
   await lockFinance(req, `deal:${deal}`)
   const position = await dealPosition(exec(req), deal)
   if (!position) fail('Deal not found.')
+  if (!position!.recipients.length)
+    fail('Say who shares this commission first (for example "All mine") on the deal page.')
   const recipient = position!.recipients.find((r) => r.key === data.recipientKey)
   if (!recipient) fail('Choose a recipient from this deal\'s commission split.')
+  if (recipient!.unpaidPaisa === 0)
+    fail(`Nothing is owed to ${recipient!.label} on this deal yet. Record the commission received first.`)
   if (toPaisa(data.amount) > recipient!.unpaidPaisa)
     fail(
       `This is more than ${recipient!.label}'s unpaid commission on this deal (PKR ${fromPaisa(recipient!.unpaidPaisa).toLocaleString('en-PK')}).`,

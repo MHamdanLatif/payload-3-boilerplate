@@ -317,11 +317,12 @@ const audit: CollectionBeforeChangeHook = async ({
     // Only the deal-delete hook may detach an expense from its deal (and re-home its project).
     const unlinking =
       collection.slug === 'finance-expenses' && context?.unlinkDeletedDeal && data.deal === null
+    // An entry saved without an account (older records, or a reserved expense) may be given
+    // one later, once. After that the account is fixed like any other posted field.
     const paying =
-      collection.slug === 'finance-expenses' &&
-      originalDoc.paymentStatus === 'unpaid' &&
-      data.paymentStatus === 'paid' &&
-      !originalDoc.account
+      !originalDoc.account &&
+      (collection.slug === 'finance-receipts' ||
+        (originalDoc.paymentStatus === 'unpaid' && data.paymentStatus === 'paid'))
     for (const field of immutable)
       if (
         !(unlinking && (field === 'deal' || field === 'project')) &&
