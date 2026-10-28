@@ -5,6 +5,7 @@ import { verifyFinance } from './finance'
 import { verifyFinanceFunding } from './finance-funding'
 import { verifyProjectMarketing } from './project-marketing'
 import { verifyLeadDelete } from './lead-delete'
+import { verifyPackAssetsLive } from './pack-assets'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 
@@ -227,6 +228,7 @@ test('supports onboarding, seeding, and comment moderation', async ({ browser, p
 
   const publicContext = await browser.newContext()
   const publicPage = await publicContext.newPage()
+  await verifyPackAssetsLive(page, publicPage)
 
   await verifySeededPosts(publicPage)
   await publicPage.goto(`/posts/${targetPost.slug}`)

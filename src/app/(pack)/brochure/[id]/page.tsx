@@ -9,6 +9,7 @@ import { getServerSideURL } from '@/utilities/getURL'
 import { BrochureView } from '@/components/brochure/BrochureView'
 import { logBrochureOpen, isCrawler } from '@/lib/brochure-open'
 import { buildPackMeta } from '@/lib/pack-metadata'
+import { resolvePackAssets } from '@/lib/pack-assets'
 
 /**
  * Project-specific link previews.
@@ -81,6 +82,11 @@ function mediaUrl(m: number | Media | null | undefined, base: string): string | 
   }
 }
 
+function mediaVersion(m: number | Media): string {
+  if (typeof m === 'number') return String(m)
+  return encodeURIComponent(`${m.id}-${m.updatedAt ?? ''}`)
+}
+
 export default async function BrochurePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const payload = await getPayload({ config })
@@ -113,21 +119,31 @@ export default async function BrochurePage({ params }: { params: Promise<{ id: s
 
   const base = getServerSideURL().replace(/\/$/, '')
 
+  // Read from the project on every open, so a replaced brochure, video or map
+  // reaches leads who were sent their link before the change.
+  const live = await resolvePackAssets(payload, lead)
+
   return (
     <BrochureView
       brochureId={id}
       visitId={crawler ? null : visitId}
       assets={{
-        headline: lead.brochureHeadline,
+        headline: live.headline,
         name: lead.name,
         // Proxied through our own origin rather than pointed at the media
         // host. pdf.js FETCHES the file, so it must be same-origin, and the
         // real file location never reaching the browser is what stops the
         // brochure being copied out of the page source and shared untracked.
-        pdf1: lead.brochurePdfPrimary ? `/api/brochure/${id}/file?slot=primary` : null,
-        pdf2: lead.brochurePdfSecondary ? `/api/brochure/${id}/file?slot=secondary` : null,
-        mapEmbed: lead.brochureMapEmbed,
-        videoUrl: lead.brochureVideoUrl,
+        // `v` changes when the file does, so the hour-long browser cache on
+        // that route can't serve a replaced brochure.
+        pdf1: live.pdfPrimary
+          ? `/api/brochure/${id}/file?slot=primary&v=${mediaVersion(live.pdfPrimary)}`
+          : null,
+        pdf2: live.pdfSecondary
+          ? `/api/brochure/${id}/file?slot=secondary&v=${mediaVersion(live.pdfSecondary)}`
+          : null,
+        mapEmbed: live.mapEmbed,
+        videoUrl: live.videoUrl,
       }}
     />
   )

@@ -264,7 +264,7 @@ export const Leads: CollectionConfig = {
       admin: {
         initCollapsed: true,
         description:
-          'What /brochure/<id> shows this lead. Pre-filled from the linked project on create; override per lead here.',
+          "Fallback only. /brochure/<id> always shows the project's current brochure, map and video; these are used when the lead has no project or the project lacks that asset. PDF 2 always comes from here.",
       },
       fields: [
         { name: 'brochureHeadline', type: 'text', label: 'Headline (e.g. project name)' },

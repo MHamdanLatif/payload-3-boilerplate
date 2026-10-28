@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Lead, Media } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
+import { resolvePackAssets } from '@/lib/pack-assets'
 
 /**
  * Serve a lead's brochure PDF through our own origin.
@@ -28,7 +29,7 @@ import { getServerSideURL } from '@/utilities/getURL'
  */
 
 /** Which of the two slots to serve. Anything else is rejected. */
-const SLOTS = { primary: 'brochurePdfPrimary', secondary: 'brochurePdfSecondary' } as const
+const SLOTS = { primary: 'pdfPrimary', secondary: 'pdfSecondary' } as const
 type Slot = keyof typeof SLOTS
 
 function resolveMediaUrl(m: number | Media | null | undefined): string | null {
@@ -60,7 +61,9 @@ export async function GET(
     const lead = res.docs[0] as Lead | undefined
     if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const url = resolveMediaUrl(lead[field] as number | Media | null | undefined)
+    // Same live resolution as the page, so the file matches what the page lists.
+    const assets = await resolvePackAssets(payload, lead)
+    const url = resolveMediaUrl(assets[field])
     if (!url) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const upstream = await fetch(url)
