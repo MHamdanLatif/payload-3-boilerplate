@@ -1,28 +1,24 @@
-import {
-  leadReportLabel,
-  leadChannelLabel,
-  leadFormLabel,
-  leadProjectLabel,
-} from '@/lib/lead-labels'
+import { leadFormLabel } from '@/lib/lead-labels'
 import { NextResponse } from 'next/server'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { Lead } from '@/payload-types'
-import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
+import { statusLabel } from '@/lib/lead-status'
+import { csvCell, csvText, pktDateTime } from '@/lib/lead-report'
+import { loadLeadReport, readReportParams } from '@/lib/lead-report-data'
 import {
-  brochureOpenTotals,
-  csvCell,
-  csvText,
-  leadReportWhere,
-  pktDateTime,
-  reportRange,
-} from '@/lib/lead-report'
+  channelLabel,
+  channelOf,
+  metaPath,
+  projectKeyLabel,
+  sourceSummary,
+} from '@/lib/lead-report-groups'
 
 /**
  * CSV export of the leads pipeline.
  *
- * Mirrors the dashboard's filters exactly (from / to / status / source) so that
+ * Mirrors the dashboard's filters exactly (period / dates / project / status /
+ * source), loaded through the same function, so that
  * whatever is on screen is what downloads — "the twelve qualified leads from
  * August" rather than a dump you then have to clean up in Excel.
  *
@@ -37,8 +33,6 @@ import {
  * and parses reliably. Every lead in range is exported (no row cap).
  */
 
-const STATUSES: readonly string[] = LEAD_STATUSES
-
 /** ms -> "3m 07s", matching how the dashboard renders it. */
 const fmtDuration = (ms: number) => {
   if (!ms) return ''
@@ -46,37 +40,13 @@ const fmtDuration = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`
 }
 
-const sourceOf = leadReportLabel
-
 export async function GET(req: Request) {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) return new NextResponse('Unauthorized', { status: 401 })
 
-  const sp = new URL(req.url).searchParams
-  // Invalid dates (?from=abc, 2026-02-30) are ignored rather than throwing.
-  const range = reportRange(sp.get('from'), sp.get('to'))
-  const statusParam = sp.get('status')
-  const status = statusParam && STATUSES.includes(statusParam) ? statusParam : undefined
-  const source = sp.get('source')
-
-  const [leadsRes, totals] = await Promise.all([
-    payload.find({
-      collection: 'leads',
-      where: leadReportWhere(range, status),
-      depth: 0,
-      limit: 0,
-      pagination: false,
-      sort: '-createdAt',
-    }),
-    brochureOpenTotals(payload, range, status),
-  ])
-
-  let leads = leadsRes.docs as Lead[]
-  // Source is derived rather than stored, so it filters in memory — same as the
-  // dashboard does, which keeps the two in step.
-  if (source) leads = leads.filter((l) => sourceOf(l) === source)
-  const { opens, dwell } = totals
+  const report = await loadLeadReport(payload, readReportParams(new URL(req.url).searchParams))
+  const { leads, opens, dwell } = report
 
   const header = [
     'Name',
@@ -84,13 +54,15 @@ export async function GET(req: Request) {
     'Email',
     'Status',
     'Reason',
-    'Acquisition Source',
+    'Project',
+    'Source',
+    'Source Detail',
+    'Meta Campaign',
+    'Meta Ad Set',
+    'Meta Ad',
     'Conversion Surface',
-    'First Touch Campaign',
-    'First Touch Content',
     'Latest Touch Source',
     'Legacy Source Tag',
-    'Project',
     'Interested Unit',
     'Property Type',
     'Budget',
@@ -108,13 +80,15 @@ export async function GET(req: Request) {
     csvCell(l.email),
     csvCell(statusLabel(l.status)),
     csvCell(l.unqualifiedReason),
-    csvCell(leadChannelLabel(l)),
+    csvCell(projectKeyLabel(report.projectKeyOf.get(l.id) ?? 'general', report.projects)),
+    csvCell(channelLabel(channelOf(l))),
+    csvCell(sourceSummary(l)),
+    ...(channelOf(l) === 'meta'
+      ? Object.values(metaPath(l)).map(csvCell)
+      : [csvCell(''), csvCell(''), csvCell('')]),
     csvCell(leadFormLabel(l)),
-    csvCell(l.firstTouchCampaign),
-    csvCell(l.firstTouchContent),
     csvCell(l.latestTouchSource),
     csvCell(l.source),
-    csvCell(leadProjectLabel(l)),
     csvCell(l.interestedUnitType),
     csvCell(l.propertyType),
     csvCell(l.budget),

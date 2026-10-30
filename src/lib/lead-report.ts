@@ -13,15 +13,34 @@ export function reportDate(value: unknown): string | undefined {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value ? value : undefined
 }
 
-/** PKT day bounds for the from/to filters as UTC ISO strings. Invalid dates fall back to no bound. */
+/**
+ * A date, or a date with a PKT time as YYYY-MM-DDTHH:mm (what a
+ * datetime-local input sends). Anything else is undefined.
+ */
+export function reportDateTime(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T([01]\d|2[0-3]):([0-5]\d))?$/.exec(value)
+  if (!m || !reportDate(m[1])) return undefined
+  return value
+}
+
+/**
+ * PKT bounds for the from/to filters as UTC ISO strings. A bare date covers
+ * the whole day; a time is inclusive to the end of that minute. Invalid input
+ * falls back to no bound.
+ */
 export function reportRange(from: unknown, to: unknown) {
-  const f = reportDate(from)
-  const t = reportDate(to)
+  const f = reportDateTime(from)
+  const t = reportDateTime(to)
   return {
     from: f,
     to: t,
-    start: f ? new Date(`${f}T00:00:00+05:00`).toISOString() : undefined,
-    end: t ? new Date(`${t}T23:59:59.999+05:00`).toISOString() : undefined,
+    start: f
+      ? new Date(f.includes('T') ? `${f}:00+05:00` : `${f}T00:00:00+05:00`).toISOString()
+      : undefined,
+    end: t
+      ? new Date(t.includes('T') ? `${t}:59.999+05:00` : `${t}T23:59:59.999+05:00`).toISOString()
+      : undefined,
   }
 }
 export type ReportRange = ReturnType<typeof reportRange>

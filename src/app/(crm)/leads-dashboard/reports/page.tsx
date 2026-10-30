@@ -1,23 +1,34 @@
-import { leadReportLabel } from '@/lib/lead-labels'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { Lead } from '@/payload-types'
 import { fmtDuration } from '@/lib/engagement'
-import { LEAD_STATUSES, atLeast, statusLabel } from '@/lib/lead-status'
-import { brochureOpenTotals, leadReportWhere, reportRange } from '@/lib/lead-report'
+import { LEAD_STATUSES, statusLabel } from '@/lib/lead-status'
+import {
+  CHANNELS,
+  countLeads,
+  projectKeyLabel,
+  projectOptions,
+  sourceRows,
+  sourceSummary,
+  type Counts,
+} from '@/lib/lead-report-groups'
+import {
+  brochureStats,
+  loadLeadReport,
+  periodText,
+  projectRows,
+  readReportParams,
+  reportQuery,
+} from '@/lib/lead-report-data'
+import { ReportPeriodFields } from '@/components/crm/ReportPeriodFields'
 
 export const metadata: Metadata = {
   title: 'Leads Dashboard | Lateef Properties',
   robots: { index: false, follow: false },
 }
 export const dynamic = 'force-dynamic'
-
-type SP = { from?: string; to?: string; status?: string; source?: string }
-
-const STATUSES = LEAD_STATUSES
 
 const fmtDate = (d: string | null | undefined) =>
   d
@@ -28,100 +39,37 @@ const fmtDate = (d: string | null | undefined) =>
         timeZone: 'Asia/Karachi',
       })
     : '—'
-const sourceOf = leadReportLabel
 
-export default async function LeadsDashboard({ searchParams }: { searchParams: Promise<SP> }) {
+/** datetime-local wants a time; a bare date means the whole day. */
+const asInput = (v: string | undefined, end: boolean) =>
+  v ? (v.includes('T') ? v : `${v}T${end ? '23:59' : '00:00'}`) : undefined
+
+export default async function LeadsReports({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
   const payload = await getPayload({ config })
   const h = await nextHeaders()
   const { user } = await payload.auth({ headers: h })
   if (!user) redirect('/leads-dashboard/login?next=/leads-dashboard/reports')
 
-  const sp = await searchParams
-  // Invalid dates (?from=abc, 2026-02-30) are ignored and the normal unbounded range is used.
-  const range = reportRange(sp.from, sp.to)
-  const status =
-    sp.status && (STATUSES as readonly string[]).includes(sp.status) ? sp.status : undefined
+  const report = await loadLeadReport(payload, readReportParams(await searchParams))
+  const { leads, opens: opensByBrochure, dwell: dwellByBrochure } = report
+  const { opened: openedCount, avgDwell } = brochureStats(report)
 
-  // Every lead in range (no row cap), trimmed to the fields this page reads, so
-  // the funnel counts stay exact however many leads a range holds.
-  const [leadsRes, totals] = await Promise.all([
-    payload.find({
-      collection: 'leads',
-      where: leadReportWhere(range, status),
-      depth: 0,
-      limit: 0,
-      pagination: false,
-      sort: '-createdAt',
-      select: {
-        name: true,
-        phone: true,
-        status: true,
-        brochureId: true,
-        followUpAt: true,
-        followUpSentAt: true,
-        createdAt: true,
-        source: true,
-        acquisitionSource: true,
-        sourceKind: true,
-        metaAdName: true,
-        conversionSurface: true,
-        sourceName: true,
-        brochureHeadline: true,
-      },
-    }),
-    // opens + total time on page per brochureId, counted in SQL. Dwell is summed
-    // across visits, so the column answers "how long has this lead spent with the
-    // brochure", not "how long was one sitting". Opens with no beacon (bounced
-    // instantly, or the browser killed the page before the first heartbeat) contribute 0.
-    brochureOpenTotals(payload, range, status),
-  ])
-  let leads = leadsRes.docs as Lead[]
-  if (sp.source) leads = leads.filter((l) => sourceOf(l) === sp.source)
-
-  const { opens: opensByBrochure, dwell: dwellByBrochure } = totals
-  const openedLeads = leads.filter((l) => l.brochureId && opensByBrochure.has(l.brochureId))
-  const openedCount = openedLeads.length
-
-  // Average across leads we actually have a reading for — averaging over every
-  // opener would silently drag the number down with un-measurable visits.
-  const dwellSamples = openedLeads
-    .map((l) => (l.brochureId ? (dwellByBrochure.get(l.brochureId) ?? 0) : 0))
-    .filter((ms) => ms > 0)
-  const avgDwell = dwellSamples.length
-    ? Math.round(dwellSamples.reduce((a, b) => a + b, 0) / dwellSamples.length)
-    : 0
-
-  const total = leads.length
-  const byStatus = Object.fromEntries(
-    STATUSES.map((s) => [s, leads.filter((l) => l.status === s).length]),
-  )
-  const contacted = total - byStatus.unqualified // anyone past unqualified
-  const qualified = leads.filter((l) => atLeast(l.status, 'qualified')).length
-  const siteVisits = leads.filter((l) => atLeast(l.status, 'site-visit')).length
-  const closedWon = byStatus['closed-won']
+  const totals = countLeads(leads)
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0)
 
-  // source breakdown
-  const bySource = new Map<string, { total: number; contacted: number; qualified: number }>()
-  for (const l of leads) {
-    const s = sourceOf(l)
-    const row = bySource.get(s) ?? { total: 0, contacted: 0, qualified: 0 }
-    row.total++
-    if (atLeast(l.status, 'contacted') || l.status === 'junk') row.contacted++
-    if (atLeast(l.status, 'qualified')) row.qualified++
-    bySource.set(s, row)
-  }
-  const sources = [...bySource.entries()].sort((a, b) => b[1].total - a[1].total)
-  const allSources = [...new Set((leadsRes.docs as Lead[]).map(sourceOf))].sort()
-
-  const exportQuery = new URLSearchParams(
-    Object.entries({ from: range.from, to: range.to, status, source: sp.source }).filter(
-      (e): e is [string, string] => Boolean(e[1]),
-    ),
-  ).toString()
+  const byProject = report.project ? [] : projectRows(report)
+  const sources = sourceRows(leads)
+  const query = reportQuery(report)
+  const qs = query ? `?${query}` : ''
 
   const th = 'px-3 py-2 text-left text-[0.7rem] uppercase tracking-[0.15em] text-brand-deep/55'
   const td = 'px-3 py-2.5 text-sm text-brand-deep'
+  const field = 'rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm'
+  const fieldLabel = 'flex flex-col gap-1 text-xs text-brand-deep/60'
   const badge: Record<string, string> = {
     'details-sent': 'bg-sky-100 text-sky-700',
     engaged: 'bg-indigo-100 text-indigo-700',
@@ -134,17 +82,35 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
     junk: 'bg-red-100 text-red-600',
   }
 
+  const countHead = (
+    <>
+      <th className={th}>Leads</th>
+      <th className={th}>Contacted</th>
+      <th className={th}>Qualified</th>
+      <th className={th}>Site visits</th>
+      <th className={th}>Closed won</th>
+      <th className={th}>Qualify rate</th>
+    </>
+  )
+  const countCells = (c: Counts) => (
+    <>
+      <td className={td}>{c.leads}</td>
+      <td className={td}>{c.contacted}</td>
+      <td className={td}>{c.qualified}</td>
+      <td className={td}>{c.siteVisits}</td>
+      <td className={td}>{c.closedWon}</td>
+      <td className={td}>{pct(c.qualified, c.leads)}%</td>
+    </>
+  )
+
   return (
     <main className="crm-wrap">
       <div className="mx-auto max-w-6xl">
         <h1 className="font-serif text-3xl tracking-tight text-brand-deep md:text-4xl">
-          Leads Dashboard
+          Leads report
         </h1>
         <p className="mt-1 text-sm text-brand-deep/60">
-          Native CRM reporting — leads, sources, qualification funnel & brochure opens.
-        </p>
-        <p className="mt-1 text-xs text-brand-deep/55">
-          Dates and filters use Pakistan time (PKT, UTC+5).
+          {report.projectLabel} · {periodText(report)}
         </p>
 
         {/* Filters */}
@@ -152,50 +118,40 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           method="get"
           className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-deep/10 bg-white p-4"
         >
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
-            From
-            <input
-              type="date"
-              name="from"
-              defaultValue={sp.from}
-              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
-            />
+          <ReportPeriodFields
+            period={report.period}
+            from={asInput(report.range.from, false)}
+            to={asInput(report.range.to, true)}
+          />
+          <label className={fieldLabel}>
+            Project
+            <select name="project" defaultValue={report.project ?? ''} className={field}>
+              <option value="">All projects</option>
+              {projectOptions(report.projects).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
-            To
-            <input
-              type="date"
-              name="to"
-              defaultValue={sp.to}
-              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+          <label className={fieldLabel}>
             Status
-            <select
-              name="status"
-              defaultValue={sp.status ?? ''}
-              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
-            >
+            <select name="status" defaultValue={report.status ?? ''} className={field}>
               <option value="">All</option>
-              {STATUSES.map((s) => (
+              {LEAD_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {statusLabel(s)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-brand-deep/60">
+          <label className={fieldLabel}>
             Source
-            <select
-              name="source"
-              defaultValue={sp.source ?? ''}
-              className="rounded-md border border-brand-deep/15 px-2 py-1.5 text-sm"
-            >
+            <select name="channel" defaultValue={report.channel ?? ''} className={field}>
               <option value="">All</option>
-              {allSources.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {CHANNELS.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
                 </option>
               ))}
             </select>
@@ -209,26 +165,33 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           <a href="/leads-dashboard/reports" className="text-xs text-brand-deep/55 underline">
             Reset
           </a>
-          {/* Same params as the view above, so you export exactly what you filtered
-              to rather than a full dump you then clean up in a spreadsheet. */}
-          <a
-            href={`/leads-dashboard/export${exportQuery ? `?${exportQuery}` : ''}`}
-            className="ml-auto rounded-full border border-brand-deep/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] text-brand-deep transition-colors hover:border-gold hover:text-gold"
-          >
-            Download CSV
-          </a>
+          {/* Same filters as the view above, so a download is exactly what is on screen. */}
+          <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
+            <a
+              href={`/leads-dashboard/export${qs}`}
+              className="rounded-full border border-brand-deep/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] text-brand-deep transition-colors hover:border-gold hover:text-gold"
+            >
+              Download CSV
+            </a>
+            <a
+              href={`/leads-dashboard/reports/pdf${qs}`}
+              className="rounded-full border border-brand-deep/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] text-brand-deep transition-colors hover:border-gold hover:text-gold"
+            >
+              Download PDF
+            </a>
+          </div>
         </form>
 
         {/* KPIs */}
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
-            { label: 'Total leads', value: total },
-            { label: 'Contacted', value: `${contacted} (${pct(contacted, total)}%)` },
-            { label: 'Qualified', value: `${qualified} (${pct(qualified, total)}%)` },
-            { label: 'Site visits', value: siteVisits },
-            { label: 'Closed won', value: `${closedWon} (${pct(closedWon, total)}%)` },
-            { label: 'Junk', value: byStatus.junk },
-            { label: 'Opened brochure', value: `${openedCount} (${pct(openedCount, total)}%)` },
+            { label: 'Total leads', value: totals.leads },
+            { label: 'Contacted', value: `${totals.contacted} (${pct(totals.contacted, totals.leads)}%)` },
+            { label: 'Qualified', value: `${totals.qualified} (${pct(totals.qualified, totals.leads)}%)` },
+            { label: 'Site visits', value: totals.siteVisits },
+            { label: 'Closed won', value: `${totals.closedWon} (${pct(totals.closedWon, totals.leads)}%)` },
+            { label: 'Junk', value: totals.junk },
+            { label: 'Opened brochure', value: `${openedCount} (${pct(openedCount, totals.leads)}%)` },
             { label: 'Avg time on page', value: fmtDuration(avgDwell) },
           ].map((k) => (
             <div key={k.label} className="rounded-xl border border-brand-deep/10 bg-white p-4">
@@ -240,34 +203,65 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           ))}
         </div>
 
-        {/* Source funnel */}
+        {/* By project (only when not already filtered to one) */}
+        {!report.project && (
+          <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
+            <p className="px-4 pt-4 font-serif text-lg text-brand-deep">By project</p>
+            <table className="mt-2 w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-brand-deep/10">
+                  <th className={th}>Project</th>
+                  {countHead}
+                </tr>
+              </thead>
+              <tbody>
+                {byProject.map((r) => (
+                  <tr key={r.label} className="border-b border-brand-deep/5">
+                    <td className={td}>{r.label}</td>
+                    {countCells(r.counts)}
+                  </tr>
+                ))}
+                {!byProject.length && (
+                  <tr>
+                    <td className={td} colSpan={7}>
+                      No leads in range.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* By source: channel, then campaign › ad set › ad for Meta */}
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
-          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">
-            Project, acquisition source & enquiry form
+          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">By source</p>
+          <p className="px-4 pt-1 text-xs text-brand-deep/50">
+            Meta paid ads break down into campaign, then ad set, then ad, where the ad recorded them.
           </p>
-          <table className="mt-2 w-full min-w-[520px]">
+          <table className="mt-2 w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-brand-deep/10">
                 <th className={th}>Source</th>
-                <th className={th}>Leads</th>
-                <th className={th}>Contacted</th>
-                <th className={th}>Qualified</th>
-                <th className={th}>Qualify rate</th>
+                {countHead}
               </tr>
             </thead>
             <tbody>
-              {sources.map(([s, r]) => (
-                <tr key={s} className="border-b border-brand-deep/5">
-                  <td className={td}>{s}</td>
-                  <td className={td}>{r.total}</td>
-                  <td className={td}>{r.contacted}</td>
-                  <td className={td}>{r.qualified}</td>
-                  <td className={td}>{pct(r.qualified, r.total)}%</td>
+              {sources.map((r, i) => (
+                <tr
+                  key={i}
+                  className={`border-b border-brand-deep/5 ${r.depth === 0 ? 'bg-ivory/60 font-medium' : ''}`}
+                >
+                  <td className={td} style={{ paddingLeft: `${0.75 + r.depth * 1.1}rem` }}>
+                    {r.depth > 0 && <span className="mr-1 text-brand-deep/35">›</span>}
+                    {r.label}
+                  </td>
+                  {countCells(r.counts)}
                 </tr>
               ))}
               {!sources.length && (
                 <tr>
-                  <td className={td} colSpan={5}>
+                  <td className={td} colSpan={7}>
                     No leads in range.
                   </td>
                 </tr>
@@ -276,17 +270,18 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
           </table>
         </section>
 
-        {/* Recent leads */}
+        {/* Leads */}
         <section className="mt-8 overflow-x-auto rounded-xl border border-brand-deep/10 bg-white">
-          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Leads ({total})</p>
+          <p className="px-4 pt-4 font-serif text-lg text-brand-deep">Leads ({totals.leads})</p>
           <p className="px-4 pt-1 text-xs text-brand-deep/50">
             Time on page is the total across every visit — click a name for the per-visit breakdown.
           </p>
-          <table className="mt-2 w-full min-w-[820px]">
+          <table className="mt-2 w-full min-w-[920px]">
             <thead>
               <tr className="border-b border-brand-deep/10">
                 <th className={th}>Name</th>
                 <th className={th}>Phone</th>
+                <th className={th}>Project</th>
                 <th className={th}>Source</th>
                 <th className={th}>Status</th>
                 <th className={th}>Opens</th>
@@ -312,7 +307,10 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
                     </p>
                   </td>
                   <td className={td}>{l.phone}</td>
-                  <td className={td}>{sourceOf(l)}</td>
+                  <td className={td}>
+                    {projectKeyLabel(report.projectKeyOf.get(l.id) ?? 'general', report.projects)}
+                  </td>
+                  <td className={td}>{sourceSummary(l)}</td>
                   <td className={td}>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[0.65rem] uppercase tracking-wide ${badge[l.status ?? 'unqualified']}`}
@@ -336,6 +334,11 @@ export default async function LeadsDashboard({ searchParams }: { searchParams: P
               ))}
             </tbody>
           </table>
+          {totals.leads > 200 && (
+            <p className="px-4 py-3 text-xs text-brand-deep/55">
+              Showing the newest 200. The CSV has all {totals.leads}.
+            </p>
+          )}
         </section>
       </div>
     </main>

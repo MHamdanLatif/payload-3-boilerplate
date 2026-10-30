@@ -88,6 +88,9 @@ export async function verifyMobileCrm(page: Page) {
       acquisitionSource: 'meta-ads',
       source: 'marketed-project-landing:hero',
       conversionSurface: 'marketed-hero-form',
+      firstTouchCampaign: 'E2E Campaign',
+      firstTouchTerm: 'E2E Ad Set',
+      firstTouchContent: 'E2E Ad',
     },
   })
   await page.evaluate(() => sessionStorage.setItem('test-android-brochure', 'true'))
@@ -114,20 +117,37 @@ export async function verifyMobileCrm(page: Page) {
   await expect
     .poll(async () => (await (await page.request.get('/api/leads/' + id)).json()).status)
     .toBe('details-sent')
+  // Reports group by project, then source; Meta breaks down to campaign › ad set › ad.
   await page.goto('/leads-dashboard/reports')
-  const reportOption = page.getByRole('option', {
-    name: /Mobile CRM Test.*Paid.*Meta ads.*Marketing page: top/,
-  })
-  const reportLabel = await reportOption.textContent()
-  expect(reportLabel).toBeTruthy()
-  await page.locator('select[name="source"]').selectOption({ label: reportLabel! })
+  await page.locator('select[name="project"]').selectOption({ label: 'Mobile CRM Test' })
+  await page.locator('select[name="channel"]').selectOption({ label: 'Meta paid ads' })
+  await page.locator('select[name="period"]').selectOption('custom')
+  await page.locator('input[name="from"]').fill('2020-01-01T00:00')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(page).toHaveURL(/project=p%3A\d+.*channel=meta|channel=meta.*project=p%3A\d+/)
+  const bySource = page.locator('section').filter({ hasText: 'By source' })
+  for (const level of ['Meta paid ads', 'E2E Campaign', 'E2E Ad Set', 'E2E Ad'])
+    await expect(bySource.getByRole('cell', { name: new RegExp(`^›? ?${level}$`) })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Mobile CRM Buyer' })).toBeVisible()
+  // Which form converted is backend detail and stays off the report.
+  await expect(page.getByText(/Marketing page: top/)).toHaveCount(0)
   const csvResponse = await page.request.get(
     (await page.getByRole('link', { name: /Download CSV/ }).getAttribute('href')) || '',
   )
   const csv = await csvResponse.text()
   expect(csv).toContain('Mobile CRM Buyer')
+  expect(csv).toContain('E2E Campaign,E2E Ad Set,E2E Ad')
   expect(csv).toContain('Marketing page: top (hero) form')
+  const pdfResponse = await page.request.get(
+    (await page.getByRole('link', { name: /Download PDF/ }).getAttribute('href')) || '',
+  )
+  expect(pdfResponse.status()).toBe(200)
+  expect(pdfResponse.headers()['content-type']).toBe('application/pdf')
+  expect((await pdfResponse.body()).subarray(0, 5).toString()).toBe('%PDF-')
+  for (const period of ['today', '7d', 'week', 'month', 'last-month']) {
+    await page.goto(`/leads-dashboard/reports?period=${period}`)
+    await expect(page.getByRole('heading', { name: 'Leads report' })).toBeVisible()
+  }
   await page.evaluate(() => sessionStorage.removeItem('test-android-brochure'))
   await page.goto('/leads-dashboard/' + id)
   await expect(page.getByText(/Paid.*Meta ads.*Marketing page: top/)).toBeVisible()
