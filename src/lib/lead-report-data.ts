@@ -157,6 +157,14 @@ export function brochureStats(r: LeadReport) {
   return { opened: opened.length, avgDwell }
 }
 
+/** CRM conversation notes first, then whatever the buyer wrote on the enquiry. */
+export function leadNotes(l: Lead): string {
+  return [l.conversationNotes, l.notes]
+    .map((n) => (n ?? '').trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 /** Per-project counts in filter order, skipping empty buckets. */
 export function projectRows(r: LeadReport) {
   return projectOptions(r.projects)

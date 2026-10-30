@@ -7,9 +7,16 @@ import config from '@payload-config'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { fmtDuration } from '@/lib/engagement'
 import { statusLabel } from '@/lib/lead-status'
-import { channelLabel, countLeads, sourceRows } from '@/lib/lead-report-groups'
+import {
+  channelLabel,
+  countLeads,
+  projectKeyLabel,
+  sourceRows,
+  sourceSummary,
+} from '@/lib/lead-report-groups'
 import {
   brochureStats,
+  leadNotes,
   loadLeadReport,
   periodText,
   projectRows,
@@ -21,8 +28,8 @@ import { LeadReportDocument } from '@/components/crm/LeadReportPDF'
 export const dynamic = 'force-dynamic'
 
 /**
- * The Reports page as a PDF for investors: same filters, aggregates only.
- * Signed-in CRM users only, like the page itself.
+ * The Reports page as a PDF: same filters, the summary tables, then the leads
+ * they count. Signed-in CRM users only, like the page itself.
  */
 export async function GET(req: Request) {
   const payload = await getPayload({ config })
@@ -55,6 +62,15 @@ export async function GET(req: Request) {
         avgTimeOnPage: avgDwell ? fmtDuration(avgDwell) : '',
         byProject: report.project ? null : projectRows(report),
         bySource: sourceRows(report.leads),
+        leads: report.leads.map((l) => ({
+          name: l.name,
+          phone: l.phone,
+          created: pktDateTime(l.createdAt),
+          project: projectKeyLabel(report.projectKeyOf.get(l.id) ?? 'general', report.projects),
+          source: sourceSummary(l),
+          status: statusLabel(l.status),
+          notes: leadNotes(l),
+        })),
       }),
     )
     const stamp = pktDateTime(new Date()).slice(0, 10)

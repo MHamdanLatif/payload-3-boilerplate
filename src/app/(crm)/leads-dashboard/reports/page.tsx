@@ -16,6 +16,7 @@ import {
 } from '@/lib/lead-report-groups'
 import {
   brochureStats,
+  leadNotes,
   loadLeadReport,
   periodText,
   projectRows,
@@ -276,7 +277,7 @@ export default async function LeadsReports({
           <p className="px-4 pt-1 text-xs text-brand-deep/50">
             Time on page is the total across every visit — click a name for the per-visit breakdown.
           </p>
-          <table className="mt-2 w-full min-w-[920px]">
+          <table className="mt-2 w-full min-w-[1100px]">
             <thead>
               <tr className="border-b border-brand-deep/10">
                 <th className={th}>Name</th>
@@ -284,6 +285,7 @@ export default async function LeadsReports({
                 <th className={th}>Project</th>
                 <th className={th}>Source</th>
                 <th className={th}>Status</th>
+                <th className={th}>Notes</th>
                 <th className={th}>Opens</th>
                 <th className={th}>Time on page</th>
                 <th className={th}>Created</th>
@@ -317,6 +319,11 @@ export default async function LeadsReports({
                     >
                       {statusLabel(l.status)}
                     </span>
+                  </td>
+                  <td className={`${td} max-w-[18rem]`}>
+                    <p className="line-clamp-3 whitespace-pre-line text-xs text-brand-deep/75">
+                      {leadNotes(l) || '—'}
+                    </p>
                   </td>
                   <td className={td}>
                     {l.brochureId ? (opensByBrochure.get(l.brochureId) ?? 0) : 0}

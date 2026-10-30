@@ -2,11 +2,9 @@ import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/render
 import type { Counts, SourceRow } from '@/lib/lead-report-groups'
 
 /**
- * Investor-facing leads report.
- *
- * Aggregates only: no lead names, phone numbers or notes. This document is
- * made to be forwarded outside the company, so it carries nothing about any
- * individual buyer.
+ * Leads report as a PDF: the summary tables, then every lead they count with
+ * contact details, status and notes. It holds buyers' phone numbers, so it is
+ * marked confidential on every page.
  */
 
 const COLORS = {
@@ -88,6 +86,9 @@ const styles = StyleSheet.create({
   cell: { paddingVertical: 4, paddingHorizontal: 5, fontSize: 8 },
   bold: { fontFamily: 'Helvetica-Bold' },
   empty: { padding: 8, fontSize: 8, color: COLORS.textSoft },
+  leadName: { fontFamily: 'Helvetica-Bold', fontSize: 8 },
+  leadSub: { fontSize: 7, color: COLORS.textSoft, marginTop: 1 },
+  noteText: { fontSize: 7.5, lineHeight: 1.35 },
   footer: {
     position: 'absolute',
     bottom: 16,
@@ -154,6 +155,56 @@ function CountsTable({
   )
 }
 
+export type LeadReportPdfLead = {
+  name: string
+  phone: string
+  created: string
+  project: string
+  source: string
+  status: string
+  notes: string
+}
+
+const LEAD_COLS = [
+  { key: 'lead', label: 'LEAD', width: '22%' },
+  { key: 'project', label: 'PROJECT / SOURCE', width: '26%' },
+  { key: 'status', label: 'STATUS', width: '12%' },
+  { key: 'notes', label: 'NOTES', width: '40%' },
+]
+
+function LeadsTable({ leads }: { leads: LeadReportPdfLead[] }) {
+  return (
+    <View style={styles.table}>
+      <View style={styles.headRow} fixed>
+        {LEAD_COLS.map((c) => (
+          <Text key={c.key} style={[styles.headCell, { width: c.width }]}>
+            {c.label}
+          </Text>
+        ))}
+      </View>
+      {leads.map((l, i) => (
+        // Rows stay whole, except notes long enough to outgrow a page.
+        <View key={i} style={styles.row} wrap={l.notes.length > 1500}>
+          <View style={[styles.cell, { width: LEAD_COLS[0].width }]}>
+            <Text style={styles.leadName}>{l.name}</Text>
+            <Text style={styles.leadSub}>{l.phone}</Text>
+            <Text style={styles.leadSub}>{l.created}</Text>
+          </View>
+          <View style={[styles.cell, { width: LEAD_COLS[1].width }]}>
+            <Text>{l.project}</Text>
+            <Text style={styles.leadSub}>{l.source}</Text>
+          </View>
+          <Text style={[styles.cell, { width: LEAD_COLS[2].width }]}>{l.status}</Text>
+          <Text style={[styles.cell, styles.noteText, { width: LEAD_COLS[3].width }]}>
+            {l.notes || '—'}
+          </Text>
+        </View>
+      ))}
+      {!leads.length && <Text style={styles.empty}>No leads in this period.</Text>}
+    </View>
+  )
+}
+
 export type LeadReportPdfProps = {
   logo: Buffer | null
   projectLabel: string
@@ -165,6 +216,7 @@ export type LeadReportPdfProps = {
   avgTimeOnPage: string
   byProject: { label: string; counts: Counts }[] | null
   bySource: SourceRow[]
+  leads: LeadReportPdfLead[]
 }
 
 export function LeadReportDocument(p: LeadReportPdfProps) {
@@ -222,6 +274,12 @@ export function LeadReportDocument(p: LeadReportPdfProps) {
             Meta paid ads are broken down by campaign, then ad set, then ad.
           </Text>
           <CountsTable first="Source" rows={p.bySource} />
+
+          {/* The leads behind the numbers, starting on their own page. */}
+          <Text style={styles.sectionTitle} break>
+            Lead details ({p.leads.length})
+          </Text>
+          <LeadsTable leads={p.leads} />
         </View>
         <View style={styles.footer} fixed>
           <Text>Lateef Properties · Confidential</Text>
