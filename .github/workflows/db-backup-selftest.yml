@@ -1,0 +1,99 @@
+# Proves the backup and restore scripts work end to end, with no secrets and
+# no production data: a throwaway database is backed up, encrypted to a
+# throwaway key, decrypted and restored, and the result compared.
+name: Database backup self-test
+
+on:
+  push:
+    paths:
+      - 'scripts/backup/**'
+      - '.github/workflows/db-backup*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PG_MAJOR: '17'
+      SOURCE_DATABASE_URL: postgres://postgres:source@127.0.0.1:5498/postgres
+      VERIFY_DATABASE_URL: postgres://postgres:verify@127.0.0.1:5499/postgres
+      RESTORE_DATABASE_URL: postgres://postgres:source@127.0.0.1:5498/restored
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: bash scripts/backup/install-tools.sh "$PG_MAJOR"
+
+      - name: Start source and scratch databases
+        run: |
+          docker run -d --name source -e POSTGRES_PASSWORD=source -p 5498:5432 postgres:$PG_MAJOR
+          docker run -d --name verify -e POSTGRES_PASSWORD=verify -p 5499:5432 postgres:$PG_MAJOR
+          for p in 5498 5499; do
+            for i in $(seq 1 30); do pg_isready -q -h 127.0.0.1 -p $p && break; sleep 1; done
+          done
+
+      - name: Seed the source with lead- and finance-shaped data
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -q "$SOURCE_DATABASE_URL" <<'SQL'
+          create type enum_leads_status as enum ('unqualified', 'qualified', 'junk');
+          create table leads (id serial primary key, name text not null, phone text,
+            status enum_leads_status default 'unqualified', notes text, created_at timestamptz default now());
+          insert into leads (name, phone, status, notes)
+            select 'Lead ' || g, '0300' || lpad(g::text, 7, '0'), 'qualified', 'Notes with ''quotes'' and → arrows'
+            from generate_series(1, 250) g;
+          create table finance_deals (id serial primary key, lead_id int references leads(id),
+            amount numeric(14, 2) not null);
+          insert into finance_deals (lead_id, amount) select g, g * 1000.50 from generate_series(1, 20) g;
+          create table "Mixed Case" (id int);
+          create schema other;
+          create table other.notes (body text);
+          insert into other.notes values ('outside public');
+          SQL
+
+      - name: Make a throwaway encryption key
+        run: |
+          age-keygen -o "$RUNNER_TEMP/key.txt" 2>/dev/null
+          echo "AGE_RECIPIENT=$(age-keygen -y "$RUNNER_TEMP/key.txt")" >>"$GITHUB_ENV"
+
+      - name: Back up
+        run: bash scripts/backup/backup.sh out
+
+      - name: Backup is encrypted, and nothing unencrypted is left behind
+        run: |
+          ls out
+          [ "$(ls out | grep -vc '\.age$')" = 0 ]
+          head -c 21 out/*.dump.age | grep -q 'age-encryption.org/v1'
+          ! grep -aq 'Lead 1' out/*.dump.age
+
+      - name: A failed verification stops the backup and leaves nothing behind
+        run: |
+          psql -X -q "$VERIFY_DATABASE_URL" -c 'create database verify2'
+          bad_url=postgres://postgres:verify@127.0.0.1:5499/verify2
+          if REQUIRED_TABLES='leads not_there' VERIFY_DATABASE_URL=$bad_url bash scripts/backup/backup.sh out-bad; then
+            echo "expected verification to fail"; exit 1
+          fi
+          [ -z "$(ls -A out-bad)" ]
+
+      - name: Restore refuses a database that is not empty
+        run: |
+          if bash scripts/backup/restore.sh out/*.dump.age "$RUNNER_TEMP/key.txt" "$SOURCE_DATABASE_URL"; then
+            echo "expected restore into a non-empty database to be refused"; exit 1
+          fi
+
+      - name: Restore into an empty database and compare
+        run: |
+          psql -X -q "$SOURCE_DATABASE_URL" -c 'create database restored'
+          bash scripts/backup/restore.sh out/*.dump.age "$RUNNER_TEMP/key.txt" "$RESTORE_DATABASE_URL"
+          for q in "select count(*), sum(length(notes)) from leads where status = 'qualified'" \
+                   "select count(*), sum(amount) from finance_deals" \
+                   "select body from other.notes" \
+                   "select count(*) from \"Mixed Case\""; do
+            a=$(psql -X -At "$SOURCE_DATABASE_URL" -c "$q")
+            b=$(psql -X -At "$RESTORE_DATABASE_URL" -c "$q")
+            [ "$a" = "$b" ] || { echo "mismatch for: $q"; exit 1; }
+          done
+          echo "OK: restored data matches the source"

@@ -1,0 +1,88 @@
+# Nightly encrypted backup of the production database (CRM + finance) and
+# the private finance proof files, stored in a separate Cloudflare R2 bucket.
+#
+# Free: public-repo Actions minutes, and a few MB a night in R2's free tier.
+# Setup, secrets and restore steps: README.md, "Backups".
+#
+# GitHub emails the repository owner when a scheduled run fails.
+name: Database backup
+
+on:
+  schedule:
+    - cron: '0 22 * * *' # 03:00 PKT
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+      R2_ENDPOINT: ${{ secrets.BACKUP_R2_ENDPOINT }}
+      BACKUP_BUCKET: ${{ secrets.BACKUP_R2_BUCKET }}
+      MEDIA_BUCKET: lateef-properties-media
+      AWS_DEFAULT_REGION: auto
+      # R2 does not accept the newer AWS CLI's default checksum headers on every operation.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        run: |
+          for v in SOURCE_DATABASE_URL AGE_RECIPIENT R2_ENDPOINT BACKUP_BUCKET; do
+            [ -n "${!v}" ] || { echo "Missing secret for $v"; exit 1; }
+          done
+
+      - name: Detect the server's PostgreSQL version
+        id: pg
+        run: |
+          command -v psql >/dev/null || sudo apt-get install -y -qq postgresql-client >/dev/null
+          num=$(PGOPTIONS='-c default_transaction_read_only=on' psql -X -A -t -q "$SOURCE_DATABASE_URL" -c 'show server_version_num')
+          echo "major=$(( num / 10000 ))" >>"$GITHUB_OUTPUT"
+
+      - name: Install matching tools
+        run: bash scripts/backup/install-tools.sh ${{ steps.pg.outputs.major }}
+
+      - name: Start a scratch database for the restore test
+        run: |
+          docker run -d --name verify -e POSTGRES_PASSWORD=verify -p 5499:5432 postgres:${{ steps.pg.outputs.major }}
+          for i in $(seq 1 30); do pg_isready -q -h 127.0.0.1 -p 5499 && break; sleep 1; done
+
+      - name: Back up, restore-test and encrypt the database
+        env:
+          VERIFY_DATABASE_URL: postgres://postgres:verify@127.0.0.1:5499/postgres
+        run: bash scripts/backup/backup.sh out
+
+      - name: Copy and encrypt the finance proof files
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MEDIA_R2_READ_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_R2_READ_SECRET_ACCESS_KEY }}
+        run: |
+          mkdir -p finance-files
+          aws s3 sync "s3://$MEDIA_BUCKET/finance-private/" finance-files/ --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          tar -czf finance-files.tar.gz -C finance-files .
+          age --encrypt --recipient "$AGE_RECIPIENT" \
+            --output "out/lateef-finance-files-$(date -u +%Y-%m-%dT%H%MZ).tar.gz.age" finance-files.tar.gz
+          rm -rf finance-files finance-files.tar.gz
+          echo "OK: finance proof files archived"
+
+      - name: Upload to the backup bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp out/ "s3://$BACKUP_BUCKET/daily/" --recursive --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          # The first night of each PKT month is also kept as a monthly copy.
+          if [ "$(TZ=Asia/Karachi date +%d)" = "01" ]; then
+            aws s3 cp out/ "s3://$BACKUP_BUCKET/monthly/" --recursive --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          fi
+          echo "OK: uploaded"

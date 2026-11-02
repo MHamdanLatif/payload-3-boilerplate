@@ -85,6 +85,25 @@ or
 - Production schema changes are applied by hand with a scoped script in `scripts/` (`apply-*.ts`). Each one refuses to run without `NODE_ENV=production` and its own `APPLY_*=true` flag, writes a JSON backup of the affected schema and rows under `tmp/`, applies only its own migration in a single transaction, verifies the result and records it in `payload_migrations`. Take a full database backup first as well.
 - When a section below names a migration, that is what `payload migrate` applies on a fresh/e2e database. For production, use the matching `apply-*.ts` script; where none exists, write a scoped one following `scripts/apply-lead-schedules.ts` rather than running `payload migrate`.
 
+### Backups (CRM and finance)
+
+`.github/workflows/db-backup.yml` backs up production every night at 03:00 PKT, free of charge, into a separate Cloudflare R2 bucket that the app cannot write to:
+
+- **Database:** a full `pg_dump` (every CRM, finance and site table), restored into a scratch PostgreSQL and checked table by table against the live row counts **before** it is kept, then encrypted with [age](https://age-encryption.org). Every connection to production is read-only.
+- **Finance proof files:** the `finance-private/` folder of the media bucket, archived and encrypted the same way.
+- **Retention:** `daily/` copies for 30 days and a `monthly/` copy from the 1st of each month for a year, via R2 lifecycle rules.
+
+Only the private key, kept offline, opens a backup. The repository is public, so the job prints pass/fail only, never counts or data. GitHub emails the owner when a scheduled run fails. `db-backup-selftest.yml` proves the scripts end to end (back up, encrypt, restore, compare) on throwaway data whenever they change. GitHub pauses scheduled workflows in a public repository after 60 days without commits; re-enable it from the Actions tab if that ever happens.
+
+**One-time setup**
+
+1. **Key (on your computer):** `winget install FiloSottile.age`, then `age-keygen -o lateef-backup-key.txt`. It prints the public key (`age1…`). Store the whole file in a password manager and delete it from disk. Losing it makes every backup unreadable.
+2. **Cloudflare R2:** create the bucket `lateef-properties-backups`. In its **Settings → Object lifecycle rules**, delete objects with prefix `daily/` after 30 days and prefix `monthly/` after 365 days. Under **Manage API tokens**, create two tokens: **Object Read & Write** on `lateef-properties-backups` only, and **Object Read only** on `lateef-properties-media` only.
+3. **GitHub → Settings → Secrets and variables → Actions:** add `BACKUP_DATABASE_URL` (Railway Postgres `DATABASE_PUBLIC_URL`), `BACKUP_AGE_RECIPIENT` (the `age1…` public key), `BACKUP_R2_ENDPOINT` (`https://<account-id>.r2.cloudflarestorage.com`), `BACKUP_R2_BUCKET` (`lateef-properties-backups`), `BACKUP_R2_ACCESS_KEY_ID` / `BACKUP_R2_SECRET_ACCESS_KEY` (read & write token), `MEDIA_R2_READ_ACCESS_KEY_ID` / `MEDIA_R2_READ_SECRET_ACCESS_KEY` (read-only token).
+4. **Actions → Database backup → Run workflow** once, and check the files appear in the bucket.
+
+**Restoring** (Linux, macOS or WSL, with PostgreSQL client tools of the production major version and `age`): download a `lateef-db-….dump.age` from the bucket, create a new empty database, then run `bash scripts/backup/restore.sh lateef-db-….dump.age lateef-backup-key.txt "<new database URL>"`. The script refuses any database that already has tables, so it cannot overwrite production. Check the restored data, then point `DATABASE_URI` at it. Finance files: `age -d -i lateef-backup-key.txt lateef-finance-files-….tar.gz.age | tar -xz`, then upload them back under `finance-private/` in the media bucket.
+
 ### End-to-End Testing
 
 The Playwright suite boots a fresh PostgreSQL container, builds the app from scratch, creates the first admin user through the onboarding UI, seeds the demo content, submits a public comment, approves it in the admin UI, and verifies it appears on the public post page.
