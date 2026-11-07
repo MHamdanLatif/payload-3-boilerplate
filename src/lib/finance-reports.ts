@@ -11,7 +11,7 @@ import {
 } from './finance-ledger'
 import { participantSummary } from './finance-participant'
 
-// Multi-section CSV reports. Each report distinguishes activity inside the selected period
+// Multi-section reports shared by CSV and project PDF exports. Each distinguishes activity inside the selected period
 // from balances as of the period's end date.
 
 export type Section = { title: string; rows: Record<string, unknown>[] }

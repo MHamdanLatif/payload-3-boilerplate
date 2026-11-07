@@ -44,9 +44,14 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
     <>
       <div className="finance-heading">
         <h1>{rules.title}</h1>
-        <a download href={`/finance/export?kind=project-report&project=${id}`}>
-          Download project report (CSV)
-        </a>
+        <div className="finance-actions">
+          <a download href={`/finance/export?kind=project-report&project=${id}`}>
+            Download project report (CSV)
+          </a>
+          <a download href={`/finance/export?kind=project-report&project=${id}&format=pdf`}>
+            Download project report (PDF)
+          </a>
+        </div>
       </div>
       <MoneyCards
         values={[

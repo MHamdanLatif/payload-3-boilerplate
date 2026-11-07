@@ -7,6 +7,9 @@ import { sql } from '@payloadcms/db-postgres'
 import { exportValue, financeCTE, positiveID } from '@/lib/finance-query'
 import { accountReport, dealReport, participantReport, projectReport, reportPeriod, type Report } from '@/lib/finance-reports'
 import { getServerSideURL } from '@/utilities/getURL'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { pktDateTime } from '@/lib/finance-query'
 
 export const dynamic = 'force-dynamic'
 const queries = {
@@ -57,6 +60,9 @@ export async function GET(request: NextRequest) {
       { status: user ? 403 : 401, headers: noStore },
     )
   const kind = request.nextUrl.searchParams.get('kind') || ''
+  const format = request.nextUrl.searchParams.get('format') || 'csv'
+  if (!['csv', 'pdf'].includes(format) || (format === 'pdf' && kind !== 'project-report'))
+    return Response.json({ error: 'Invalid export format for this report' }, { status: 400, headers: noStore })
   if (Object.hasOwn(reports, kind)) {
     const params = request.nextUrl.searchParams
     const { from, to } = reportPeriod(params)
@@ -71,6 +77,27 @@ export async function GET(request: NextRequest) {
             ? await dealReport(exec, positiveID(params.get('deal') || ''), getServerSideURL())
             : await accountReport(exec, from, to)
     if (!report) return Response.json({ error: 'Not found' }, { status: 404, headers: noStore })
+    if (format === 'pdf') {
+      try {
+        const [{ renderToBuffer }, { ProjectReportDocument }, logo] = await Promise.all([
+          import('@react-pdf/renderer'),
+          import('@/components/finance/ProjectReportPDF'),
+          readFile(path.join(process.cwd(), 'public/brand/lateef-logo.png')).catch(() => null),
+        ])
+        const buffer = await renderToBuffer(ProjectReportDocument({ report, logo, generatedAt: pktDateTime(new Date()) }))
+        return new Response(new Uint8Array(buffer), {
+          headers: {
+            ...noStore,
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${report.filename.replace(/\.csv$/, '.pdf')}"`,
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      } catch (error) {
+        payload.logger.error({ err: error, msg: 'Project finance PDF render failed' })
+        return Response.json({ error: 'PDF could not be rendered. Please try again.' }, { status: 500, headers: noStore })
+      }
+    }
     return new Response(reportCSV(report), {
       headers: {
         ...noStore,
