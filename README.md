@@ -1,3 +1,12 @@
+## Creating marketing pages from featured projects
+
+Save the Featured Project, then click **Create marketing page** in its CMS sidebar.
+The action copies matching saved content into a normal **Marketing → Marketed Projects** entry and opens it for editing. Images, summary, builder history, amenities, location, brochure, video and available unit configurations are prefilled. Sold-out units are excluded; duplex labels are retained.
+
+The new page starts with **Live** disabled and a unique campaign URL. Complete the campaign-specific information, review the URL and enable **Live** when ready. The existing marketing layout and fields are unchanged. Content edits are independent of the featured project; clicking the action again opens an existing linked campaign without overwriting it.
+
+The `20261108_000000_four_bed_lounge` migration adds **4 Bed Lounge / 3 Bed Drawing** to project and listing unit types. Apply migrations during deployment before saving this new configuration. CMS and search filters share the same unit-type list.
+
 <p align="center">
   <a href="https://funkyton.com/payload-cms/">
     <picture>

@@ -1,4 +1,5 @@
 import { expect, type Page, type TestInfo } from '@playwright/test'
+import { verifyMarketingPageCopy } from './marketing-page-copy'
 
 export async function verifyProjectMarketing(admin: Page, visitor: Page, info: TestInfo) {
   const media = await (await admin.request.get('/api/media?limit=1')).json()
@@ -169,6 +170,7 @@ export async function verifyProjectMarketing(admin: Page, visitor: Page, info: T
       fullPage: true,
     })
     await admin.request.delete(`/api/leads/${lead.id}`)
+    await verifyMarketingPageCopy(admin, visitor, ready.id)
   } finally {
     for (const [collection, id] of [
       ['featured-projects', ready.id],

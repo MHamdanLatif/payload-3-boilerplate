@@ -982,6 +982,7 @@ export interface FeaturedProject {
           | '2 Bed DD / 3 Bed Lounge'
           | '3 Bed Lounge'
           | '3 Bed Drawing'
+          | '4 Bed Lounge / 3 Bed Drawing'
           | '4 Bed Drawing'
           | '4+ Rooms';
         /**
@@ -1257,6 +1258,7 @@ export interface PropertyListing {
         | '2 Bed DD / 3 Bed Lounge'
         | '3 Bed Lounge'
         | '3 Bed Drawing'
+        | '4 Bed Lounge / 3 Bed Drawing'
         | '4 Bed Drawing'
         | '4+ Rooms'
       )

@@ -25,16 +25,8 @@ export const VALID_LOCATIONS = [
   'Sukkur',
   'Other',
 ] as const
-export const VALID_UNIT_TYPES = [
-  '1 Bed Lounge',
-  '2 Bed Lounge',
-  '2 Bed Drawing',
-  '2 Bed DD / 3 Bed Lounge',
-  '3 Bed Lounge',
-  '3 Bed Drawing',
-  '4 Bed Drawing',
-  '4+ Rooms',
-] as const
+import { UNIT_TYPE_OPTIONS } from './unit-types'
+export const VALID_UNIT_TYPES = UNIT_TYPE_OPTIONS
 
 export type PropertyType = (typeof VALID_PROPERTY_TYPES)[number]
 export type FilterStatus = (typeof VALID_FILTER_STATUSES)[number]

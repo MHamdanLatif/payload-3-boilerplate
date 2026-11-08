@@ -28,9 +28,22 @@ function load(file, deps = {}) {
 const budgets = load('src/lib/project-budgets.ts')
 const visibility = load('src/lib/project-visibility.ts')
 const search = load('src/lib/property-search.ts', {
+  './unit-types': load('src/lib/unit-types.ts'),
   './project-budgets': budgets,
   './project-visibility': visibility,
 })
+test('combined four-bed configuration is accepted and matched by search', () => {
+  const unitType = '4 Bed Lounge / 3 Bed Drawing'
+  assert.ok(search.VALID_UNIT_TYPES.includes(unitType))
+  assert.equal(search.parseSearchParams({ unitType }).unitType, unitType)
+  assert.equal(search.projectMatchesFilters({
+    unitTypes: [{ type: unitType, price: 12000000 }],
+  }, { unitType }), true)
+  assert.equal(search.projectMatchesFilters({
+    unitTypes: [{ type: '4 Bed Drawing', price: 12000000 }],
+  }, { unitType }), false)
+})
+
 test('each budget boundary belongs to exactly one range', () => {
   for (const [price, expected] of [
     [14999999, 'under-15m'],

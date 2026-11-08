@@ -1,3 +1,4 @@
+import * as fourBedLounge from './20261108_000000_four_bed_lounge'
 import * as projectMarketing from './20261008_000000_project_marketing';
 import * as projectMarketingContent from './20261008_000001_project_marketing_content';
 import * as simpleFinance from './20261003_000000_simple_finance'
@@ -117,4 +118,5 @@ export const migrations = [
   { up: simplifyLeadStatuses.up, down: simplifyLeadStatuses.down, name: '20261021_000002_simplify_lead_statuses' },
   { up: unitSoldOut.up, down: unitSoldOut.down, name: '20261024_000000_unit_sold_out' },
   { up: financeFunding.up, down: financeFunding.down, name: '20261027_000000_finance_funding' },
+  { up: fourBedLounge.up, down: fourBedLounge.down, name: '20261108_000000_four_bed_lounge' },
 ];

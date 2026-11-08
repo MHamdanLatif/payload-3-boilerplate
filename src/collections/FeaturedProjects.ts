@@ -24,19 +24,13 @@ export const LOCATION_OPTIONS = [
   'Other',
 ] as const
 
-export const UNIT_TYPE_OPTIONS = [
-  '1 Bed Lounge',
-  '2 Bed Lounge',
-  '2 Bed Drawing',
-  '2 Bed DD / 3 Bed Lounge',
-  '3 Bed Lounge',
-  '3 Bed Drawing',
-  '4 Bed Drawing',
-  '4+ Rooms',
-] as const
+import { UNIT_TYPE_OPTIONS } from '@/lib/unit-types'
+export { UNIT_TYPE_OPTIONS } from '@/lib/unit-types'
+import { createMarketingPage } from './FeaturedProjects/endpoints/createMarketingPage'
 
 export const FeaturedProjects: CollectionConfig = {
   slug: 'featured-projects',
+  endpoints: [{ path: '/:id/marketing-page', method: 'post', handler: createMarketingPage }],
   access: {
     create: authenticated,
     delete: authenticated,
@@ -61,6 +55,14 @@ export const FeaturedProjects: CollectionConfig = {
     afterDelete: [revalidateDeletedProject],
   },
   fields: [
+    {
+      name: 'marketingPage',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: { Field: '@/components/admin/CreateMarketingPageButton#CreateMarketingPageButton' },
+      },
+    },
     {
       name: 'salesAvailability', type: 'select', defaultValue: 'available',
       label: 'Sales availability',
