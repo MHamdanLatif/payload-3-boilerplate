@@ -7,12 +7,12 @@ import { Badge } from '@/components/finance/FinanceUI'
 
 export default async function Projects() {
   const exec = await financeExec()
-  // Every CMS project appears here automatically: Finance uses the same project record.
+  // Accounting identities cover both public projects and standalone paid landing pages.
   const [projects, positions] = await Promise.all([
-    exec(sql`SELECT p.id, p.title, r.id AS rules_id,
+    exec(sql`SELECT p.id, p.title, p.marketed_project_id, r.id AS rules_id,
       (SELECT COUNT(*) FROM finance_project_rules_funding f WHERE f._parent_id=r.id) AS funders,
       (SELECT COUNT(*) FROM finance_campaigns c WHERE c.project_id=p.id AND c.status='active') AS active_campaigns
-      FROM featured_projects p LEFT JOIN finance_project_rules r ON r.project_id=p.id ORDER BY p.title`),
+      FROM finance_projects p LEFT JOIN finance_project_rules r ON r.project_id=p.id ORDER BY p.title`),
     allProjectPositions(exec),
   ])
   const byId = new Map(positions.map((x) => [x.project, x]))
@@ -27,6 +27,7 @@ export default async function Projects() {
             <Link key={p.id} className="finance-item" href={`/finance/projects/${p.id}`}>
               <div className="finance-row">
                 <h3>{p.title}</h3>
+                {p.marketed_project_id && <Badge>Marketed project</Badge>}
                 {pos?.deficitPaisa ? (
                   <Badge tone="alert">Project deficit</Badge>
                 ) : pos?.shortfallPaisa ? (

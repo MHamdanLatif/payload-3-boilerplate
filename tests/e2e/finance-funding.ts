@@ -1,3 +1,4 @@
+import { verifyMarketedFinance } from './finance-marketed'
 import { expect, type Browser, type Page } from '@playwright/test'
 import { PDFDocument } from 'pdf-lib'
 import { baseURL } from './env'
@@ -16,7 +17,7 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   const outsider = await anonymous.newPage()
   for (const route of ['/finance/projects', '/finance/participants', '/finance/accounts', '/finance/ad-charges', '/finance/new/funding'])
     await outsider.goto(route).then(() => expect(outsider.url()).toContain('/admin/login'))
-  for (const collection of ['finance-participants', 'finance-funding', 'finance-ad-charges', 'finance-payouts', 'finance-files', 'finance-audit-log'])
+  for (const collection of ['finance-projects', 'finance-participants', 'finance-funding', 'finance-ad-charges', 'finance-payouts', 'finance-files', 'finance-audit-log'])
     expect([401, 403]).toContain((await outsider.request.get(`/api/${collection}`)).status())
   expect((await outsider.request.get('/finance/export?kind=project-report&project=1')).status()).toBe(401)
   expect((await outsider.request.get('/finance/export?kind=project-report&project=1&format=pdf')).status()).toBe(401)
@@ -32,6 +33,10 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
     status: 'Pre-launch',
     elevationImages: [{ image: media.docs[0].id }],
   })
+
+  const financeProjects = await (await page.request.get('/api/finance-projects?where[featuredProject][equals]=' + project.id)).json()
+  const financeProject = financeProjects.docs[0]
+  expect(financeProject).toBeTruthy()
 
   // Participants and an account, through the forms.
   for (const [name, owner] of [
@@ -71,7 +76,7 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   await commission.getByLabel('Person').first().selectOption({ label: 'E2E Owner' })
   await commission.getByLabel('Percent').first().fill('100')
   await page.getByRole('button', { name: 'Save entry' }).click()
-  await expect(page).toHaveURL(new RegExp(`/finance/projects/${project.id}$`))
+  await expect(page).toHaveURL(new RegExp(`/finance/projects/${financeProject.id}$`))
   await expect(page.getByText('E2E Owner 50% · E2E Investor 50%')).toBeVisible()
 
   await page.getByRole('link', { name: '+ Add campaign' }).click()
@@ -90,7 +95,7 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   pdf.addPage()
   await page.getByLabel(/Proof attachments/).setInputFiles({ name: 'receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdf.save()) })
   await page.getByRole('button', { name: 'Save entry' }).click()
-  await expect(page).toHaveURL(new RegExp(`/finance/projects/${project.id}$`))
+  await expect(page).toHaveURL(new RegExp(`/finance/projects/${financeProject.id}$`))
   const files = await (await page.request.get('/api/finance-files?limit=1&depth=0')).json()
   expect(files.docs[0].filename).not.toContain('receipt')
   expect(files.docs[0].mimeType).toBe('application/pdf')
@@ -105,27 +110,27 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   await page.getByRole('button', { name: 'Save entry' }).click()
   await expect(page).toHaveURL(/\/finance\/ad-charges$/)
   await expect(page.getByText('E2E Owner 50% Rs. 5,400 · E2E Investor 50% Rs. 5,400')).toBeVisible()
-  await page.goto(`/finance/projects/${project.id}`)
+  await page.goto(`/finance/projects/${financeProject.id}`)
   const owner = page.getByRole('row').filter({ hasText: 'E2E Owner' }).first()
   await expect(owner).toContainText('Rs. -5,400')
   await expect(owner).toContainText('Shortfall')
   await expect(page.getByRole('row').filter({ hasText: 'E2E Investor' }).first()).toContainText('Rs. 14,600')
-  const report = await page.request.get(`/finance/export?kind=project-report&project=${project.id}`)
+  const report = await page.request.get(`/finance/export?kind=project-report&project=${financeProject.id}`)
   expect(report.ok()).toBeTruthy()
   const csv = await report.text()
-  await page.goto(`/finance/projects/${project.id}`)
+  await page.goto(`/finance/projects/${financeProject.id}`)
   const pdfLink = page.getByRole('link', { name: 'Download project report (PDF)' })
   await expect(pdfLink).toBeVisible()
   const pdfResponse = await page.request.get((await pdfLink.getAttribute('href'))!)
   expect(pdfResponse.ok()).toBeTruthy()
   expect(pdfResponse.headers()['content-type']).toBe('application/pdf')
   expect(pdfResponse.headers()['cache-control']).toBe('private, no-store')
-  expect(pdfResponse.headers()['content-disposition']).toContain(`project-${project.id}-report.pdf`)
+  expect(pdfResponse.headers()['content-disposition']).toContain(`project-${financeProject.id}-report.pdf`)
   const projectPDF = await PDFDocument.load(await pdfResponse.body())
   expect(projectPDF.getTitle()).toBe('Funding E2E Project - Finance report')
   expect(projectPDF.getPageCount()).toBeGreaterThanOrEqual(8)
   expect((await page.request.get('/finance/export?kind=project-report&project=2147483647&format=pdf')).status()).toBe(404)
-  expect((await page.request.get(`/finance/export?kind=project-report&project=${project.id}&format=invalid`)).status()).toBe(400)
+  expect((await page.request.get(`/finance/export?kind=project-report&project=${financeProject.id}&format=invalid`)).status()).toBe(400)
   expect(csv).toContain('Daily Meta amounts and allocated additional charges')
   expect(csv).toContain('"800"')
 
@@ -186,6 +191,8 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   await page.getByRole('button', { name: 'Save entry' }).click()
   await expect(card('Outstanding commission')).toHaveText('Rs. 0')
   await expect(page.getByText('Paid out to E2E Owner')).toBeVisible()
+
+  await verifyMarketedFinance(page, media.docs[0].id)
 
   // Repeat enquiries: same number in another format warns, then can be saved deliberately.
   const lead = (phone: string, confirmDuplicate = false) =>

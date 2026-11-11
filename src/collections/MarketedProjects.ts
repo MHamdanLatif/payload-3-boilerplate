@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { syncFinanceProject } from '@/hooks/syncFinanceProject'
 
 import { availableProjectsWhere } from '@/lib/project-visibility'
 import { authenticated } from '../access/authenticated'
@@ -47,7 +48,7 @@ export const MarketedProjects: CollectionConfig = {
       'Standalone landing pages for paid campaigns, served at lateefproperties.com/<Slug>. Noindex — they never appear in Google, and are reachable only through an ad or a link you send. Content here is independent of Featured Projects, so campaign pricing never changes the public project page.',
   },
   hooks: {
-    afterChange: [revalidateProjectInventory],
+    afterChange: [syncFinanceProject, revalidateProjectInventory],
     afterDelete: [revalidateDeletedProject],
     beforeChange: [
       // Derive the lookup key from whatever casing the editor typed.

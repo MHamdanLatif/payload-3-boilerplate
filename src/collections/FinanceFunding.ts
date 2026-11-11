@@ -328,7 +328,7 @@ export const FinanceProjectRules = ledger(
     {
       name: 'project',
       type: 'relationship',
-      relationTo: 'featured-projects',
+      relationTo: 'finance-projects',
       required: true,
       unique: true,
       index: true,
@@ -384,7 +384,7 @@ export const FinanceProjectRules = ledger(
 export const FinanceCampaigns = ledger(
   'finance-campaigns',
   [
-    { name: 'project', type: 'relationship', relationTo: 'featured-projects', required: true, index: true },
+    { name: 'project', type: 'relationship', relationTo: 'finance-projects', required: true, index: true },
     text('name', true),
     { ...text('metaCampaignId'), admin: { description: 'Optional Meta campaign ID.' } },
     dateTime('startAt'),
@@ -503,7 +503,7 @@ export const FinanceFunding = ledger(
       'increase',
     ),
     rel('participant', 'finance-participants', true),
-    rel('project', 'featured-projects', true),
+    rel('project', 'finance-projects', true),
     rel('campaign', 'finance-campaigns'),
     {
       ...(rel('pledge', 'finance-funding') as object),
@@ -618,7 +618,7 @@ export const FinanceAdCharges = ledger(
       minRows: 1,
       fields: [
         rel('campaign', 'finance-campaigns', true),
-        computed(rel('project', 'featured-projects')),
+        computed(rel('project', 'finance-projects')),
         { ...text('metaReceipt'), admin: { description: 'Meta receipt for this line, if different.' } },
         money('metaAmount'),
         computed({ name: 'additionalCharges', type: 'number' }),
@@ -633,7 +633,7 @@ export const FinanceAdCharges = ledger(
       admin: { description: 'Analytical split of each campaign\'s cost by the project\'s funding percentages at posting time.' },
       fields: [
         { name: 'line', type: 'number', admin: { description: 'Charge line (0-based) this share belongs to.' } },
-        rel('project', 'featured-projects'),
+        rel('project', 'finance-projects'),
         rel('campaign', 'finance-campaigns'),
         rel('participant', 'finance-participants'),
         { name: 'percent', type: 'number' },

@@ -48,7 +48,7 @@ export async function projectReport(exec: Exec, project: number, from: string, t
       JOIN finance_participants pa ON pa.id=s.participant_id WHERE s.project_id=${project} AND NOT COALESCE(a.voided,false) AND ${within('a.date', from, to)}
       GROUP BY pa.name ORDER BY pa.name`),
     projectPosition(exec, project, to),
-    exec(sql`SELECT id FROM finance_deals WHERE project_id=${project} ORDER BY date_closed`),
+    exec(sql`SELECT id FROM finance_deals WHERE project_id=${rules.featuredProject || 0} ORDER BY date_closed`),
   ])
   const dealRows: Record<string, unknown>[] = []
   for (const d of deals) {
@@ -114,10 +114,10 @@ export async function participantReport(exec: Exec, participant: number, from: s
   if (!s) return null
   const [entries, costs, payouts] = await Promise.all([
     exec(sql`SELECT f.date, pr.title AS project, f.kind, f.direction, f.amount, a.name AS account, f.reference, f.voided
-      FROM finance_funding f JOIN featured_projects pr ON pr.id=f.project_id LEFT JOIN finance_accounts a ON a.id=f.account_id
+      FROM finance_funding f JOIN finance_projects pr ON pr.id=f.project_id LEFT JOIN finance_accounts a ON a.id=f.account_id
       WHERE f.participant_id=${participant} AND ${within('f.date', from, to)} ORDER BY f.date, f.id`),
     exec(sql`SELECT pr.title AS project, SUM(s.amount) AS allocated_cost FROM finance_ad_charges_shares s JOIN finance_ad_charges a ON a.id=s._parent_id
-      JOIN featured_projects pr ON pr.id=s.project_id WHERE s.participant_id=${participant} AND NOT COALESCE(a.voided,false) AND ${within('a.date', from, to)} GROUP BY pr.title`),
+      JOIN finance_projects pr ON pr.id=s.project_id WHERE s.participant_id=${participant} AND NOT COALESCE(a.voided,false) AND ${within('a.date', from, to)} GROUP BY pr.title`),
     exec(sql`SELECT p.date, d.client_name AS deal, p.amount, a.name AS account, p.payment_method, p.reference, p.voided
       FROM finance_payouts p JOIN finance_deals d ON d.id=p.deal_id JOIN finance_accounts a ON a.id=p.account_id
       WHERE p.participant_id=${participant} AND ${within('p.date', from, to)} ORDER BY p.date`),

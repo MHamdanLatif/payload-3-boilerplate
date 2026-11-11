@@ -48,7 +48,7 @@ export async function fundingRows(exec: Exec, opts: { project?: number; particip
     COALESCE(f.received,0) AS received, COALESCE(c.costs,0) AS costs, COALESCE(f.refunds,0) AS refunds,
     COALESCE(f.adjustments,0) AS adjustments, COALESCE(f.pledged,0) AS pledged, COALESCE(f.pledge_paid,0) AS pledge_paid
   FROM f FULL JOIN c ON c.project_id=f.project_id AND c.participant_id=f.participant_id
-  LEFT JOIN featured_projects pr ON pr.id=COALESCE(f.project_id,c.project_id)
+  LEFT JOIN finance_projects pr ON pr.id=COALESCE(f.project_id,c.project_id)
   LEFT JOIN finance_participants pa ON pa.id=COALESCE(f.participant_id,c.participant_id)
   ORDER BY pr.title, pa.name`)
 }
@@ -56,7 +56,7 @@ export async function fundingRows(exec: Exec, opts: { project?: number; particip
 /** Current funding split and commission defaults of a project, if configured. */
 export async function projectRules(exec: Exec, project: number) {
   const [rule] = await exec(
-    sql`SELECT r.*, p.title FROM featured_projects p LEFT JOIN finance_project_rules r ON r.project_id=p.id WHERE p.id=${project}`,
+    sql`SELECT r.*, p.title, p.featured_project_id, p.marketed_project_id FROM finance_projects p LEFT JOIN finance_project_rules r ON r.project_id=p.id WHERE p.id=${project}`,
   )
   if (!rule) return null
   const id = rule.id || 0
@@ -69,6 +69,8 @@ export async function projectRules(exec: Exec, project: number) {
   return {
     id: rule.id as number | null,
     project,
+    featuredProject: rule.featured_project_id as number | null,
+    marketedProject: rule.marketed_project_id as number | null,
     title: rule.title as string,
     plannedDailyBudget: rule.planned_daily_budget == null ? null : Number(rule.planned_daily_budget),
     funding,
@@ -140,9 +142,9 @@ export async function allProjectPositions(exec: Exec, asOf?: string) {
 /** Cumulative commission distribution of one deal. Advertising never enters it. */
 export async function dealPosition(exec: Exec, deal: number) {
   const [[d], split, payouts] = await Promise.all([
-    exec(sql`SELECT d.*, COALESCE(p.title,d.other_property,'Other property') AS project_name,
+    exec(sql`SELECT d.*, fp.id AS finance_project_id, COALESCE(p.title,d.other_property,'Other property') AS project_name,
       COALESCE((SELECT SUM(ROUND(amount*100)) FROM finance_receipts r WHERE r.deal_id=d.id AND NOT COALESCE(r.voided,false)),0)::bigint AS received
-      FROM finance_deals d LEFT JOIN featured_projects p ON p.id=d.project_id WHERE d.id=${deal}`),
+      FROM finance_deals d LEFT JOIN featured_projects p ON p.id=d.project_id LEFT JOIN finance_projects fp ON fp.featured_project_id=d.project_id WHERE d.id=${deal}`),
     exec(sql`SELECT * FROM finance_deals_commission_split WHERE _parent_id=${deal} ORDER BY _order`),
     exec(sql`SELECT recipient_key, SUM(ROUND(amount*100))::bigint AS paid FROM finance_payouts WHERE deal_id=${deal} AND NOT COALESCE(voided,false) GROUP BY 1`),
   ])

@@ -117,7 +117,7 @@ export async function saveFinanceEntry(
         if (data.project) {
           const rules = await payload.find({
             collection: 'finance-project-rules',
-            where: { project: { equals: data.project } },
+            where: { 'project.featuredProject': { equals: data.project } },
             limit: 1,
             depth: 0,
             overrideAccess: false,

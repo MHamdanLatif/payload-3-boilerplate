@@ -126,7 +126,14 @@ async function checkDealDistribution(
       req,
       overrideAccess: false,
     })
-    if (String(idOf(campaign.project)) !== String(idOf(merged.project)))
+    const accountingProject = await req.payload.findByID({
+      collection: 'finance-projects',
+      id: idOf(campaign.project) as number,
+      depth: 0,
+      req,
+      overrideAccess: false,
+    })
+    if (!merged.project || String(idOf(accountingProject.featuredProject)) !== String(idOf(merged.project)))
       throw new APIError("The originating campaign must belong to the deal's project.", 400)
   }
   if (operation !== 'update' || !originalDoc) return

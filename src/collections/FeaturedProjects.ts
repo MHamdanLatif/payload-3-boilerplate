@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { syncFinanceProject } from '@/hooks/syncFinanceProject'
 
 import { availableProjectsWhere } from '@/lib/project-visibility'
 import { authenticated } from '../access/authenticated'
@@ -47,6 +48,7 @@ export const FeaturedProjects: CollectionConfig = {
     beforeChange: [seedPaymentHeads],
     // Ping IndexNow (Bing/Yandex) so project pages are recrawled on change.
     afterChange: [
+      syncFinanceProject,
       revalidateProjectInventory,
       indexNowAfterChange((doc) =>
         typeof doc.slug === 'string' && doc.slug ? `/projects/${doc.slug}` : null,

@@ -74,7 +74,7 @@ export default async function Record({ searchParams }: { searchParams: Promise<F
   if (what === 'funding' || what === 'campaign') {
     const projects = await (
       await financeExec()
-    )(sql`SELECT id, title FROM featured_projects ORDER BY title`)
+    )(sql`SELECT id, title FROM finance_projects ORDER BY title`)
     return (
       <>
         <h1>{what === 'funding' ? 'Money from an investor — which project?' : 'New campaign — which project?'}</h1>

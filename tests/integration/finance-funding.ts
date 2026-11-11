@@ -1,3 +1,5 @@
+import { verifyFinanceProjectMigration } from './finance-project-migration'
+import { projectReport } from '../../src/lib/finance-reports'
 // Database acceptance test for project funding, advertising allocation and commission
 // distribution. Runs the real collection hooks and ledger queries through Payload's local
 // API as a finance user. Requires a disposable localhost database ending in _e2e whose
@@ -40,16 +42,19 @@ const create = async (collection: string, data: Record<string, unknown>) =>
   (await payload.create({ collection: collection as never, data: data as never, ...as })) as Record<string, any>
 const update = async (collection: string, id: number, data: Record<string, unknown>) =>
   (await payload.update({ collection: collection as never, id, data: data as never, ...as })) as Record<string, any>
-const project = async (title: string) =>
-  Number(
-    (
-      await exec(sql`INSERT INTO featured_projects(title, builder_name, property_type, location, status)
-        VALUES (${title}, 'Test Builder', 'Flat', 'Scheme 33', 'Pre-launch') RETURNING id`)
-    )[0].id,
-  )
+const featuredIds = new Map<number, number>()
+const project = async (title: string) => {
+  const [source] = await exec(sql`INSERT INTO featured_projects(title, builder_name, property_type, location, status)
+    VALUES (${title}, 'Test Builder', 'Flat', 'Scheme 33', 'Pre-launch') RETURNING id`)
+  const [record] = await exec(sql`INSERT INTO finance_projects(title, source_key, featured_project_id)
+    VALUES (${title}, ${'featured:' + source.id}, ${source.id}) RETURNING id`)
+  featuredIds.set(Number(record.id), Number(source.id))
+  return Number(record.id)
+}
 const day = (d: string) => `${d}T00:00:00+05:00`
 
 try {
+  await check('migration preserves existing IDs and supports marketed-only history', () => verifyFinanceProjectMigration(payload.db.drizzle))
   const me = await create('finance-participants', { name: 'Me', isOwner: true })
   const a = await create('finance-participants', { name: 'Investor A' })
   const b = await create('finance-participants', { name: 'Participant B' })
@@ -182,7 +187,7 @@ try {
   await check('partial commission receipts: deduction applied once, 120/80 then 270/180', async () => {
     deal = await create('finance-deals', {
       clientName: 'Acceptance buyer',
-      project: pA,
+      project: featuredIds.get(pA),
       unitType: '2 Bed',
       dateClosed: day('2026-10-10'),
       saleValue: 25000000,
@@ -362,6 +367,39 @@ try {
     assert.equal(one.phoneKey, '+923007654321')
     assert.equal(two.phoneKey, one.phoneKey)
     assert.notEqual(three.phoneKey, one.phoneKey)
+  })
+  await check('standalone marketed project: creation, charges, reports and stable history', async () => {
+    const [media] = await exec(sql`INSERT INTO media(alt) VALUES ('Finance fixture') RETURNING id`)
+    const base = { builderName: 'Test Builder', location: 'Scheme 33', status: 'Pre-launch', elevationImages: [{ image: media.id }] }
+    const mp = await create('marketed-projects', { ...base, title: 'Paid only', slug: 'finance-paid-' + Date.now() })
+    const [fp] = await exec(sql`SELECT * FROM finance_projects WHERE marketed_project_id=${mp.id}`)
+    assert.ok(fp)
+    assert.equal(fp.featured_project_id, null)
+    await create('finance-project-rules', { project: fp.id, funding: [{ participant: me.id, percent: 100 }] })
+    const c = await campaign(fp.id, 'Standalone campaign')
+    await create('finance-funding', { kind: 'contribution', participant: me.id, project: fp.id, amount: 2000, date: day('2026-10-01'), account: bank.id })
+    await create('finance-ad-charges', { account: bank.id, date: day('2026-10-02'), bankDebit: 1080, lines: [{ campaign: c.id, metaAmount: 1000 }] })
+    assert.equal((await projectPosition(exec, fp.id)).poolPaisa, rs(920))
+    assert.match(JSON.stringify(await projectReport(exec, fp.id, '', '2026-12-31')), /Standalone campaign/)
+    await update('marketed-projects', mp.id, { title: 'Paid renamed', linkedProject: featuredIds.get(pA) })
+    const [same] = await exec(sql`SELECT * FROM finance_projects WHERE marketed_project_id=${mp.id}`)
+    assert.equal(same.id, fp.id)
+    assert.equal(same.title, 'Paid renamed')
+    assert.equal(same.featured_project_id, null, 'later CRM links do not move posted costs')
+    const linked = await create('marketed-projects', { ...base, title: 'Linked page', slug: 'finance-linked-' + Date.now(), linkedProject: featuredIds.get(pA) })
+    assert.equal((await exec(sql`SELECT id FROM finance_projects WHERE marketed_project_id=${linked.id}`)).length, 0)
+    await assert.rejects(() => create('finance-projects', { title: 'Manual record', sourceKey: 'fake' }))
+    await assert.rejects(() => update('finance-projects', fp.id, { title: 'Tampered' }))
+    await payload.delete({ collection: 'marketed-projects', id: mp.id, ...as })
+    assert.equal((await projectPosition(exec, fp.id)).poolPaisa, rs(920))
+    assert.equal((await exec(sql`SELECT title FROM finance_projects WHERE id=${fp.id}`))[0].title, 'Paid renamed')
+    // The private finance ID need not equal the public project ID.
+    const later = await create('featured-projects', { ...base, propertyType: 'Flat', title: 'Later featured', slug: 'finance-later-' + Date.now() })
+    const [laterFinance] = await exec(sql`SELECT id FROM finance_projects WHERE featured_project_id=${later.id}`)
+    const laterCampaign = await campaign(laterFinance.id, 'Later campaign')
+    const laterDeal = await create('finance-deals', { project: later.id, campaign: laterCampaign.id, clientName: 'Later buyer', unitType: '2 Bed', dateClosed: day('2026-10-10'), saleValue: 1000000, fixedCommission: 10000, expectedPaymentDate: day('2026-11-01') })
+    assert.equal((await dealPosition(exec, laterDeal.id))?.deal.finance_project_id, laterFinance.id)
+    await assert.rejects(() => update('finance-deals', laterDeal.id, { campaign: c.id }), /different project|belong to the deal/)
   })
   console.log('Finance funding database acceptance tests passed.')
 } catch (error) {

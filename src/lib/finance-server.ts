@@ -87,8 +87,8 @@ export async function ledgerOptions() {
   const [participants, accounts, projects, campaigns] = await Promise.all([
     exec(sql`SELECT id, name, archived, is_owner FROM finance_participants ORDER BY archived, name`),
     exec(sql`SELECT id, name, kind, card_label, archived FROM finance_accounts ORDER BY archived, name`),
-    exec(sql`SELECT id, title FROM featured_projects ORDER BY title`),
-    exec(sql`SELECT c.id, c.name, c.project_id, c.status, p.title AS project_title FROM finance_campaigns c JOIN featured_projects p ON p.id=c.project_id ORDER BY p.title, c.start_at DESC`),
+    exec(sql`SELECT id, title FROM finance_projects ORDER BY title`),
+    exec(sql`SELECT c.id, c.name, c.project_id, c.status, p.title AS project_title FROM finance_campaigns c JOIN finance_projects p ON p.id=c.project_id ORDER BY p.title, c.start_at DESC`),
   ])
   return { participants, accounts, projects, campaigns }
 }

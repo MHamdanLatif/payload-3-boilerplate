@@ -19,7 +19,7 @@ export default async function AdCharges({ searchParams }: { searchParams: Promis
   const [lines, shares] = ids.length
     ? await Promise.all([
         exec(sql`SELECT l.*, c.name AS campaign_name, pr.title AS project_title FROM finance_ad_charges_lines l
-          LEFT JOIN finance_campaigns c ON c.id=l.campaign_id LEFT JOIN featured_projects pr ON pr.id=l.project_id
+          LEFT JOIN finance_campaigns c ON c.id=l.campaign_id LEFT JOIN finance_projects pr ON pr.id=l.project_id
           WHERE l._parent_id = ANY(${`{${ids.join(',')}}`}::int[]) ORDER BY l._order`),
         exec(sql`SELECT s.*, pa.name AS participant_name FROM finance_ad_charges_shares s JOIN finance_participants pa ON pa.id=s.participant_id
           WHERE s._parent_id = ANY(${`{${ids.join(',')}}`}::int[]) ORDER BY s._order`),

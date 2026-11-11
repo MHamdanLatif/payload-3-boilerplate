@@ -90,6 +90,7 @@ export interface Config {
     'finance-receipts': FinanceReceipt;
     'finance-receivables': FinanceReceivable;
     'finance-expenses': FinanceExpense;
+    'finance-projects': FinanceProject;
     'finance-participants': FinanceParticipant;
     'finance-accounts': FinanceAccount;
     'finance-project-rules': FinanceProjectRule;
@@ -135,6 +136,7 @@ export interface Config {
     'finance-receipts': FinanceReceiptsSelect<false> | FinanceReceiptsSelect<true>;
     'finance-receivables': FinanceReceivablesSelect<false> | FinanceReceivablesSelect<true>;
     'finance-expenses': FinanceExpensesSelect<false> | FinanceExpensesSelect<true>;
+    'finance-projects': FinanceProjectsSelect<false> | FinanceProjectsSelect<true>;
     'finance-participants': FinanceParticipantsSelect<false> | FinanceParticipantsSelect<true>;
     'finance-accounts': FinanceAccountsSelect<false> | FinanceAccountsSelect<true>;
     'finance-project-rules': FinanceProjectRulesSelect<false> | FinanceProjectRulesSelect<true>;
@@ -2021,7 +2023,7 @@ export interface FinanceDeal {
  */
 export interface FinanceCampaign {
   id: number;
-  project: number | FeaturedProject;
+  project: number | FinanceProject;
   name: string;
   /**
    * Optional Meta campaign ID.
@@ -2042,6 +2044,21 @@ export interface FinanceCampaign {
   entryKey?: string | null;
   createdBy?: (number | null) | User;
   updatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Created automatically from Featured Projects and standalone Marketed Projects.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-projects".
+ */
+export interface FinanceProject {
+  id: number;
+  title: string;
+  sourceKey: string;
+  featuredProject?: (number | null) | FeaturedProject;
+  marketedProject?: (number | null) | MarketedProject;
   updatedAt: string;
   createdAt: string;
 }
@@ -2174,6 +2191,7 @@ export interface FinanceAccount {
 export interface FinanceFile {
   id: number;
   description?: string | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -2241,7 +2259,7 @@ export interface FinanceExpense {
  */
 export interface FinanceProjectRule {
   id: number;
-  project: number | FeaturedProject;
+  project: number | FinanceProject;
   /**
    * Planning figure per day for the whole project across all its ads (not per creative).
    */
@@ -2329,7 +2347,7 @@ export interface FinanceFunding {
   kind: 'contribution' | 'pledge' | 'refund' | 'adjustment' | 'opening';
   direction: 'increase' | 'decrease';
   participant: number | FinanceParticipant;
-  project: number | FeaturedProject;
+  project: number | FinanceProject;
   campaign?: (number | null) | FinanceCampaign;
   /**
    * The promise this contribution fulfils, if any.
@@ -2379,7 +2397,7 @@ export interface FinanceAdCharge {
   attachments?: (number | FinanceFile)[] | null;
   lines: {
     campaign: number | FinanceCampaign;
-    project?: (number | null) | FeaturedProject;
+    project?: (number | null) | FinanceProject;
     /**
      * Meta receipt for this line, if different.
      */
@@ -2400,7 +2418,7 @@ export interface FinanceAdCharge {
          * Charge line (0-based) this share belongs to.
          */
         line?: number | null;
-        project?: (number | null) | FeaturedProject;
+        project?: (number | null) | FinanceProject;
         campaign?: (number | null) | FinanceCampaign;
         participant?: (number | null) | FinanceParticipant;
         percent?: number | null;
@@ -2708,6 +2726,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'finance-expenses';
         value: number | FinanceExpense;
+      } | null)
+    | ({
+        relationTo: 'finance-projects';
+        value: number | FinanceProject;
       } | null)
     | ({
         relationTo: 'finance-participants';
@@ -3768,6 +3790,18 @@ export interface FinanceExpensesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-projects_select".
+ */
+export interface FinanceProjectsSelect<T extends boolean = true> {
+  title?: T;
+  sourceKey?: T;
+  featuredProject?: T;
+  marketedProject?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "finance-participants_select".
  */
 export interface FinanceParticipantsSelect<T extends boolean = true> {
@@ -4017,6 +4051,7 @@ export interface FinanceStatementsSelect<T extends boolean = true> {
  */
 export interface FinanceFilesSelect<T extends boolean = true> {
   description?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

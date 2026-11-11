@@ -65,7 +65,7 @@ export default async function NewLedgerEntry({
     case 'commission': {
       const pos = deal ? await dealPosition(exec, deal) : null
       if (!pos || pos.deal.cancelled) notFound()
-      const rules = pos.deal.project_id ? await projectRules(exec, pos.deal.project_id) : null
+      const rules = pos.deal.finance_project_id ? await projectRules(exec, pos.deal.finance_project_id) : null
       context = `${pos.deal.client_name} · ${pos.deal.project_name} · ${paisaRupees(pos.outstandingPaisa)} still to come`
       custom = (
         <CommissionForm
@@ -284,7 +284,7 @@ export default async function NewLedgerEntry({
     case 'deal-split': {
       const pos = deal ? await dealPosition(exec, deal) : null
       if (!pos) notFound()
-      const rules = pos.deal.project_id ? await projectRules(exec, pos.deal.project_id) : null
+      const rules = pos.deal.finance_project_id ? await projectRules(exec, pos.deal.finance_project_id) : null
       hidden.deal = String(deal)
       context = `${pos.deal.client_name} · ${pos.deal.project_name}`
       const preset = rules?.presets.find((x) => String(x.id) === param(p, 'preset'))
@@ -312,7 +312,7 @@ export default async function NewLedgerEntry({
       f('referrerName', 'Referring person (referral only; may be outside the register)', { value: pos.deal.referrer_name || '' })
       select('campaign', 'Originating campaign (optional; leave empty if unknown)', [
         ...pick('Unknown / not linked'),
-        ...o.campaigns.filter((c) => c.project_id === pos.deal.project_id).map((c) => ({ value: String(c.id), label: c.name })),
+        ...o.campaigns.filter((c) => c.project_id === pos.deal.finance_project_id).map((c) => ({ value: String(c.id), label: c.name })),
       ], { value: pos.deal.campaign_id ? String(pos.deal.campaign_id) : '' })
       if (pos.split.length) f('changeReason', 'Reason for changing the split', { required: true })
       extra = (

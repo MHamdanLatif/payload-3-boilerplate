@@ -37,7 +37,7 @@ export default async function FinanceProject({ params }: { params: Promise<{ id:
       WHERE l.project_id=${id} ORDER BY a.date DESC, a.id DESC LIMIT 200`),
     exec(sql`SELECT d.id, d.client_name, d.unit_number, d.fixed_commission, d.cancelled, c.name AS campaign_name,
       (SELECT COUNT(*) FROM finance_deals_commission_split s WHERE s._parent_id=d.id) AS split_lines
-      FROM finance_deals d LEFT JOIN finance_campaigns c ON c.id=d.campaign_id WHERE d.project_id=${id} ORDER BY d.date_closed DESC LIMIT 100`),
+      FROM finance_deals d LEFT JOIN finance_campaigns c ON c.id=d.campaign_id WHERE d.project_id=${rules.featuredProject || 0} ORDER BY d.date_closed DESC LIMIT 100`),
   ])
   const pct = (r: Record<string, any>) => `${Number(r.percent)}%`
   return (

@@ -349,7 +349,7 @@ export async function saveLedgerEntry(_previous: { error: string }, form: FormDa
           if (!dealDoc.commissionSplit?.length) {
             let split: { participant: number | null; recipientName?: string | null; percent: number; role?: string | null }[] = []
             if (who === 'default' && dealDoc.project) {
-              const rules = await payload.find({ collection: 'finance-project-rules', where: { project: { equals: typeof dealDoc.project === 'object' ? dealDoc.project.id : dealDoc.project } }, limit: 1, depth: 0, ...opts })
+              const rules = await payload.find({ collection: 'finance-project-rules', where: { 'project.featuredProject': { equals: typeof dealDoc.project === 'object' ? dealDoc.project.id : dealDoc.project } }, limit: 1, depth: 0, ...opts })
               split = (rules.docs[0]?.commission || []).map((r) => ({
                 participant: typeof r.participant === 'object' ? r.participant?.id ?? null : r.participant ?? null,
                 recipientName: r.recipientName,
