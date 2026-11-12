@@ -23,6 +23,36 @@ function load(file, deps = {}) {
 }
 const input = load('src/lib/crm-input.ts', { 'libphonenumber-js': { parsePhoneNumberFromString } })
 const statuses = load('src/lib/lead-status.ts')
+
+test('manual project options show linked projects once and preserve standalone pages', async () => {
+  const payload = {
+    auth: async () => ({ user: { id: 1 } }),
+    find: async ({ collection, select, overrideAccess }) => {
+      assert.equal(overrideAccess, false)
+      if (collection === 'featured-projects')
+        return { docs: [{ id: 5, title: 'Featured project' }] }
+      assert.equal(select.linkedProject, true)
+      return { docs: [
+        { id: 10, title: 'Featured project', linkedProject: 5 },
+        { id: 11, title: 'Another campaign for same project', linkedProject: { id: 5 } },
+        { id: 5, title: 'Saima Prestige Park', linkedProject: null },
+        { id: 12, title: 'Unavailable featured listing', linkedProject: 99 },
+      ] }
+    },
+  }
+  const server = load('src/lib/crm-server.ts', {
+    'next/headers': { headers: async () => ({}) },
+    'next/navigation': { redirect: () => { throw Error('Unexpected redirect') } },
+    payload: { getPayload: async () => payload },
+    '@payload-config': {},
+  })
+  const options = await server.crmManualProjects()
+  assert.deepEqual(JSON.parse(JSON.stringify(options)), [
+    { id: '5', title: 'Featured project' },
+    { id: 'marketed:5', title: 'Saima Prestige Park' },
+    { id: 'marketed:12', title: 'Unavailable featured listing' },
+  ])
+})
 test('manual entry normalizes phones and derives source/project attribution', () => {
   assert.equal(input.contactInput({ name: ' Ali ', phone: '03001234567' }).phone, '+923001234567')
   assert.equal(input.contactInput({ name: ' Ali ', phone: '03001234567' }).name, 'Ali')

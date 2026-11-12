@@ -36,12 +36,20 @@ export async function crmManualProjects() {
       sort: 'title',
       overrideAccess: false,
       user,
-      select: { title: true },
+      select: { title: true, linkedProject: true },
     }),
   ])
+  const featuredIds = new Set(featured.map(({ id }) => id))
   // Collection-qualified values prevent collisions between the two ID spaces.
+  // A linked marketing page represents the same project as its featured listing.
+  // Keep standalone pages (or pages whose linked listing is not accessible).
   return [
     ...featured.map(({ id, title }) => ({ id: String(id), title })),
-    ...marketed.docs.map(({ id, title }) => ({ id: `marketed:${id}`, title })),
+    ...marketed.docs
+      .filter(({ linkedProject }) => {
+        const linkedId = typeof linkedProject === 'object' ? linkedProject?.id : linkedProject
+        return !linkedId || !featuredIds.has(linkedId)
+      })
+      .map(({ id, title }) => ({ id: `marketed:${id}`, title })),
   ].sort((a, b) => a.title.localeCompare(b.title))
 }

@@ -14,6 +14,15 @@ export async function verifyMobileCrm(page: Page) {
   })
   expect(projectRes.ok(), await projectRes.text()).toBeTruthy()
   const project = (await projectRes.json()).doc
+  const linkedRes = await page.request.post('/api/marketed-projects', {
+    data: {
+      title: project.title, slug: 'mobile-crm-test-marketing', linkedProject: project.id,
+      builderName: 'Test Builder', location: 'Scheme 33', status: 'Pre-launch',
+      elevationImages: [{ image: media.docs[0].id }],
+    },
+  })
+  expect(linkedRes.ok(), await linkedRes.text()).toBeTruthy()
+  const linked = (await linkedRes.json()).doc
   const marketedRes = await page.request.post('/api/marketed-projects', {
     data: {
       title: 'Saima Prestige Park CRM Test', slug: 'saima-prestige-park-crm-test',
@@ -25,6 +34,8 @@ export async function verifyMobileCrm(page: Page) {
   expect(marketedRes.ok(), await marketedRes.text()).toBeTruthy()
   const marketed = (await marketedRes.json()).doc
   await page.goto('/leads-dashboard/new')
+  await expect(page.getByRole('option', { name: project.title, exact: true })).toHaveCount(1)
+  await expect(page.getByRole('option', { name: project.title, exact: true })).toHaveAttribute('value', String(project.id))
   await page.getByLabel('Name', { exact: true }).fill('Direct WhatsApp Buyer')
   await page.getByLabel('Phone', { exact: true }).fill('03001112233')
   await page.getByLabel('Project interested in', { exact: true }).selectOption({ label: marketed.title })
@@ -209,6 +220,7 @@ export async function verifyMobileCrm(page: Page) {
     (await page.request.get('/leads-dashboard/sw.js')).headers()['service-worker-allowed'],
   ).toBe('/leads-dashboard')
   await page.request.delete('/api/leads/' + id)
+  expect((await page.request.delete(`/api/marketed-projects/${linked.id}`)).ok()).toBeTruthy()
   await page.request.delete('/api/featured-projects/' + project.id)
   if (oldViewport) await page.setViewportSize(oldViewport)
 }
