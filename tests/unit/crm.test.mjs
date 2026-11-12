@@ -43,8 +43,12 @@ function fixture(authenticated = true) {
   const writes = []
   const payload = {
     auth: async () => ({ user: authenticated ? { id: 1 } : null }),
-    findByID: async ({ id }) => {
+    findByID: async ({ id, collection, overrideAccess, user }) => {
+      assert.equal(overrideAccess, false)
+      assert.equal(user.id, 1)
       if (Number(id) !== 5) throw Error('Project not found')
+      if (collection === 'marketed-projects')
+        return { id: 5, title: 'Saima Prestige Park', slug: 'saima-prestige-park' }
       return { id: 5, title: 'Tulip', slug: 'tulip' }
     },
     create: async (args) => {
@@ -120,10 +124,36 @@ test('invalid projects and source values never create a lead', async () => {
     { ...body, project: 99 },
     { ...body, source: 'ad' },
     { ...body, project: '' },
+    { ...body, project: 'marketed:99' },
+    { ...body, project: 'marketed:0' },
+    { ...body, project: 'marketed:5:6' },
     null,
   ])
     assert.equal((await f.post(request(data))).status, 400)
   assert.equal(f.writes.length, 0)
+})
+
+test('manual marketed leads keep their identity even when featured IDs collide', async () => {
+  const f = fixture()
+  const response = await f.post(request({ ...body, project: 'marketed:5', source: 'whatsapp' }))
+  assert.equal(response.status, 201)
+  const data = f.writes[0].data
+  assert.equal(data.marketedProject, 5)
+  assert.equal(data.sourceKind, 'marketed-project')
+  assert.equal(data.sourceName, 'Saima Prestige Park')
+  assert.equal(data.sourceSlug, 'saima-prestige-park')
+  assert.equal(data.acquiredProject, undefined)
+  assert.equal(data.currentInterestedProject, undefined)
+  assert.equal(data.acquisitionSource, 'whatsapp')
+  assert.equal(data.conversionSurface, 'crm-manual')
+  for (const linkedProject of [9, { id: 9 }]) {
+    const linked = input.manualAttribution('call', {
+      id: 5, title: 'Marketing page', linkedProject,
+    }, 'marketed-project')
+    assert.equal(linked.marketedProject, 5)
+    assert.equal(linked.acquiredProject, 9)
+    assert.equal(linked.currentInterestedProject, 9)
+  }
 })
 test('editing allows contact/status/closing details but never rewrites acquisition', async () => {
   const f = fixture()

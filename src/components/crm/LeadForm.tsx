@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 export type ProjectOption = { id: number; title: string }
 type Duplicate = { id: number; name: string; project: string | null; createdAt: string }
-export function ManualLeadForm({ projects }: { projects: ProjectOption[] }) {
+export function ManualLeadForm({ projects }: { projects: { id: string; title: string }[] }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [duplicates, setDuplicates] = useState<Duplicate[]>([])

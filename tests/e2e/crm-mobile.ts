@@ -14,6 +14,38 @@ export async function verifyMobileCrm(page: Page) {
   })
   expect(projectRes.ok(), await projectRes.text()).toBeTruthy()
   const project = (await projectRes.json()).doc
+  const marketedRes = await page.request.post('/api/marketed-projects', {
+    data: {
+      title: 'Saima Prestige Park CRM Test', slug: 'saima-prestige-park-crm-test',
+      builderName: 'Test Builder', location: 'Scheme 33', status: 'Pre-launch',
+      elevationImages: [{ image: media.docs[0].id }],
+      walkthroughVideoUrl: 'https://www.youtube.com/watch?v=crm-test',
+    },
+  })
+  expect(marketedRes.ok(), await marketedRes.text()).toBeTruthy()
+  const marketed = (await marketedRes.json()).doc
+  await page.goto('/leads-dashboard/new')
+  await page.getByLabel('Name', { exact: true }).fill('Direct WhatsApp Buyer')
+  await page.getByLabel('Phone', { exact: true }).fill('03001112233')
+  await page.getByLabel('Project interested in', { exact: true }).selectOption({ label: marketed.title })
+  await page.getByRole('button', { name: 'Add lead', exact: true }).click()
+  await expect(page).toHaveURL(/\/leads-dashboard\/\d+$/)
+  const marketedLeadId = Number(page.url().split('/').pop())
+  const marketedLead = await (await page.request.get(`/api/leads/${marketedLeadId}?depth=0`)).json()
+  expect(marketedLead.marketedProject).toBe(marketed.id)
+  expect(marketedLead.acquiredProject).toBeFalsy()
+  expect(marketedLead.sourceKind).toBe('marketed-project')
+  expect(marketedLead.sourceSlug).toBe(marketed.slug)
+  expect(marketedLead.acquisitionSource).toBe('whatsapp')
+  expect(marketedLead.conversionSurface).toBe('crm-manual')
+  expect(marketedLead.brochureHeadline).toBe(marketed.title)
+  expect(marketedLead.brochureVideoUrl).toBe(marketed.walkthroughVideoUrl)
+  expect(marketedLead.brochureId).toBeTruthy()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Direct WhatsApp Buyer' })).toBeVisible()
+  expect(decodeURIComponent((await page.getByRole('link', { name: 'Prepare brochure in WhatsApp' }).getAttribute('href'))!)).toContain(marketed.title)
+  expect((await page.request.delete(`/api/leads/${marketedLeadId}`)).ok()).toBeTruthy()
+  expect((await page.request.delete(`/api/marketed-projects/${marketed.id}`)).ok()).toBeTruthy()
   const oldViewport = page.viewportSize()
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto('/leads-dashboard/new')

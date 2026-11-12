@@ -202,7 +202,9 @@ New-lead alerts now use a PostgreSQL queue reconciled from committed leads every
 
 **Automatic reminders for New leads** are enabled by default and can be toggled in the CRM's Notifications panel or CMS CRM Settings. New leads get a reminder at 30 minutes and another at 2 hours from creation, only if their current status is still New (stored as `unqualified`). Leads added by hand with **Add lead** (conversion surface `crm-manual`) get no New Lead alert and no automatic reminders. The migration records a durable cutoff; pre-existing leads are excluded. These do not overwrite manually scheduled follow-ups. If the server resumes after both deadlines, only the two-hour reminder sends. Status is checked again before each delivery attempt; already in-flight notifications cannot be recalled. Expired or cancelled events remain recorded for diagnosis.
 
-Checks: `corepack pnpm exec node --test tests/unit/crm.test.mjs tests/unit/crm-push.test.mjs` and `corepack pnpm test:e2e`. The e2e suite includes 360px manual entry, status/contact/closed-project edits, generated attribution, search, manifest, and overflow checks.
+**Add lead** accepts both featured projects and marketing-page projects, including standalone projects without a featured listing. Manual WhatsApp, Call and Referral enquiries retain the selected project's identity and brochure assets; marketing pages with a linked featured project also retain that relationship.
+
+Checks: `corepack pnpm exec node --test tests/unit/crm.test.mjs tests/unit/crm-push.test.mjs` and `corepack pnpm test:e2e`. The e2e suite includes standalone marketing-project manual entry, 360px featured-project entry, status/contact/closed-project edits, generated attribution, search, manifest, and overflow checks.
 
 For SQL-level queue verification, set `CRM_QUEUE_TEST_DATABASE_URI` and run `node tests/integration/lead-notifications.mjs`. It uses temporary tables inside a rolled-back transaction and mocks push delivery.
 

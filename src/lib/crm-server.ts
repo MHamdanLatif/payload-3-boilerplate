@@ -24,3 +24,24 @@ export async function crmProjects() {
   })
   return result.docs.map(({ id, title }) => ({ id, title }))
 }
+
+export async function crmManualProjects() {
+  const { payload, user } = await crmSession()
+  const [featured, marketed] = await Promise.all([
+    crmProjects(),
+    payload.find({
+      collection: 'marketed-projects',
+      depth: 0,
+      pagination: false,
+      sort: 'title',
+      overrideAccess: false,
+      user,
+      select: { title: true },
+    }),
+  ])
+  // Collection-qualified values prevent collisions between the two ID spaces.
+  return [
+    ...featured.map(({ id, title }) => ({ id: String(id), title })),
+    ...marketed.docs.map(({ id, title }) => ({ id: `marketed:${id}`, title })),
+  ].sort((a, b) => a.title.localeCompare(b.title))
+}

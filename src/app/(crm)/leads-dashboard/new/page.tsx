@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { crmProjects, crmSession } from '@/lib/crm-server'
+import { crmManualProjects, crmSession } from '@/lib/crm-server'
 import { ManualLeadForm } from '@/components/crm/LeadForm'
 export default async function NewLead() {
   await crmSession('/leads-dashboard/new')
-  const projects = await crmProjects()
+  const projects = await crmManualProjects()
   return (
     <main className="crm-wrap" style={{ maxWidth: 620 }}>
       <Link href="/leads-dashboard" className="crm-muted">

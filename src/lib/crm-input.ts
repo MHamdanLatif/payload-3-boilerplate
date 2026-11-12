@@ -22,12 +22,16 @@ export function projectId(value: unknown): number | null {
 
 export function manualAttribution(
   source: unknown,
-  project: { id: number; title: string; slug?: string | null },
+  project: { id: number; title: string; slug?: string | null; linkedProject?: number | { id: number } | null },
+  kind: 'project' | 'marketed-project' = 'project',
 ) {
   if (!MANUAL_SOURCES.includes(source as (typeof MANUAL_SOURCES)[number]))
     throw new Error('Choose WhatsApp, Call or Referral.')
+  const featuredId = kind === 'project'
+    ? project.id
+    : typeof project.linkedProject === 'object' ? project.linkedProject?.id : project.linkedProject
   return {
-    sourceKind: 'project',
+    sourceKind: kind,
     sourceName: project.title,
     sourceSlug: project.slug,
     source: String(source),
@@ -35,8 +39,9 @@ export function manualAttribution(
       source === 'call' ? ('manual' as const) : (source as 'whatsapp' | 'referral'),
     conversionSurface: 'crm-manual' as const,
     placement: 'crm-manual',
-    acquiredProject: project.id,
-    currentInterestedProject: project.id,
+    acquiredProject: featuredId,
+    currentInterestedProject: featuredId,
+    ...(kind === 'marketed-project' ? { marketedProject: project.id } : {}),
     firstTouchSource: String(source),
     firstTouchMedium: 'manual',
     firstTouchAt: new Date().toISOString(),

@@ -19,10 +19,11 @@ export async function POST(req: Request) {
     if (!body || typeof body !== 'object' || Array.isArray(body))
       throw new Error('Invalid lead details.')
     const contact = contactInput(body)
-    const id = projectId(body.project)
+    const marketed = typeof body.project === 'string' && /^marketed:[1-9]\d*$/.test(body.project)
+    const id = projectId(marketed ? body.project.slice('marketed:'.length) : body.project)
     if (!id) throw new Error('Choose the project they are interested in.')
     const project = await payload.findByID({
-      collection: 'featured-projects',
+      collection: marketed ? 'marketed-projects' : 'featured-projects',
       id,
       depth: 0,
       overrideAccess: false,
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     }
     const data = {
       ...contact,
-      ...manualAttribution(body.source, project),
+      ...manualAttribution(body.source, project, marketed ? 'marketed-project' : 'project'),
       status: 'unqualified' as const,
     }
     const lead = await payload.create({ collection: 'leads', data, overrideAccess: false, user })
