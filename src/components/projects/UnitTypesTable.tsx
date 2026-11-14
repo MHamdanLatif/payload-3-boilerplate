@@ -12,7 +12,19 @@ import { SectionRule } from '@/components/landing/SectionRule'
 import type { Media } from '@/payload-types'
 
 /** Small counts read better spelled out in prose. Falls back to digits. */
-const COUNT_WORDS = ['zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+const COUNT_WORDS = [
+  'zero',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+]
 const countWord = (n: number): string => COUNT_WORDS[n] ?? String(n)
 
 /** Uploaded flat-layout image for a unit, or null. Depth 1 populates the relation. */
@@ -60,6 +72,17 @@ export function UnitTypesTable({
   // Same condition as hasUnitsTable() in lib/section-numbers; inlined so TS narrows `summary`.
   if (!units.length || !summary) return null
 
+  const hasValue = (value: unknown) =>
+    value != null && (typeof value !== 'string' || value.trim().length > 0)
+  const columns = {
+    unit: units.some((u) => hasValue(u.name) || hasValue(u.type) || u.soldOut),
+    configuration: units.some((u) => hasValue(u.type) || u.isDuplex),
+    rooms: units.some((u) => hasValue(u.rooms)),
+    area: units.some((u) => hasValue(u.areaSqFt)),
+    price: units.some((u) => hasValue(u.price)),
+    action: units.some((u) => layoutUrl(u) || !u.soldOut),
+  }
+
   const area = areaRangeLabel(summary)
   const priceRange =
     summary.minPrice === summary.maxPrice
@@ -83,9 +106,7 @@ export function UnitTypesTable({
   const duplexProse = summary.duplexCount
     ? `${countWord(summary.duplexCount)} of them ${
         summary.duplexCount === 1 ? 'is a duplex apartment' : 'are duplex apartments'
-      }${
-        summary.duplexTypes.length ? ` (${summary.duplexTypes.join(', ')})` : ''
-      }${
+      }${summary.duplexTypes.length ? ` (${summary.duplexTypes.join(', ')})` : ''}${
         project.location ? ` - duplex apartments in ${project.location}, Karachi` : ''
       }.`
     : null
@@ -125,29 +146,39 @@ export function UnitTypesTable({
 
         <div className="mt-10 overflow-x-auto rounded-xl border border-brand-deep/10">
           <table className="w-full border-collapse">
-            <caption className="sr-only">
-              Available units and prices at {project.title}
-            </caption>
+            <caption className="sr-only">Available units and prices at {project.title}</caption>
             <thead className="hidden md:table-header-group">
               <tr className="border-b border-brand-deep/10 bg-ivory">
-                <th className={th} scope="col">
-                  Unit
-                </th>
-                <th className={th} scope="col">
-                  Configuration
-                </th>
-                <th className={th} scope="col">
-                  Rooms
-                </th>
-                <th className={th} scope="col">
-                  Area
-                </th>
-                <th className={th} scope="col">
-                  Price
-                </th>
-                <th className={th} scope="col">
-                  <span className="sr-only">Flat layout</span>
-                </th>
+                {columns.unit && (
+                  <th className={th} scope="col">
+                    Unit
+                  </th>
+                )}
+                {columns.configuration && (
+                  <th className={th} scope="col">
+                    Configuration
+                  </th>
+                )}
+                {columns.rooms && (
+                  <th className={th} scope="col">
+                    Rooms
+                  </th>
+                )}
+                {columns.area && (
+                  <th className={th} scope="col">
+                    Area
+                  </th>
+                )}
+                {columns.price && (
+                  <th className={th} scope="col">
+                    Price
+                  </th>
+                )}
+                {columns.action && (
+                  <th className={th} scope="col">
+                    <span className="sr-only">Flat layout</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -156,70 +187,87 @@ export function UnitTypesTable({
                   key={u.id ?? `${unitKey(u)}-${i}`}
                   className="block border-b border-brand-deep/5 last:border-0 md:table-row"
                 >
-                  <td
-                    className={`${td} block font-medium before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
-                    data-label="Unit"
-                  >
-                    {u.soldOut && (
-                      <span className="mr-2 inline-block rounded-full bg-red-600 px-2 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wide text-white">
-                        Sold out
-                      </span>
-                    )}
-                    {u.name || u.type}
-                  </td>
-                  <td
-                    className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
-                    data-label="Configuration"
-                  >
-                    {u.type}
-                    {u.isDuplex && (
-                      <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-brand-deep">
-                        Duplex
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
-                    data-label="Rooms"
-                  >
-                    {u.rooms}
-                  </td>
-                  <td
-                    className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
-                    data-label="Area"
-                  >
-                    {u.areaSqFt ? `${u.areaSqFt.toLocaleString()} sq ft` : '—'}
-                  </td>
-                  <td
-                    className={`${td} block font-medium before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
-                    data-label="Price"
-                  >
-                    {formatPkr(u.price)}
-                  </td>
-                  <td className={`${td} block pb-5 md:table-cell md:pb-3.5`}>
-                    {/* The flat layout is the more useful action where one exists:
+                  {columns.unit && (
+                    <td
+                      className={`${td} block font-medium before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
+                      data-label="Unit"
+                    >
+                      {u.soldOut && (
+                        <span className="mr-2 inline-block rounded-full bg-red-600 px-2 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wide text-white">
+                          Sold out
+                        </span>
+                      )}
+                      {u.name || u.type}
+                    </td>
+                  )}
+                  {columns.configuration && (
+                    <td
+                      className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
+                      data-label="Configuration"
+                    >
+                      {u.type}
+                      {u.isDuplex && (
+                        <span className="ml-2 rounded-full bg-gold/15 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-brand-deep">
+                          Duplex
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {columns.rooms && (
+                    <td
+                      className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
+                      data-label="Rooms"
+                    >
+                      {u.rooms}
+                    </td>
+                  )}
+                  {columns.area && (
+                    <td
+                      className={`${td} block before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
+                      data-label="Area"
+                    >
+                      {u.areaSqFt != null ? `${u.areaSqFt.toLocaleString()} sq ft` : '—'}
+                    </td>
+                  )}
+                  {columns.price && (
+                    <td
+                      className={`${td} block font-medium before:mr-2 before:text-[0.65rem] before:uppercase before:tracking-[0.15em] before:text-brand-deep/45 before:content-[attr(data-label)] md:table-cell md:before:content-none`}
+                      data-label="Price"
+                    >
+                      {formatPkr(u.price)}
+                    </td>
+                  )}
+                  {columns.action && (
+                    <td className={`${td} block pb-5 md:table-cell md:pb-3.5`}>
+                      {/* The flat layout is the more useful action where one exists:
                         a buyer comparing units wants the plan, and the payment
                         calculator is a full section further down the page anyway.
-                        Rows without a layout keep the payment-plan link, so the
-                        column is never dead. */}
-                    {layoutUrl(u) ? (
-                      <a
-                        className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
-                        href={layoutUrl(u) as string}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Flat Layout
-                      </a>
-                    ) : u.soldOut ? null : (
-                      <a
-                        className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
-                        href={!hasPublicPaymentPlan(project) ? '/#contact' : `?unit=${encodeURIComponent(unitKey(u))}#payment-plan`}
-                      >
-                        {!hasPublicPaymentPlan(project) ? 'Enquire about payment terms' : 'Payment plan'}
-                      </a>
-                    )}
-                  </td>
+                        Available rows without a layout keep the payment-plan link. */}
+                      {layoutUrl(u) ? (
+                        <a
+                          className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
+                          href={layoutUrl(u) as string}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Flat Layout
+                        </a>
+                      ) : u.soldOut ? null : (
+                        <a
+                          className="text-sm text-gold underline underline-offset-2 hover:text-brand-deep"
+                          href={
+                            !hasPublicPaymentPlan(project)
+                              ? '/#contact'
+                              : `?unit=${encodeURIComponent(unitKey(u))}#payment-plan`
+                          }
+                        >
+                          {!hasPublicPaymentPlan(project)
+                            ? 'Enquire about payment terms'
+                            : 'Payment plan'}
+                        </a>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

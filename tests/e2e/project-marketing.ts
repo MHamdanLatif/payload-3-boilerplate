@@ -51,6 +51,31 @@ export async function verifyProjectMarketing(admin: Page, visitor: Page, info: T
     active: true,
   })
   try {
+    // Saving the newly added configuration must work against the database too.
+    const update = await admin.request.patch(`/api/featured-projects/${ready.id}?depth=0&fallback-locale=null`, {
+      data: { unitTypes: [
+        ...common.unitTypes,
+        { type: '4 Bed Lounge / 3 Bed Drawing', rooms: 5, price: 15000000 },
+      ] },
+    })
+    expect(update.ok(), await update.text()).toBeTruthy()
+    await visitor.goto(`/projects/${ready.slug}`)
+    const table = visitor.locator('#available-units table')
+    await expect(table.locator('th').filter({ hasText: /^Area$/ })).toHaveCount(0)
+    await expect(table.locator('[data-label="Area"]')).toHaveCount(0)
+    const savedUnits = (await update.json()).doc.unitTypes
+    const withArea = await admin.request.patch(`/api/featured-projects/${ready.id}`, {
+      data: { unitTypes: savedUnits.map((unit: Record<string, unknown>, i: number) => ({
+        ...unit, areaSqFt: i === 0 ? 1250 : null,
+      })) },
+    })
+    expect(withArea.ok(), await withArea.text()).toBeTruthy()
+    await visitor.reload()
+    await expect(table.locator('[data-label="Area"]')).toHaveCount(2)
+    await expect(table.locator('[data-label="Area"]').first()).toHaveText('1,250 sq ft')
+    await visitor.setViewportSize({ width: 390, height: 844 })
+    await expect(table.locator('[data-label="Area"]').first()).toBeVisible()
+    await visitor.setViewportSize({ width: 1280, height: 800 })
     await visitor.goto('/properties?status=Ready')
     await expect(visitor.getByRole('heading', { name: ready.title })).toBeVisible()
     await expect(visitor.getByText(listing.title)).toHaveCount(0)
