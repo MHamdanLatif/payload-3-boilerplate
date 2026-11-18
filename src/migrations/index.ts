@@ -1,3 +1,4 @@
+import * as financeIssueResolutions from './20261118_000000_finance_issue_resolutions'
 import * as financeProjects from './20261111_000000_finance_projects';
 import * as fourBedLounge from './20261108_000000_four_bed_lounge'
 import * as projectMarketing from './20261008_000000_project_marketing';
@@ -121,4 +122,5 @@ export const migrations = [
   { up: financeFunding.up, down: financeFunding.down, name: '20261027_000000_finance_funding' },
   { up: fourBedLounge.up, down: fourBedLounge.down, name: '20261108_000000_four_bed_lounge' },
   { up: financeProjects.up, down: financeProjects.down, name: '20261111_000000_finance_projects' },
+  { up: financeIssueResolutions.up, down: financeIssueResolutions.down, name: '20261118_000000_finance_issue_resolutions' },
 ];

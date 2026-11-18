@@ -17,7 +17,7 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   const outsider = await anonymous.newPage()
   for (const route of ['/finance/projects', '/finance/participants', '/finance/accounts', '/finance/ad-charges', '/finance/new/funding'])
     await outsider.goto(route).then(() => expect(outsider.url()).toContain('/admin/login'))
-  for (const collection of ['finance-projects', 'finance-participants', 'finance-funding', 'finance-ad-charges', 'finance-payouts', 'finance-files', 'finance-audit-log'])
+  for (const collection of ['finance-projects', 'finance-participants', 'finance-funding', 'finance-ad-charges', 'finance-payouts', 'finance-files', 'finance-audit-log', 'finance-issue-resolutions'])
     expect([401, 403]).toContain((await outsider.request.get(`/api/${collection}`)).status())
   expect((await outsider.request.get('/finance/export?kind=project-report&project=1')).status()).toBe(401)
   expect((await outsider.request.get('/finance/export?kind=project-report&project=1&format=pdf')).status()).toBe(401)
@@ -102,6 +102,7 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
 
   // An advertising charge, with the allocation previewed before saving.
   await page.goto('/finance/new/ad-charge')
+  await page.getByLabel('Transaction date and time (PKT)').fill('2026-09-20T12:00')
   await page.getByLabel('Bank or card account debited').selectOption({ label: 'E2E Bank' })
   await page.getByLabel('Actual bank debit (PKR)').fill('10800')
   await page.getByLabel('Campaign').selectOption({ label: 'Funding E2E Project · E2E Launch' })
@@ -191,6 +192,44 @@ export async function verifyFinanceFunding(page: Page, browser: Browser) {
   await page.getByRole('button', { name: 'Save entry' }).click()
   await expect(card('Outstanding commission')).toHaveText('Rs. 0')
   await expect(page.getByText('Paid out to E2E Owner')).toBeVisible()
+
+  // An out-of-campaign charge can be acknowledged without altering the ledger.
+  await page.goto('/finance')
+  const adIssue = page.locator('.finance-alerts').first().getByRole('article').filter({ hasText: 'Advertising charge needs checking' }).filter({ hasText: 'Funding E2E Project' })
+  await expect(adIssue).toHaveCount(1)
+  await adIssue.getByText('Mark resolved', { exact: true }).click()
+  await adIssue.getByLabel('Resolution note').fill('Verified the earlier charge against the bank statement.')
+  await adIssue.getByRole('button', { name: 'Save resolution' }).click()
+  await expect(adIssue).toHaveCount(0)
+  await page.reload()
+  await expect(adIssue).toHaveCount(0)
+
+  // Manual resolutions persist, retain notes, and can be reopened.
+  await page.goto('/finance')
+  const issueTitle = 'Funding E2E Project: E2E Owner owes a top-up'
+  const activeIssue = page.locator('.finance-alerts').first().getByRole('article').filter({ hasText: issueTitle })
+  await expect(activeIssue).toHaveCount(1)
+  await activeIssue.getByText('Mark resolved', { exact: true }).click()
+  await activeIssue.getByLabel('Resolution note').fill('Reconciled manually with the owner.')
+  await activeIssue.getByRole('button', { name: 'Save resolution' }).click()
+  await expect(activeIssue).toHaveCount(0)
+  await page.reload()
+  await expect(activeIssue).toHaveCount(0)
+  await page.getByText(/Resolution history \(/).click()
+  const historyIssue = page.getByRole('article').filter({ hasText: 'Reconciled manually with the owner.' })
+  await expect(historyIssue).toBeVisible()
+  await historyIssue.getByRole('button', { name: 'Reopen issue' }).click()
+  await expect(activeIssue).toHaveCount(1)
+
+  // Actual funding clears the shortfall automatically, without manual dismissal.
+  await page.goto('/finance/new/funding?project=' + financeProject.id)
+  await page.getByLabel('Participant', { exact: true }).selectOption({ label: 'E2E Owner' })
+  await page.getByLabel('Amount (PKR)').fill('5400')
+  await page.getByLabel(/Receiving \/ paying account/).selectOption({ label: 'E2E Bank' })
+  await page.getByRole('button', { name: 'Save entry' }).click()
+  await expect(page).toHaveURL(new RegExp('/finance/projects/' + financeProject.id + '$'))
+  await page.goto('/finance')
+  await expect(activeIssue).toHaveCount(0)
 
   await verifyMarketedFinance(page, media.docs[0].id)
 

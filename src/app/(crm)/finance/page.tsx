@@ -2,35 +2,27 @@
 import { sql } from '@payloadcms/db-postgres'
 import { overview, financeExec } from '@/lib/finance-server'
 import { cashPurpose, dealPosition } from '@/lib/finance-ledger'
-import { financeExceptions } from '@/lib/finance-exceptions'
+import { currentFinanceIssues } from '@/lib/finance-issues'
+import { financeSession } from '@/lib/finance-server'
+import { IssueResolution } from '@/components/finance/IssueResolution'
 import { displayDate, paisaRupees, param, rupees, type FinanceParams } from '@/lib/finance-query'
 import { MoneyCards, PeriodFilter } from '@/components/finance/FinanceUI'
 
 export default async function FinanceHome({ searchParams }: { searchParams: Promise<FinanceParams> }) {
   const params = await searchParams
   const exec = await financeExec()
-  const [{ kpis: k, upcoming, attention, range }, exceptions, purpose, splitDeals] = await Promise.all([
+  const { payload, user } = await financeSession()
+  const resolutions = await payload.find({ collection: 'finance-issue-resolutions', pagination: false, sort: '-createdAt', overrideAccess: false, user })
+  const resolved = new Set(resolutions.docs.filter((r) => !r.reopenedAt).map((r) => r.fingerprint))
+  const [{ kpis: k, upcoming, range }, exceptions, purpose, splitDeals] = await Promise.all([
     overview(params),
-    financeExceptions(exec),
+    currentFinanceIssues(),
     cashPurpose(exec),
     exec(sql`SELECT DISTINCT _parent_id AS id FROM finance_deals_commission_split`),
   ])
   const positions = await Promise.all(splitDeals.map((d) => dealPosition(exec, Number(d.id))))
   const owedToPeople = positions.reduce((a, p) => a + (p?.unpaidPaisa || 0), 0)
-  const todo = [
-    ...attention.map((d) => ({
-      href: `/finance/deals/${d.id}`,
-      title: `${d.client_name} · ${d.project_name}`,
-      detail: [
-        d.overdue ? `Payment overdue: ${rupees(d.outstanding)}.` : '',
-        !d.expected_payment_date && Number(d.outstanding) > 0 ? 'Choose an expected payment date.' : '',
-        Number(d.overpayment) > 0 ? `Receipts exceed commission by ${rupees(d.overpayment)}.` : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
-    })),
-    ...exceptions,
-  ]
+  const todo = exceptions.filter((x) => !resolved.has(x.fingerprint))
   return (
     <>
       <h1>Finance</h1>
@@ -69,16 +61,30 @@ export default async function FinanceHome({ searchParams }: { searchParams: Prom
       <h2>To do {todo.length > 0 && <span className="finance-badge overdue">{todo.length}</span>}</h2>
       {todo.length ? (
         <div className="finance-alerts">
-          {todo.slice(0, 12).map((x, i) => (
-            <article key={i}>
+          {todo.map((x) => (
+            <article key={x.fingerprint}>
               <Link href={x.href}>{x.title}</Link>
               <p>{x.detail}</p>
+              <IssueResolution fingerprint={x.fingerprint} />
             </article>
           ))}
         </div>
       ) : (
         <p>Nothing needs attention.</p>
       )}
+
+      {resolutions.docs.length > 0 && <details className="finance-more">
+        <summary>Resolution history ({resolutions.docs.length})</summary>
+        <div className="finance-alerts">
+          {resolutions.docs.map((r) => <article key={r.id}>
+            <Link href={r.href}>{r.title}</Link>
+            <p>{r.detail}</p>
+            <p><strong>Resolution:</strong> {r.note}</p>
+            <p>Resolved {displayDate(r.createdAt)} by {r.resolvedBy}</p>
+            {r.reopenedAt ? <p>Reopened {displayDate(r.reopenedAt)}</p> : <IssueResolution fingerprint={r.fingerprint} reopen />}
+          </article>)}
+        </div>
+      </details>}
 
       <h2>Coming in</h2>
       <div className="finance-list">

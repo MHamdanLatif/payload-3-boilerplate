@@ -1,3 +1,4 @@
+import { FinanceIssueResolutions } from './collections/FinanceIssueResolutions'
 import { LeadNotifications } from './collections/LeadNotifications'
 import { PushSubscriptions } from './collections/PushSubscriptions'
 import { CrmDevices } from './collections/CrmDevices'
@@ -107,6 +108,7 @@ export default buildConfig({
     FinanceDeals, FinanceReceipts, FinanceReceivables, FinanceExpenses,
     FinanceProjects,
     ...financeFundingCollections,
+    FinanceIssueResolutions,
   ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer, CrmSettings, CrmPushSettings],

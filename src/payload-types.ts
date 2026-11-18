@@ -102,6 +102,7 @@ export interface Config {
     'finance-statements': FinanceStatement;
     'finance-files': FinanceFile;
     'finance-audit-log': FinanceAuditLog;
+    'finance-issue-resolutions': FinanceIssueResolution;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -148,6 +149,7 @@ export interface Config {
     'finance-statements': FinanceStatementsSelect<false> | FinanceStatementsSelect<true>;
     'finance-files': FinanceFilesSelect<false> | FinanceFilesSelect<true>;
     'finance-audit-log': FinanceAuditLogSelect<false> | FinanceAuditLogSelect<true>;
+    'finance-issue-resolutions': FinanceIssueResolutionsSelect<false> | FinanceIssueResolutionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -2540,6 +2542,22 @@ export interface FinanceAuditLog {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-issue-resolutions".
+ */
+export interface FinanceIssueResolution {
+  id: number;
+  fingerprint: string;
+  title: string;
+  detail: string;
+  href: string;
+  note: string;
+  resolvedBy: string;
+  reopenedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -2774,6 +2792,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'finance-audit-log';
         value: number | FinanceAuditLog;
+      } | null)
+    | ({
+        relationTo: 'finance-issue-resolutions';
+        value: number | FinanceIssueResolution;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -4075,6 +4097,21 @@ export interface FinanceAuditLogSelect<T extends boolean = true> {
   changes?: T;
   reason?: T;
   user?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance-issue-resolutions_select".
+ */
+export interface FinanceIssueResolutionsSelect<T extends boolean = true> {
+  fingerprint?: T;
+  title?: T;
+  detail?: T;
+  href?: T;
+  note?: T;
+  resolvedBy?: T;
+  reopenedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
