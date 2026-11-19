@@ -18,6 +18,7 @@ export const LEAD_STATUSES = [
   'details-sent',
   'engaged',
   'qualified',
+  'site-visit-pending',
   'site-visit',
   'closed-won',
   'not-a-fit',
@@ -32,6 +33,7 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
   'details-sent': 'Brochure Not Opened',
   engaged: 'Engaged',
   qualified: 'Qualified',
+  'site-visit-pending': 'Site visit Pending',
   'site-visit': 'Site Visited',
   'closed-won': 'Closed Won',
   'not-a-fit': 'Not a Fit',
@@ -44,6 +46,7 @@ export const statusLabel = (s: string | null | undefined): string =>
 /**
  * Stages a lead passes THROUGH, in order.
  *
+ * Pending visits are internal reminders, not confirmed funnel outcomes.
  * The terminal outcomes are excluded on purpose. Counting must be cumulative:
  * a lead at "Closed Won" has self-evidently been qualified, so a strict
  * `status === 'qualified'` test would shrink the qualified count every time a
@@ -72,7 +75,7 @@ export const atLeast = (status: string | null | undefined, stage: LeadStatus): b
  * qualified leads that went further; Meta hears about the lead once.
  */
 export const isQualifiedLead = (status: string | null | undefined): boolean =>
-  atLeast(status, 'qualified')
+  status === 'qualified' || status === 'site-visit' || status === 'closed-won'
 
 export const statusOptions = LEAD_STATUSES.map((value) => ({
   label: STATUS_LABELS[value],

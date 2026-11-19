@@ -1,3 +1,5 @@
+import * as korangiCreek from './20261119_000000_korangi_creek'
+import * as siteVisitPending from './20261119_000001_site_visit_pending'
 import * as financeIssueResolutions from './20261118_000000_finance_issue_resolutions'
 import * as financeProjects from './20261111_000000_finance_projects';
 import * as fourBedLounge from './20261108_000000_four_bed_lounge'
@@ -123,4 +125,6 @@ export const migrations = [
   { up: fourBedLounge.up, down: fourBedLounge.down, name: '20261108_000000_four_bed_lounge' },
   { up: financeProjects.up, down: financeProjects.down, name: '20261111_000000_finance_projects' },
   { up: financeIssueResolutions.up, down: financeIssueResolutions.down, name: '20261118_000000_finance_issue_resolutions' },
+  { up: korangiCreek.up, down: korangiCreek.down, name: '20261119_000000_korangi_creek' },
+  { up: siteVisitPending.up, down: siteVisitPending.down, name: '20261119_000001_site_visit_pending' },
 ];

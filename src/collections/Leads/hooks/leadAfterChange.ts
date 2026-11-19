@@ -63,6 +63,8 @@ function capiEventForStatus(
   status: Lead['status'],
   previous: Lead['status'] | undefined,
 ): string | null {
+  // A promised visit is an internal follow-up state, never a Meta signal.
+  if (status === 'site-visit-pending') return null
   let env: string
   let fallback: string
   if (isQualifiedLead(status)) {

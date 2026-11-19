@@ -1,3 +1,9 @@
+## Pending site visits
+
+Use **Site visit Pending** for a lead who intends to visit but has not visited yet. In the CRM status selector, choose a reminder date/time in PKT and press **Save pending visit & reminder**. The status and reminder save together; entering this status requires a future reminder (an existing future reminder can also be retained in the admin). Follow-ups and phone notifications use the existing reminder workflow. Marking a reminder contacted clears it without marking the visit completed. Set **Site Visited** only after the actual visit. Pending visits send no Meta status signal and do not count as completed visits or qualified outcomes in reports.
+
+Before deploying this status, apply migration `20261119_000001_site_visit_pending`; Railway does not run migrations automatically. Existing leads are unchanged. Verify with `node --test tests/unit/lead-capi.test.mjs tests/unit/follow-up.test.mjs` and `corepack pnpm test:e2e`.
+
 ## Creating marketing pages from featured projects
 
 Save the Featured Project, then click **Create marketing page** in its CMS sidebar.

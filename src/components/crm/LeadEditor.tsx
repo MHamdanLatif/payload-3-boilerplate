@@ -11,6 +11,7 @@ type Editable = Pick<
   | 'phone'
   | 'email'
   | 'status'
+  | 'followUpAt'
   | 'currentInterestedProject'
   | 'closedProject'
   | 'interestedUnitType'
@@ -21,12 +22,16 @@ const relation = (value: Editable['closedProject']) =>
 export function LeadEditor({ lead, projects }: { lead: Editable; projects: ProjectOption[] }) {
   const router = useRouter()
   const [status, setStatus] = useState(lead.status || 'unqualified')
+  const [visitReminder, setVisitReminder] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('')
   useEffect(() => {
     setStatus(lead.status || 'unqualified')
-  }, [lead.status])
+    setVisitReminder(lead.followUpAt
+      ? new Date(new Date(lead.followUpAt).getTime() + 5 * 3600000).toISOString().slice(0, 16)
+      : '')
+  }, [lead.status, lead.followUpAt])
   const save = async (data: Record<string, unknown>) => {
     setBusy(true)
     setError('')
@@ -62,6 +67,12 @@ export function LeadEditor({ lead, projects }: { lead: Editable; projects: Proje
               disabled={busy}
               onChange={async (event) => {
                 const next = event.target.value as typeof status
+                if (next === 'site-visit-pending') {
+                  setStatus(next)
+                  setSaved('')
+                  setError('')
+                  return
+                }
                 if (await save({ status: next })) setStatus(next)
               }}
             >
@@ -83,6 +94,28 @@ export function LeadEditor({ lead, projects }: { lead: Editable; projects: Proje
             Edit details
           </a>
         </div>
+        {status === 'site-visit-pending' && (
+          <form className="crm-stack mt-3" onSubmit={async (event) => {
+            event.preventDefault()
+            const date = new Date(`${visitReminder}:00+05:00`)
+            if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
+              setError('Choose a future date and time for the reminder.')
+              return
+            }
+            await save({ status: 'site-visit-pending', followUpAt: date.toISOString() })
+          }}>
+            <label className="crm-label">
+              Site visit reminder (PKT, UTC+5)
+              <input className="crm-field" type="datetime-local" required
+                value={visitReminder} disabled={busy}
+                onChange={(event) => setVisitReminder(event.target.value)} />
+            </label>
+            <p className="text-sm">Choose when to follow up about the visit. Save to apply the status and reminder.</p>
+            <button className="crm-button" disabled={busy}>
+              {busy ? 'Saving...' : 'Save pending visit & reminder'}
+            </button>
+          </form>
+        )}
         {error && (
           <p role="alert" className="crm-error mt-2">
             {error}

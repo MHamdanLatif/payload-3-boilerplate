@@ -852,6 +852,7 @@ export interface FeaturedProject {
     | 'Malir'
     | 'Saddar'
     | 'Korangi'
+    | 'Korangi Creek'
     | 'Model Colony'
     | 'Sukkur'
     | 'Other';
@@ -1283,6 +1284,7 @@ export interface PropertyListing {
     | 'Malir'
     | 'Saddar'
     | 'Korangi'
+    | 'Korangi Creek'
     | 'Model Colony'
     | 'Sukkur'
     | 'Other';
@@ -1457,6 +1459,7 @@ export interface MarketedProject {
     | 'Malir'
     | 'Saddar'
     | 'Korangi'
+    | 'Korangi Creek'
     | 'Model Colony'
     | 'Sukkur'
     | 'Other';
@@ -1626,6 +1629,7 @@ export interface Lead {
         | 'details-sent'
         | 'engaged'
         | 'qualified'
+        | 'site-visit-pending'
         | 'site-visit'
         | 'closed-won'
         | 'not-a-fit'

@@ -26,6 +26,22 @@ const { prepareFollowUp } = load('src/collections/Leads/hooks/prepareFollowUp.ts
 })
 const future = () => new Date(Date.now() + 86400000).toISOString()
 
+test('entering site visit pending requires a chosen future reminder', () => {
+  for (const followUpAt of [undefined, null, 'invalid', '2020-01-01T00:00:00Z']) {
+    assert.throws(() => prepareFollowUp({ data: { status: 'site-visit-pending', followUpAt } }))
+  }
+  const data = { status: 'site-visit-pending', followUpAt: future() }
+  prepareFollowUp({ data })
+  assert.equal(data.followUpStatus, 'Pending')
+  assert.equal(data.followUpSentAt, null)
+  const existing = { status: 'contacted', followUpAt: future() }
+  assert.doesNotThrow(() => prepareFollowUp({ data: { status: 'site-visit-pending' }, originalDoc: existing }))
+  assert.doesNotThrow(() => prepareFollowUp({
+    data: { conversationNotes: 'Awaiting confirmation' },
+    originalDoc: { status: 'site-visit-pending', followUpAt: '2020-01-01T00:00:00Z' },
+  }))
+})
+
 test('new leads default to no reminder; notes-only changes leave scheduling untouched', () => {
   const data = { conversationNotes: 'Discuss pricing' }
   assert.equal(prepareFollowUp({ data }), data)

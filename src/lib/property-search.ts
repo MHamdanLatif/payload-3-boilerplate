@@ -21,6 +21,7 @@ export const VALID_LOCATIONS = [
   'Malir',
   'Saddar',
   'Korangi',
+  'Korangi Creek',
   'Model Colony',
   'Sukkur',
   'Other',

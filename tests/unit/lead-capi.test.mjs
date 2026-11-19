@@ -72,3 +72,12 @@ test('early stages send nothing', async () => {
     assert.equal(await eventFor(prev, now), null)
   }
 })
+
+test('site visit pending is internal and never sends a Meta event', async () => {
+  for (const previous of leadStatus.LEAD_STATUSES) {
+    assert.equal(await eventFor(previous, 'site-visit-pending'), null)
+  }
+  assert.equal(leadStatus.isQualifiedLead('site-visit-pending'), false)
+  assert.equal(leadStatus.atLeast('site-visit-pending', 'site-visit'), false)
+  assert.equal(await eventFor('site-visit-pending', 'site-visit'), 'QualifiedLead')
+})

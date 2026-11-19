@@ -22,6 +22,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!body || typeof body !== 'object' || Array.isArray(body))
       throw new Error('Invalid lead details.')
     const data: Partial<Lead> = {}
+    if ('followUpAt' in body) {
+      if (typeof body.followUpAt !== 'string') throw new Error('Choose a reminder date and time.')
+      data.followUpAt = body.followUpAt
+    }
     if ('name' in body || 'phone' in body) Object.assign(data, contactInput(body))
     if ('status' in body) {
       if (!LEAD_STATUSES.includes(body.status)) throw new Error('Choose a valid status.')

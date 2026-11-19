@@ -20,6 +20,7 @@ export const LOCATION_OPTIONS = [
   'Malir',
   'Saddar',
   'Korangi',
+  'Korangi Creek',
   'Model Colony',
   'Sukkur',
   'Other',

@@ -213,6 +213,7 @@ export default async function LeadActivity({ params, searchParams }: { params: P
         </p>
 
         <LeadFollowUp
+          key={lead.followUpAt || 'no-reminder'}
           id={lead.id}
           notes={lead.conversationNotes}
           reminder={lead.followUpAt}

@@ -61,4 +61,22 @@ export async function verifyFollowUp(page: Page, id: number) {
   expect(handled.status).toBe('contacted')
   await page.goto('/leads-dashboard?view=followups&q=' + encodeURIComponent(name))
   await expect(card).toHaveCount(0)
+
+  // Pending visits use the same reminder queue but are not completed visits.
+  await page.goto(`/leads-dashboard/${id}`)
+  await page.getByLabel('Lead status', { exact: true }).selectOption('site-visit-pending')
+  expect((await (await page.request.get(`/api/leads/${id}`)).json()).status).toBe('contacted')
+  await page.getByLabel('Site visit reminder (PKT, UTC+5)', { exact: true }).fill(future)
+  await page.getByRole('button', { name: 'Save pending visit & reminder' }).click()
+  await expect(page.getByText('Changes saved.', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel('Lead status', { exact: true })).toHaveValue('site-visit-pending')
+  const pendingVisit = await (await page.request.get(`/api/leads/${id}`)).json()
+  expect(pendingVisit.followUpAt).toBe(new Date(`${future}:00+05:00`).toISOString())
+  await expect(page.getByLabel('Follow-up reminder', { exact: true })).toHaveValue('scheduled')
+  await page.getByRole('button', { name: 'Mark contacted' }).click()
+  await expect(page.getByRole('status')).toHaveText('Marked contacted. Reminder cleared.')
+  const stillPending = await (await page.request.get(`/api/leads/${id}`)).json()
+  expect(stillPending.status).toBe('site-visit-pending')
+  expect(stillPending.followUpAt).toBeNull()
 }
